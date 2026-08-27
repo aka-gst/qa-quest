@@ -75,7 +75,51 @@ const missions = [
     validate(code) { const tr=/try\s*:/.test(code), ex=/except\s+ValueError\s*:/.test(code), msg=/print\s*\(\s*["']INVALID DATA["']\s*\)/.test(code); return {passes:[tr,ex,tr&&ex&&msg],output:tr&&ex&&msg?'INVALID DATA':'ValueError: invalid literal for int()',data:{raw:'oops',handled:tr&&ex&&msg}}; }
   },
   {
-    id: 'qa-01', chapter: 'QA Automation', index: 7, title: 'Первый автотест', subtitle: 'Сформулируй проверяемое ожидание.', xp: 80,
+    id: 'py-07', chapter: 'Python Bootcamp', index: 7, title: 'Чистые данные', subtitle: 'Освой строки и их методы.', xp: 70,
+    file: 'mission_07.py',
+    theory: 'Строка хранит текст. Методы <code>.strip()</code>, <code>.lower()</code> и <code>.replace()</code> возвращают новую обработанную строку, не изменяя исходную. Очистка пользовательского ввода нужна почти в любом настоящем приложении.',
+    task: 'Очисти пробелы в <code>raw_title</code>, приведи текст к нижнему регистру и сохрани результат в <code>title</code>. Должно получиться <code>login button broken</code>.',
+    example: '<p><code>clean = raw.strip().lower()</code> сначала убирает пробелы по краям, затем меняет регистр.</p>',
+    starter: 'raw_title = "  Login Button Broken  "\n\n# Очисти строку\ntitle = raw_title\nprint(title)',
+    checks: ['Используется strip()', 'Используется lower()', 'Получена очищенная строка'],
+    hint: 'Методы можно соединять цепочкой: raw_title.strip().lower()',
+    validate(code) { const strip=/raw_title\.strip\s*\(\s*\)/.test(code), lower=/\.lower\s*\(\s*\)/.test(code), assign=/title\s*=/.test(code)&&/print\s*\(\s*title\s*\)/.test(code); return {passes:[strip,lower,strip&&lower&&assign],output:strip&&lower&&assign?'login button broken':'  Login Button Broken  ',data:{before:'  Login Button Broken  ',after:strip&&lower?'login button broken':'not normalized'}}; }
+  },
+  {
+    id: 'py-08', chapter: 'Python Bootcamp', index: 8, title: 'Карточка инцидента', subtitle: 'Собери связанную запись.', xp: 80,
+    file: 'mission_08.py',
+    theory: 'Словарь <code>dict</code> хранит пары «ключ — значение». Это удобная модель одной сущности: инцидента, пользователя или ответа API. Значение читается через <code>incident["status"]</code>, а новое поле добавляется обычным присваиванием.',
+    task: 'Создай словарь <code>incident</code> с полями <code>title</code>, <code>severity</code> и <code>status</code>. Используй значения <code>"Login broken"</code>, <code>4</code> и <code>"open"</code>.',
+    example: '<p><code>user = {"name": "Ada", "active": True}</code>. Получить имя: <code>user["name"]</code>.</p>',
+    starter: '# Собери первую карточку инцидента\nincident = {}\n\nprint(incident)',
+    checks: ['Создан словарь incident', 'Есть title и severity', 'Статус установлен в open'],
+    hint: 'incident = {"title": "Login broken", "severity": 4, "status": "open"}',
+    validate(code) { const dict=/incident\s*=\s*\{/.test(code), fields=/["']title["']\s*:/.test(code)&&/["']severity["']\s*:/.test(code), status=/["']status["']\s*:\s*["']open["']/.test(code); return {passes:[dict,fields,dict&&fields&&status],output:dict&&fields&&status?"{'title': 'Login broken', 'severity': 4, 'status': 'open'}":'{}',data:{fields:dict&&fields?3:0,status:status?'open':'missing'}}; }
+  },
+  {
+    id: 'py-09', chapter: 'Python Bootcamp', index: 9, title: 'Лента инцидентов', subtitle: 'Пройди по данным циклом.', xp: 90,
+    file: 'mission_09.py',
+    theory: 'Цикл <code>for</code> выполняет один блок для каждого элемента коллекции. Внутри цикла можно читать поля словаря и применять условия. Так строятся отчёты, обработчики файлов и проверки наборов ответов.',
+    task: 'Пройди циклом по <code>incidents</code> и выведи заголовки только тех записей, у которых <code>status == "open"</code>.',
+    example: '<p><code>for user in users:</code> берёт очередной словарь; <code>if user["active"]:</code> фильтрует его.</p>',
+    starter: 'incidents = [\n    {"title": "Login broken", "status": "open"},\n    {"title": "Typo", "status": "closed"},\n    {"title": "Payment timeout", "status": "open"},\n]\n\n# Выведи заголовки открытых инцидентов\n',
+    checks: ['Есть цикл for по incidents', 'Проверяется статус open', 'Выводится поле title'],
+    hint: 'Внутри for добавь if incident["status"] == "open":, затем print(incident["title"]).',
+    validate(code) { const loop=/for\s+\w+\s+in\s+incidents\s*:/.test(code), cond=/\[["']status["']\]\s*==\s*["']open["']/.test(code), title=/print\s*\([^\)]*\[["']title["']\]/.test(code); return {passes:[loop,cond,loop&&cond&&title],output:loop&&cond&&title?'Login broken\nPayment timeout':'(нет вывода)',data:{total:3,shown:loop&&cond&&title?2:0}}; }
+  },
+  {
+    id: 'py-10', chapter: 'Итоговый проект', index: 10, title: 'Incident Tracker', subtitle: 'Собери рабочую программу из изученного.', xp: 150,
+    file: 'incident_tracker.py',
+    theory: 'Финальный проект соединяет переменные, строки, списки, словари, условия, циклы, функции и обработку ошибок. Такой консольный трекер уже является небольшой законченной программой: он принимает данные, валидирует их, хранит записи и строит отчёт.',
+    task: 'Заверши <code>create_incident()</code>: очисти title, проверь severity от 1 до 5 и верни словарь. Затем циклом выведи только открытые инциденты. Большая часть решения повторяет код предыдущих девяти миссий.',
+    example: '<p>Сначала функция создаёт одну корректную запись. Затем список хранит записи, а отдельный цикл формирует отчёт. Это разделяет обязанности и упрощает будущие тесты.</p>',
+    starter: 'APP_NAME = "QA Incident Tracker"\n\ndef create_incident(title, severity):\n    # 1. Очисти title через strip()\n    # 2. Если severity не от 1 до 5 — вызови ValueError\n    # 3. Верни словарь title/severity/status=open\n    pass\n\nincidents = []\nincidents.append(create_incident("  Login broken  ", 5))\nincidents.append(create_incident("Slow profile", 2))\n\nprint(APP_NAME)\n# 4. Циклом выведи открытые инциденты в формате: [5] Login broken\n',
+    checks: ['Функция очищает title и проверяет severity', 'Функция возвращает словарь, записи добавляются в список', 'Цикл выводит открытые инциденты'],
+    hint: 'Используй title = title.strip(); if not 1 <= severity <= 5: raise ValueError(...); return {...}. После этого добавь for incident in incidents.',
+    validate(code) { const clean=/title\s*=\s*title\.strip\s*\(\s*\)/.test(code), range=/1\s*<=\s*severity\s*<=\s*5/.test(code)&&/raise\s+ValueError/.test(code), ret=/return\s*\{[\s\S]*["']title["'][\s\S]*["']severity["'][\s\S]*["']status["']/.test(code), append=(code.match(/incidents\.append/g)||[]).length>=2, loop=/for\s+\w+\s+in\s+incidents/.test(code)&&/print\s*\(/.test(code); return {passes:[clean&&range,ret&&append,loop],output:clean&&range&&ret&&append&&loop?'QA Incident Tracker\n[5] Login broken\n[2] Slow profile':'Проект пока не собран',data:{functions:ret?1:0,incidents:append?2:0,ready:clean&&range&&ret&&append&&loop}}; }
+  },
+  {
+    id: 'qa-01', chapter: 'QA Automation', index: 11, title: 'Первый автотест', subtitle: 'Сформулируй проверяемое ожидание.', xp: 80,
     file: 'test_status.py',
     theory: 'Автотест состоит из подготовки, действия и проверки. <code>assert</code> сравнивает фактический результат с ожидаемым и делает тест красным, если условие ложно. Хорошее падение объясняет, что сломалось.',
     task: 'Создай функцию теста <code>test_success_status</code> и проверь через <code>assert</code>, что <code>response_status == 200</code>.',
@@ -86,7 +130,7 @@ const missions = [
     validate(code) { const fn=/def\s+test_\w+\s*\(/.test(code), ass=/assert\s+/.test(code), eq=/response_status\s*==\s*200/.test(code); return {passes:[fn,ass,fn&&ass&&eq],output:fn&&ass&&eq?'1 passed in 0.01s':'no tests ran',data:{collected:fn?1:0,passed:fn&&ass&&eq?1:0}}; }
   },
   {
-    id: 'qa-02', chapter: 'QA Automation', index: 8, title: 'Контракт шлюза', subtitle: 'Проверь API без интерфейса.', xp: 90,
+    id: 'qa-02', chapter: 'QA Automation', index: 12, title: 'Контракт шлюза', subtitle: 'Проверь API без интерфейса.', xp: 90,
     file: 'test_gateway.py',
     theory: 'API-тест вызывает программный интерфейс напрямую. Обычно проверяют HTTP-статус, структуру JSON, обязательные поля и бизнес-правила. Такие тесты быстрее и стабильнее сквозных UI-сценариев.',
     task: 'Для ответа без токена проверь статус <code>401</code> и наличие ключа <code>"detail"</code> в JSON-теле.',
@@ -97,7 +141,7 @@ const missions = [
     validate(code) { const st=/assert\s+response\.status_code\s*==\s*401/.test(code), json=/response\.json\s*\(\s*\)/.test(code), detail=/["']detail["']\s+in\s+response\.json/.test(code); return {passes:[st,json,st&&json&&detail],output:st&&json&&detail?'2 passed in 0.04s':'AssertionError',data:{http_status:401,schema:detail?'valid':'unchecked'}}; }
   },
   {
-    id: 'qa-03', chapter: 'QA Automation', index: 9, title: 'Матрица границ', subtitle: 'Один тест — много входов.', xp: 100,
+    id: 'qa-03', chapter: 'QA Automation', index: 13, title: 'Матрица границ', subtitle: 'Один тест — много входов.', xp: 100,
     file: 'test_request_id.py',
     theory: 'Параметризация запускает один тест с набором входных данных. Она убирает копипаст и явно показывает классы эквивалентности и граничные значения. В pytest используется <code>@pytest.mark.parametrize</code>.',
     task: 'Параметризуй тест значениями длины Request-ID <code>31, 32, 33</code> и ожидаемыми результатами <code>True, True, False</code>.',
@@ -108,7 +152,7 @@ const missions = [
     validate(code) { const par=/pytest\.mark\.parametrize/.test(code), bounds=/31/.test(code)&&/32/.test(code)&&/33/.test(code), bool=(code.match(/True/g)||[]).length>=2&&/False/.test(code); return {passes:[par,bounds,par&&bounds&&bool],output:par&&bounds&&bool?'3 passed in 0.03s':'fixture not found',data:{cases:par&&bounds?3:0,boundary:'32 chars'}}; }
   },
   {
-    id: 'llm-01', chapter: 'AI / LLM QA', index: 10, title: 'Детектор галлюцинаций', subtitle: 'Проверь смысл, а не точную строку.', xp: 120,
+    id: 'llm-01', chapter: 'AI / LLM QA', index: 14, title: 'Детектор галлюцинаций', subtitle: 'Проверь смысл, а не точную строку.', xp: 120,
     file: 'test_evaluation.py',
     theory: 'Ответ LLM недетерминирован: корректные формулировки могут отличаться. Поэтому LLM-eval проверяет критерии — релевантность, опору на контекст, безопасность и отсутствие запрещённых утверждений — вместо полного совпадения строки.',
     task: 'Создай список <code>required_facts</code> со словами <code>"401"</code> и <code>"authorization"</code>. Проверь через <code>all()</code>, что каждый факт встречается в ответе.',
@@ -128,8 +172,8 @@ function renderCampaign() {
   let chapter = '';
   missions.forEach((m, i) => {
     if (m.chapter !== chapter) { chapter = m.chapter; const label = document.createElement('div'); label.className = 'chapter-label'; label.textContent = chapter.toUpperCase(); list.appendChild(label); }
-    const done = state.completed.includes(m.id); const locked = i > 0 && !state.completed.includes(missions[i - 1].id);
-    const button = document.createElement('button'); button.className = `mission-item ${i === state.current ? 'active' : ''} ${done ? 'done' : ''} ${locked ? 'locked' : ''}`; button.disabled = locked;
+    const done = state.completed.includes(m.id);
+    const button = document.createElement('button'); button.className = `mission-item ${i === state.current ? 'active' : ''} ${done ? 'done' : ''}`;
     button.innerHTML = `<span class="mission-number">${done ? '✓' : String(m.index).padStart(2,'0')}</span><span class="mission-copy"><strong>${m.title}</strong><small>${m.subtitle}</small></span><span class="mission-check">${done ? '+' + m.xp : ''}</span>`;
     button.onclick = () => loadMission(i); list.appendChild(button);
   });
@@ -153,7 +197,7 @@ function runMission() {
   const m = missions[state.current]; const result = m.validate($('codeEditor').value); renderChecks(result.passes); renderVisual(result);
   const success = result.passes.every(Boolean); $('runState').textContent = success ? 'все проверки пройдены' : 'есть ошибки';
   $('consoleOutput').textContent = `${success ? '✓' : '×'} Запуск ${m.file}\n${result.output || '(нет вывода)'}\n\n${result.passes.filter(Boolean).length}/${result.passes.length} проверок пройдено`;
-  if (success && !state.completed.includes(m.id)) { state.completed.push(m.id); state.xp += m.xp; saveProgress(); showToast(`Миссия выполнена · +${m.xp} XP`); setTimeout(() => { if (state.current < missions.length - 1) loadMission(state.current + 1); }, 900); } else if (success) showToast('Проверки снова пройдены');
+  if (success && !state.completed.includes(m.id)) { state.completed.push(m.id); state.xp += m.xp; saveProgress(); showToast(`Миссия выполнена · +${m.xp} XP`); } else if (success) showToast('Проверки снова пройдены');
 }
 function saveProgress(){ localStorage.setItem('qaquest.completed', JSON.stringify(state.completed)); localStorage.setItem('qaquest.xp', state.xp); updateProfile(); renderCampaign(); }
 function updateProfile(){ const level = Math.floor(state.xp / 100) + 1; const within = state.xp % 100; $('profileLevel').textContent = level; $('xpLabel').textContent = `${within} / 100 XP`; $('xpBar').style.width = `${within}%`; }
