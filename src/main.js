@@ -27,7 +27,14 @@ const runnerConfig = (async () => {
   try {
     const response = await fetch('vendor/pyodide/pyodide.mjs', { method: 'HEAD' });
     if (response.ok) return { base: new URL('vendor/pyodide/', location.href).href };
-  } catch (_) { /* локальной копии нет — это норма */ }
+  } catch (_) { /* сеть или файла нет — разбираемся ниже */ }
+  // Молчать здесь нельзя: неполная выкладка отправит браузеры всех посетителей
+  // на чужой CDN, и следа об этом не останется. При разработке это норма,
+  // на домене — повод пересобрать выкладку.
+  console.warn(
+    'QA Quest: локальная копия Pyodide не найдена, Python будет загружен с cdn.jsdelivr.net. '
+    + 'Если это боевой сайт — выкладка неполная, нужен tools/fetch-pyodide.sh и повторный деплой.',
+  );
   return {};
 })();
 
