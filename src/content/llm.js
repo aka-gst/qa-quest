@@ -11,7 +11,7 @@
  * вокруг неё проверяемый контур.
  */
 
-import { TEST_RUNNER, MODEL } from './stands.js';
+import { TEST_RUNNER, MODEL, CONTEXT, DOCS, LOGS } from './stands.js';
 
 const TOOLS = String.raw`
 AUDIT_LOG = []
@@ -212,6 +212,124 @@ export const llmLessons = [
   },
 
   {
+    id: 'llm-context',
+    tier: 'llm',
+    title: 'Память и лимит',
+    subtitle: 'Модель помнит ровно то, что ей передали',
+    skill: 'контекст и обрезка',
+    preamble: `${TEST_RUNNER}\n${CONTEXT}`,
+    sprint: {
+      idea: 'У модели нет памяти между вызовами. «Помнит» она только потому, что вся история диалога отправляется заново каждый раз. А история не бесконечна: в контекст помещается ограниченное число токенов, и лишнее приходится обрезать.',
+    },
+    deep: {
+      theory: 'Это место, где ломается интуиция: кажется, что модель запоминает разговор. На самом деле каждый вызов независим, и весь диалог отправляется целиком заново. Отсюда два практических следствия. Первое: стоимость растёт квадратично — чем длиннее разговор, тем больше токенов уходит на каждую следующую реплику. Второе: рано или поздно история перестаёт помещаться в контекст, и её нужно сокращать. Наивная обрезка «оставим последние N сообщений» ломает поведение: первым улетает системное сообщение с инструкциями, и агент забывает, кто он такой. Правильная обрезка удерживает системное сообщение всегда, а из остального берёт самые свежие реплики, пока не упрётся в лимит. Здесь <code>count_tokens</code> оценивает размер по словам — грубо, но для урока честнее точной библиотеки, которая в браузере всё равно недоступна.',
+      where: 'Четвёртая лаборатория курса: память сессий и лимиты. В любом чат-агенте это первый источник и счёта за токены, и странного поведения после долгого разговора.',
+      pitfall: 'Обрезать историю простым срезом с конца. Системное сообщение теряется первым, а вместе с ним — все ограничения, которые вы в него положили.',
+      examples: [
+        { code: 'print(dialog_tokens(HISTORY))\nprint(HISTORY[0]["role"])', note: 'Размер всей истории и роль первого сообщения — того самого, которое терять нельзя.' },
+      ],
+    },
+    tasks: [
+      {
+        id: 'a', xp: 45, file: 'tokens.py',
+        brief: 'Выведи строку <code>в истории N токенов</code>, где N — фактический размер <code>HISTORY</code>, и отдельной строкой — сколько токенов занимает одно системное сообщение.',
+        starter: 'print()\nprint()',
+        hint: 'dialog_tokens(HISTORY) и count_tokens(HISTORY[0]["content"]).',
+        solution: 'print(f"в истории {dialog_tokens(HISTORY)} токенов")\nprint(count_tokens(HISTORY[0]["content"]))',
+        checks: [
+          { label: 'Размер истории посчитан, а не вписан', kind: 'py', expr: 'f"в истории {dialog_tokens(HISTORY)} токенов" in stdout' },
+          { label: 'Размер системного сообщения выведен', kind: 'py', expr: 'str(count_tokens(HISTORY[0]["content"])) in stdout' },
+          { label: 'Использованы функции стенда', kind: 'source', pattern: 'dialog_tokens|count_tokens', detail: 'считать нужно по фактическим данным' },
+        ],
+      },
+      {
+        id: 'b', xp: 55, file: 'fit.py',
+        brief: 'Напиши <code>fit(messages, limit)</code>: возвращает историю, которая помещается в лимит. Системное сообщение остаётся всегда, из остальных берутся самые свежие, порядок сохраняется.',
+        starter: 'def fit(messages, limit):\n    \n\n\nprint([m["role"] for m in fit(HISTORY, 20)])',
+        hint: 'Отдели системное сообщение, иди по остальным с конца и набирай, пока хватает лимита, потом переверни набранное обратно.',
+        solution: 'def fit(messages, limit):\n    system = [m for m in messages if m["role"] == "system"][:1]\n    used = dialog_tokens(system)\n    kept = []\n    for message in reversed([m for m in messages if m["role"] != "system"]):\n        size = count_tokens(message["content"])\n        if used + size > limit:\n            break\n        used += size\n        kept.append(message)\n    kept.reverse()\n    return system + kept\n\n\nprint([m["role"] for m in fit(HISTORY, 20)])',
+        checks: [
+          { label: 'Результат помещается в лимит', kind: 'py', expr: 'dialog_tokens(fit(HISTORY, 20)) <= 20' },
+          { label: 'Системное сообщение сохранено', kind: 'py', expr: 'fit(HISTORY, 20)[0]["role"] == "system"' },
+          { label: 'Свежие реплики важнее старых', kind: 'py', expr: 'fit(HISTORY, 20)[-1] == HISTORY[-1]' },
+          { label: 'При щедром лимите история не режется', kind: 'py', expr: 'fit(HISTORY, 1000) == HISTORY' },
+          { label: 'Порядок сообщений не перепутан', kind: 'py', expr: '[m for m in fit(HISTORY, 20)] == [m for m in HISTORY if m in fit(HISTORY, 20)]' },
+        ],
+      },
+      {
+        id: 'c', xp: 55, file: 'test_fit.py',
+        brief: 'Оформи проверки обрезки как тесты: лимит соблюдён, системное сообщение на месте, последняя реплика пользователя не потеряна. Проверь на жёстком лимите 15.',
+        starter: 'def fit(messages, limit):\n    system = [m for m in messages if m["role"] == "system"][:1]\n    used = dialog_tokens(system)\n    kept = []\n    for message in reversed([m for m in messages if m["role"] != "system"]):\n        size = count_tokens(message["content"])\n        if used + size > limit:\n            break\n        used += size\n        kept.append(message)\n    kept.reverse()\n    return system + kept\n\n\n\n\nrun_tests()',
+        hint: 'Три теста: dialog_tokens(...) <= 15, первый элемент с ролью system, последний элемент совпадает с HISTORY[-1].',
+        solution: 'def fit(messages, limit):\n    system = [m for m in messages if m["role"] == "system"][:1]\n    used = dialog_tokens(system)\n    kept = []\n    for message in reversed([m for m in messages if m["role"] != "system"]):\n        size = count_tokens(message["content"])\n        if used + size > limit:\n            break\n        used += size\n        kept.append(message)\n    kept.reverse()\n    return system + kept\n\n\ndef test_лимит_соблюдён():\n    assert dialog_tokens(fit(HISTORY, 15)) <= 15\n\n\ndef test_системное_сообщение_на_месте():\n    assert fit(HISTORY, 15)[0]["role"] == "system"\n\n\ndef test_последняя_реплика_не_потеряна():\n    assert fit(HISTORY, 15)[-1] == HISTORY[-1]\n\n\nrun_tests()',
+        checks: [
+          { label: 'Все три теста прошли', kind: 'stdout', mode: 'contains', value: 'итог: 3 passed, 0 failed' },
+          { label: 'Проверен жёсткий лимит 15', kind: 'source', pattern: '15', detail: 'на щедром лимите обрезка не проверяется' },
+          { label: 'Проверено сохранение системного сообщения', kind: 'source', pattern: 'system', detail: 'это главный риск наивной обрезки' },
+        ],
+      },
+    ],
+  },
+
+  {
+    id: 'llm-rag',
+    tier: 'llm',
+    title: 'Ответ по документам',
+    subtitle: 'Источник важнее формулировки',
+    skill: 'RAG и проверяемость',
+    preamble: `${TEST_RUNNER}\n${DOCS}`,
+    sprint: {
+      idea: 'Чтобы модель отвечала по вашим документам, нужные куски находят поиском и кладут прямо в запрос. Главное при этом — тащить вместе с текстом его источник: иначе ответ невозможно проверить.',
+    },
+    deep: {
+      theory: 'RAG расшифровывается как «генерация, дополненная поиском», и устроен проще, чем звучит. Шаг первый: по вопросу находим подходящие фрагменты документов. Шаг второй: складываем их в запрос вместе с вопросом и просим отвечать только по ним. Шага третьего нет — никакого дообучения модели не происходит. Инженерная ценность здесь не в поиске, а в проверяемости: каждый фрагмент несёт имя файла, откуда он взят, и ответ можно потребовать сопроводить ссылкой. Тогда утверждение модели перестаёт быть словом на веру — его можно открыть и сверить. Без источников RAG превращается в тот же чат, только дороже.',
+      where: 'Пятая лаборатория курса: поиск по Markdown-документам с проверяемыми источниками и метрикой retrieval hit rate — доли вопросов, для которых нашёлся правильный документ.',
+      pitfall: 'Склеить найденные тексты в один кусок и потерять, откуда что взято. Ответ станет непроверяемым, а разбор ошибки — невозможным.',
+      examples: [
+        { code: 'for chunk in search_docs("как передаётся токен"):\n    print(chunk["source"], "—", chunk["text"][:40])', note: 'Поиск возвращает фрагмент вместе с именем документа.' },
+      ],
+    },
+    tasks: [
+      {
+        id: 'a', xp: 45, file: 'retrieve.py',
+        brief: 'Найди фрагменты по вопросу «когда повторять запрос» и выведи имена их источников, по одному на строку.',
+        starter: 'question = "когда повторять запрос"\n\n',
+        hint: 'search_docs(question) вернёт список словарей с ключами text и source.',
+        solution: 'question = "когда повторять запрос"\nfor chunk in search_docs(question):\n    print(chunk["source"])',
+        checks: [
+          { label: 'Нужный документ найден первым', kind: 'py', expr: 'stdout.strip().splitlines()[0] == "gateway/retry.md"' },
+          { label: 'Выведены источники, а не тексты', kind: 'py', expr: 'all(line.strip().endswith(".md") for line in stdout.strip().splitlines())' },
+          { label: 'Использован поиск, а не вписанный ответ', kind: 'source', pattern: 'search_docs\\s*\\(', detail: 'источник должен приходить из поиска' },
+        ],
+      },
+      {
+        id: 'b', xp: 55, file: 'build_prompt.py',
+        brief: 'Напиши <code>build_prompt(question, chunks)</code>: запрос с контекстом. Сначала строка <code>Отвечай только по документам ниже и указывай источник.</code>, затем по строке <code>[источник] текст</code> на фрагмент, и последней — <code>Вопрос: ...</code>.',
+        starter: 'def build_prompt(question, chunks):\n    \n\n\nprint(build_prompt("как передаётся токен", search_docs("как передаётся токен")))',
+        hint: 'Собери список строк и склей его через "\\n".join(...).',
+        solution: 'def build_prompt(question, chunks):\n    lines = ["Отвечай только по документам ниже и указывай источник."]\n    for chunk in chunks:\n        lines.append(f"[{chunk[\'source\']}] {chunk[\'text\']}")\n    lines.append(f"Вопрос: {question}")\n    return "\\n".join(lines)\n\n\nprint(build_prompt("как передаётся токен", search_docs("как передаётся токен")))',
+        checks: [
+          { label: 'Инструкция стоит первой строкой', kind: 'py', expr: 'build_prompt("q", []).splitlines()[0] == "Отвечай только по документам ниже и указывай источник."' },
+          { label: 'Вопрос стоит последней строкой', kind: 'py', expr: 'build_prompt("как дела", []).splitlines()[-1] == "Вопрос: как дела"' },
+          { label: 'Каждый фрагмент помечен источником', kind: 'py', expr: '"[gateway/auth.md]" in build_prompt("q", search_docs("как передаётся токен"))' },
+          { label: 'Текст фрагмента попал в запрос', kind: 'py', expr: '"Authorization" in build_prompt("q", search_docs("как передаётся токен"))' },
+        ],
+      },
+      {
+        id: 'c', xp: 55, file: 'test_sources.py',
+        brief: 'Напиши тесты на качество поиска: для вопроса про токен находится <code>gateway/auth.md</code>, для вопроса про модели — <code>gateway/models.md</code>, а на бессмысленный вопрос поиск возвращает пусто, а не случайный документ.',
+        starter: 'def sources(question):\n    return [chunk["source"] for chunk in search_docs(question)]\n\n\n\n\nrun_tests()',
+        hint: 'Третий тест: sources("абракадабра щщщ") == []. Так проверяют, что поиск умеет молчать.',
+        solution: 'def sources(question):\n    return [chunk["source"] for chunk in search_docs(question)]\n\n\ndef test_вопрос_про_токен_находит_auth():\n    assert "gateway/auth.md" in sources("как передаётся токен")\n\n\ndef test_вопрос_про_модели_находит_models():\n    assert "gateway/models.md" in sources("какие модели разрешены")\n\n\ndef test_бессмысленный_вопрос_ничего_не_находит():\n    assert sources("абракадабра щщщ") == []\n\n\nrun_tests()',
+        checks: [
+          { label: 'Все три теста прошли', kind: 'stdout', mode: 'contains', value: 'итог: 3 passed, 0 failed' },
+          { label: 'Проверено, что поиск умеет ничего не находить', kind: 'py', expr: '"== []" in __quest_source__ or "not sources" in __quest_source__', detail: 'молчание вместо случайного документа — тоже требование' },
+        ],
+      },
+    ],
+  },
+
+  {
     id: 'llm-eval',
     tier: 'llm',
     title: 'Оценка ответа',
@@ -322,6 +440,65 @@ export const llmLessons = [
         checks: [
           { label: 'Оба теста прошли', kind: 'stdout', mode: 'contains', value: 'итог: 2 passed, 0 failed' },
           { label: 'Есть проверка самой проверки', kind: 'source', pattern: 'guarded\\s*=\\s*False', detail: 'тест, который не может упасть, ничего не доказывает' },
+        ],
+      },
+    ],
+  },
+
+  {
+    id: 'llm-redaction',
+    tier: 'llm',
+    title: 'Секреты в журналах',
+    subtitle: 'Маскировать до записи, а не после утечки',
+    skill: 'redaction',
+    preamble: `${TEST_RUNNER}\n${LOGS}`,
+    sprint: {
+      idea: 'Журнал прогона — самое частое место утечки ключей: его копируют в отчёт, прикладывают к задаче, выкладывают в чат. Секрет заменяют звёздочками до записи, а не после того, как он куда-то попал.',
+    },
+    deep: {
+      theory: 'Токены и ключи попадают в журналы почти всегда случайно: печатают заголовки запроса целиком, дампят конфигурацию при старте, добавляют тело ошибки «чтобы было понятнее». Дальше журнал живёт своей жизнью — в отчёте о прогоне, в приложении к задаче, в переписке. Поэтому маскирование делают не глазами, а функцией, и не в конце, а на входе в журнал: <code>log(redact(line))</code>. Шаблоны берут по формату секрета, а не по имени переменной — <code>Bearer</code> с непробельным хвостом, всё, что похоже на <code>*_API_KEY=значение</code>. И самое важное: раз есть функция, есть и тест. Проверка «ни в одной строке журнала нет ни одного известного секрета» пишется одной строкой и защищает навсегда, а ручная бдительность — нет.',
+      where: 'В таблице рисков шлюза это отдельная строка: секрет не должен попадать ни в ответ, ни в лог. Тот же приём закрывает персональные данные в отчётах об ошибках.',
+      pitfall: 'Маскировать по имени переменной, а не по формату значения. Ключ, прилетевший из чужого поля или из тела ошибки, пройдёт мимо такого фильтра.',
+      examples: [
+        { code: 'line = "Authorization: Bearer sk-live-9f3ac21b7d4e55"\nprint(SECRET_PATTERNS[0].sub("Bearer ***", line))', note: 'Замена по формату значения: сам ключ в результат не попадает.' },
+      ],
+    },
+    tasks: [
+      {
+        id: 'a', xp: 45, file: 'redact.py',
+        brief: 'Напиши <code>redact(line)</code>: заменяет <code>Bearer &lt;токен&gt;</code> на <code>Bearer ***</code>, а всё остальное оставляет как есть. Шаблон уже готов в <code>SECRET_PATTERNS[0]</code>.',
+        starter: 'def redact(line):\n    \n\n\nprint(redact("Authorization: Bearer sk-live-9f3ac21b7d4e55 -> 200"))\nprint(redact("GET /health -> 200"))',
+        hint: 'return SECRET_PATTERNS[0].sub("Bearer ***", line)',
+        solution: 'def redact(line):\n    return SECRET_PATTERNS[0].sub("Bearer ***", line)\n\n\nprint(redact("Authorization: Bearer sk-live-9f3ac21b7d4e55 -> 200"))\nprint(redact("GET /health -> 200"))',
+        checks: [
+          { label: 'Токен замаскирован', kind: 'call', fn: 'redact', args: ['Authorization: Bearer sk-live-9f3ac21b7d4e55 -> 200'], equals: 'Authorization: Bearer *** -> 200' },
+          { label: 'Обычная строка не изменилась', kind: 'call', fn: 'redact', args: ['GET /health -> 200'], equals: 'GET /health -> 200' },
+          { label: 'Секрет не остался в выводе', kind: 'stdout', mode: 'absent', value: 'sk-live' },
+        ],
+      },
+      {
+        id: 'b', xp: 55, file: 'redact_all.py',
+        brief: 'Расширь <code>redact</code>: кроме bearer-токена маскируй значения ключей вида <code>*_API_KEY=...</code>, сохраняя имя ключа. Шаблон лежит в <code>SECRET_PATTERNS[1]</code>, а имя — это первая группа.',
+        starter: 'def redact(line):\n    line = SECRET_PATTERNS[0].sub("Bearer ***", line)\n    \n    return line\n\n\nfor line in RAW_LOGS:\n    print(redact(line))',
+        hint: 'Во второй замене подставь первую группу и звёздочки: SECRET_PATTERNS[1].sub(r"\\1***", line)',
+        solution: 'def redact(line):\n    line = SECRET_PATTERNS[0].sub("Bearer ***", line)\n    line = SECRET_PATTERNS[1].sub(r"\\1***", line)\n    return line\n\n\nfor line in RAW_LOGS:\n    print(redact(line))',
+        checks: [
+          { label: 'Значение ключа замаскировано, имя сохранено', kind: 'call', fn: 'redact', args: ['config loaded: OPENROUTER_API_KEY=or-v1-77aa31bc90de4412 backend=ollama'], equals: 'config loaded: OPENROUTER_API_KEY=*** backend=ollama' },
+          { label: 'Bearer-токен по-прежнему маскируется', kind: 'call', fn: 'redact', args: ['Authorization: Bearer sk-live-9f3ac21b7d4e55'], equals: 'Authorization: Bearer ***' },
+          { label: 'Ни один секрет не попал в вывод', kind: 'stdout', mode: 'absent', values: ['sk-live', 'or-v1'] },
+          { label: 'Остальные строки журнала не потерялись', kind: 'stdout', mode: 'contains', values: ['GET /health', '502 upstream_error'] },
+        ],
+      },
+      {
+        id: 'c', xp: 60, file: 'test_redaction.py',
+        brief: 'Напиши тест <code>test_в_журнале_нет_секретов</code>: он прогоняет все строки <code>RAW_LOGS</code> через <code>redact</code> и падает, если хоть один известный секрет уцелел. Вторым тестом докажи, что проверка вообще способна упасть — на неотредактированном журнале.',
+        starter: 'SECRETS = ["sk-live-9f3ac21b7d4e55", "or-v1-77aa31bc90de4412"]\n\n\ndef redact(line):\n    line = SECRET_PATTERNS[0].sub("Bearer ***", line)\n    line = SECRET_PATTERNS[1].sub(r"\\1***", line)\n    return line\n\n\n\n\nrun_tests()',
+        hint: 'Второй тест — проверка проверки: в исходных RAW_LOGS секрет обязан находиться.',
+        solution: 'SECRETS = ["sk-live-9f3ac21b7d4e55", "or-v1-77aa31bc90de4412"]\n\n\ndef redact(line):\n    line = SECRET_PATTERNS[0].sub("Bearer ***", line)\n    line = SECRET_PATTERNS[1].sub(r"\\1***", line)\n    return line\n\n\ndef test_в_журнале_нет_секретов():\n    clean = "\\n".join(redact(line) for line in RAW_LOGS)\n    for secret in SECRETS:\n        assert secret not in clean, secret\n\n\ndef test_проверка_умеет_находить_секрет():\n    raw = "\\n".join(RAW_LOGS)\n    assert any(secret in raw for secret in SECRETS)\n\n\nrun_tests()',
+        checks: [
+          { label: 'Оба теста прошли', kind: 'stdout', mode: 'contains', value: 'итог: 2 passed, 0 failed' },
+          { label: 'Проверяется весь журнал целиком', kind: 'source', pattern: 'RAW_LOGS', detail: 'одной строки для доказательства мало' },
+          { label: 'Есть проверка самой проверки', kind: 'py', expr: '__quest_source__.count("def test_") >= 2', detail: 'тест, который не может упасть, ничего не доказывает' },
         ],
       },
     ],

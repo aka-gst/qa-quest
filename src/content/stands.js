@@ -14,23 +14,23 @@ def run_tests():
     scope = globals()
     names = [name for name in list(scope) if name.startswith('test_') and callable(scope[name])]
     passed = 0
-    failed = 0
+    failures = []
     for name in names:
         try:
             scope[name]()
         except AssertionError as exc:
-            failed += 1
+            failures.append({'name': name, 'reason': str(exc) or 'условие assert не выполнено'})
             print('FAILED %s — %s' % (name, exc or 'условие assert не выполнено'))
         except Exception as exc:
-            failed += 1
+            failures.append({'name': name, 'reason': '%s: %s' % (type(exc).__name__, exc)})
             print('ERROR  %s — %s: %s' % (name, type(exc).__name__, exc))
         else:
             passed += 1
             print('PASSED %s' % name)
     if not names:
         print('не найдено ни одной функции с именем test_*')
-    print('итог: %d passed, %d failed' % (passed, failed))
-    return {'passed': passed, 'failed': failed, 'names': names}
+    print('итог: %d passed, %d failed' % (passed, len(failures)))
+    return {'passed': passed, 'failed': len(failures), 'names': names, 'failures': failures}
 `;
 
 /**
@@ -147,4 +147,113 @@ def ask_model(prompt, json_mode=False, guarded=True, temperature=0.0):
         'tokens_in': max(1, len(prompt.split())),
         'tokens_out': max(1, len(text.split())),
     }
+`;
+
+/**
+ * Мутационное тестирование: подменяем реализацию заведомо сломанной
+ * и смотрим, поймает ли это тест. Так проверяют сами тесты.
+ */
+export const MUTATION = String.raw`
+def kills(test_fn, implementation):
+    """True, если тест падает на подменённой реализации, то есть ловит дефект."""
+    try:
+        test_fn(implementation)
+    except AssertionError:
+        return True
+    except Exception:
+        return True
+    return False
+
+
+def percent_correct(passed, total):
+    return round(passed / total * 100, 1)
+
+
+def percent_no_hundred(passed, total):
+    return round(passed / total, 1)
+
+
+def percent_swapped(passed, total):
+    return round(total / passed * 100, 1)
+
+
+def percent_int_division(passed, total):
+    return round(passed // total * 100, 1)
+
+
+MUTANTS = {
+    'забыли умножить на 100': percent_no_hundred,
+    'перепутали местами аргументы': percent_swapped,
+    'целочисленное деление вместо обычного': percent_int_division,
+}
+`;
+
+/**
+ * Документы и поиск по ним: у каждого фрагмента есть источник,
+ * поэтому ответ модели можно потребовать подтверждать ссылкой.
+ */
+export const DOCS = String.raw`
+import re as _re
+
+DOCUMENTS = [
+    {'source': 'gateway/auth.md', 'text': 'Bearer-токен передаётся в заголовке Authorization и проверяется до обращения к модели.'},
+    {'source': 'gateway/limits.md', 'text': 'Запрос длиннее 4000 символов отклоняется с кодом 413.'},
+    {'source': 'gateway/retry.md', 'text': 'Повторять запрос следует на кодах 429 и 503 с экспоненциальной паузой.'},
+    {'source': 'gateway/models.md', 'text': 'Разрешены только модели qwen3:8b и qwen3-vl:4b, остальные получают 403.'},
+]
+
+
+def _words(text):
+    return set(_re.findall(r'\w+', text.lower()))
+
+
+def search_docs(query, limit=2):
+    """Наивный поиск по совпадающим словам. Фрагмент всегда несёт свой источник."""
+    words = _words(query)
+    scored = []
+    for document in DOCUMENTS:
+        overlap = len(words & _words(document['text']))
+        if overlap:
+            scored.append((overlap, document))
+    scored.sort(key=lambda pair: -pair[0])
+    return [document for _, document in scored[:limit]]
+`;
+
+/** Строки журналов с настоящими на вид секретами — на них учат маскировать. */
+export const LOGS = String.raw`
+import re as _re
+
+RAW_LOGS = [
+    'POST /v1/chat/completions Authorization: Bearer sk-live-9f3ac21b7d4e55 -> 200',
+    'GET /health -> 200',
+    'config loaded: OPENROUTER_API_KEY=or-v1-77aa31bc90de4412 backend=ollama',
+    'POST /v1/chat/completions -> 502 upstream_error',
+    'user email=nikita@example.com requested export',
+]
+
+SECRET_PATTERNS = [
+    _re.compile(r'Bearer\s+[A-Za-z0-9\-_]+'),
+    _re.compile(r'(?i)([A-Z0-9_]*API_KEY\s*=\s*)([A-Za-z0-9\-_]+)'),
+]
+`;
+
+/** История диалога и грубая оценка её размера: на этом учат работать с лимитом контекста. */
+export const CONTEXT = String.raw`
+HISTORY = [
+    {'role': 'system', 'content': 'Ты помощник по QA. Отвечай кратко и по делу.'},
+    {'role': 'user', 'content': 'Что такое HTTP API?'},
+    {'role': 'assistant', 'content': 'Это интерфейс для обмена запросами и ответами по протоколу HTTP.'},
+    {'role': 'user', 'content': 'А как передаётся токен?'},
+    {'role': 'assistant', 'content': 'В заголовке Authorization по схеме Bearer.'},
+    {'role': 'user', 'content': 'Когда стоит повторять запрос?'},
+]
+
+
+def count_tokens(text):
+    """Грубая оценка: одно слово примерно один токен. Для урока этого достаточно."""
+    return len(str(text).split())
+
+
+def dialog_tokens(messages):
+    return sum(count_tokens(message['content']) for message in messages)
 `;

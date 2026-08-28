@@ -1,2 +1,5 @@
 .DS_Store
 *.log
+
+# Локальная копия Pyodide: 12 МБ бинарников, качается tools/fetch-pyodide.sh
+vendor/

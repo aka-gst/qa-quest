@@ -17,6 +17,20 @@ const screens = {
   lesson: $('lessonScreen'),
 };
 
+/**
+ * Откуда брать Pyodide. Если рядом с сайтом выложена локальная копия
+ * (tools/fetch-pyodide.sh), берём её: это быстрее и не зависит от чужого CDN.
+ * Иначе воркер сам сходит на jsDelivr.
+ */
+const runnerConfig = (async () => {
+  if (window.QA_QUEST_PYODIDE) return { base: window.QA_QUEST_PYODIDE };
+  try {
+    const response = await fetch('vendor/pyodide/pyodide.mjs', { method: 'HEAD' });
+    if (response.ok) return { base: new URL('vendor/pyodide/', location.href).href };
+  } catch (_) { /* локальной копии нет — это норма */ }
+  return {};
+})();
+
 /* ---------- маршруты ---------- */
 
 function openLesson(lesson) {
@@ -40,7 +54,7 @@ function route() {
   if (lesson) {
     screens.map.hidden = true;
     screens.lesson.hidden = false;
-    bootRunner();
+    runnerConfig.then(bootRunner);
     renderLesson(screens.lesson, lesson, {
       onBack: openMap,
       onOpen: openLesson,
@@ -149,7 +163,7 @@ function accountDialog() {
   };
 
   body.append(
-    el('p', { text: 'Одна учётная запись на все проекты aka-gst — та же, что в Лиле.' }),
+    el('p', { text: 'Одна учётная запись на все проекты aka-gst: и на Лилу, и сюда, и на рекорды в играх.' }),
     email,
     password,
     error,

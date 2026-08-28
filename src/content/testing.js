@@ -6,7 +6,7 @@
  * негативные сценарии и требование доказательства вместо впечатления.
  */
 
-import { TEST_RUNNER, GATEWAY } from './stands.js';
+import { TEST_RUNNER, GATEWAY, MUTATION } from './stands.js';
 
 export const testingLessons = [
   {
@@ -237,6 +237,65 @@ export const testingLessons = [
   },
 
   {
+    id: 'qa-fixtures',
+    tier: 'testing',
+    title: 'Подготовка и уборка',
+    subtitle: 'Тесты не должны мешать друг другу',
+    skill: 'фикстуры, изоляция',
+    preamble: TEST_RUNNER,
+    sprint: {
+      idea: 'Повторяющуюся подготовку выносят в отдельную функцию, а всё изменённое возвращают на место после теста. Иначе тесты начинают зависеть от порядка запуска — и падают по очереди без всякой причины.',
+    },
+    deep: {
+      theory: 'Хороший тест начинается с чистого состояния и оставляет его таким же чистым. Подготовку данных выносят в функцию — в pytest её называют фикстурой и объявляют через <code>@pytest.fixture</code>, здесь достаточно обычной функции <code>make_incident()</code>. Второе правило жёстче: тест не имеет права зависеть от того, что сделал предыдущий. Общий список, глобальный флаг, запись в базе — всё это протекает между тестами, и набор начинает вести себя по-разному в зависимости от порядка. Лечится двумя приёмами: создавать данные заново в каждом тесте и возвращать изменённое состояние обратно через <code>try / finally</code>, чтобы уборка происходила даже когда тест упал.',
+      where: 'Любой набор, который работает с базой, файлами, конфигурацией или общими объектами. Именно ради изоляции браузерные тесты шлюза поднимают отдельные процессы фальшивого апстрима на каждый прогон.',
+      pitfall: 'Убирать за собой в конце теста без <code>finally</code>. Тест упал на утверждении — уборка не выполнилась, и следующий тест падает уже по чужой причине.',
+      examples: [
+        { code: 'def make_incident():\n    return {"title": "вход сломан", "severity": 5, "status": "open"}\n\n\ndef test_новая_запись_открыта():\n    assert make_incident()["status"] == "open"', note: 'Подготовка вынесена: каждый тест получает свежие данные.' },
+        { code: 'CONFIG = {"strict": False}\n\ndef test_строгий_режим():\n    CONFIG["strict"] = True\n    try:\n        assert CONFIG["strict"] is True\n    finally:\n        CONFIG["strict"] = False', note: 'finally возвращает настройку на место даже при падении теста.' },
+      ],
+    },
+    tasks: [
+      {
+        id: 'a', xp: 40, file: 'fixture.py',
+        brief: 'Вынеси подготовку в функцию <code>make_incident()</code>, возвращающую свежий словарь с полями <code>title</code>, <code>severity</code> = 5 и <code>status</code> = <code>open</code>. Используй её в обоих тестах вместо копирования данных.',
+        starter: 'def make_incident():\n    \n\n\ndef test_новая_запись_открыта():\n    \n\n\ndef test_у_записи_есть_важность():\n    \n\n\nrun_tests()',
+        hint: 'В каждом тесте: incident = make_incident(), затем одно утверждение по нужному полю.',
+        solution: 'def make_incident():\n    return {"title": "вход сломан", "severity": 5, "status": "open"}\n\n\ndef test_новая_запись_открыта():\n    incident = make_incident()\n    assert incident["status"] == "open"\n\n\ndef test_у_записи_есть_важность():\n    incident = make_incident()\n    assert incident["severity"] == 5\n\n\nrun_tests()',
+        checks: [
+          { label: 'Оба теста прошли', kind: 'stdout', mode: 'contains', value: 'итог: 2 passed, 0 failed' },
+          { label: 'Подготовка возвращает свежий словарь каждый раз', kind: 'py', expr: 'make_incident() is not make_incident()', detail: 'фикстура должна создавать новый объект, а не отдавать общий' },
+          { label: 'Оба теста пользуются фикстурой', kind: 'py', expr: '__quest_source__.count("make_incident()") >= 3', detail: 'данные не должны копироваться в каждый тест' },
+        ],
+      },
+      {
+        id: 'b', xp: 45, file: 'isolation.py',
+        brief: 'Эти два теста ломаются из-за общего списка: второй видит запись, оставленную первым. Почини изоляцию, не меняя сами утверждения.',
+        starter: 'STORAGE = []\n\n\ndef add(title):\n    STORAGE.append({"title": title, "status": "open"})\n\n\ndef test_первая_запись_одна_в_списке():\n    add("вход сломан")\n    assert len(STORAGE) == 1\n\n\ndef test_вторая_запись_тоже_одна():\n    add("оплата зависает")\n    assert len(STORAGE) == 1\n\n\nrun_tests()',
+        hint: 'Добавь функцию setup(), которая очищает STORAGE через .clear(), и вызови её первой строкой каждого теста.',
+        solution: 'STORAGE = []\n\n\ndef add(title):\n    STORAGE.append({"title": title, "status": "open"})\n\n\ndef setup():\n    STORAGE.clear()\n\n\ndef test_первая_запись_одна_в_списке():\n    setup()\n    add("вход сломан")\n    assert len(STORAGE) == 1\n\n\ndef test_вторая_запись_тоже_одна():\n    setup()\n    add("оплата зависает")\n    assert len(STORAGE) == 1\n\n\nrun_tests()',
+        checks: [
+          { label: 'Оба теста прошли', kind: 'stdout', mode: 'contains', value: 'итог: 2 passed, 0 failed' },
+          { label: 'Состояние сбрасывается перед тестом', kind: 'source', pattern: '\\.clear\\s*\\(\\s*\\)|STORAGE\\[:\\]\\s*=', detail: 'общий список нужно очищать, а не наращивать' },
+          { label: 'Утверждения не переписаны под текущее поведение', kind: 'py', expr: '__quest_source__.count("len(STORAGE) == 1") == 2', detail: 'чинить надо изоляцию, а не ожидания' },
+        ],
+      },
+      {
+        id: 'c', xp: 45, file: 'teardown.py',
+        brief: 'Первый тест включает строгий режим и обязан вернуть настройку обратно даже при падении. Допиши уборку так, чтобы второй тест видел значение по умолчанию.',
+        starter: 'CONFIG = {"strict": False}\n\n\ndef test_строгий_режим_включается():\n    CONFIG["strict"] = True\n    assert CONFIG["strict"] is True\n\n\ndef test_по_умолчанию_режим_выключен():\n    assert CONFIG["strict"] is False\n\n\nrun_tests()',
+        hint: 'Оберни утверждение первого теста в try, а возврат значения положи в finally.',
+        solution: 'CONFIG = {"strict": False}\n\n\ndef test_строгий_режим_включается():\n    CONFIG["strict"] = True\n    try:\n        assert CONFIG["strict"] is True\n    finally:\n        CONFIG["strict"] = False\n\n\ndef test_по_умолчанию_режим_выключен():\n    assert CONFIG["strict"] is False\n\n\nrun_tests()',
+        checks: [
+          { label: 'Оба теста прошли', kind: 'stdout', mode: 'contains', value: 'итог: 2 passed, 0 failed' },
+          { label: 'Настройка вернулась к значению по умолчанию', kind: 'py', expr: 'CONFIG["strict"] is False' },
+          { label: 'Уборка выполняется через finally', kind: 'source', pattern: '^\\s*finally\\s*:', detail: 'иначе упавший тест оставит состояние испорченным' },
+        ],
+      },
+    ],
+  },
+
+  {
     id: 'qa-api',
     tier: 'testing',
     title: 'Контракт шлюза',
@@ -403,6 +462,122 @@ export const testingLessons = [
         checks: [
           { label: 'Строка собрана по формату', kind: 'call', fn: 'report_line', args: ['health-check', 'curl /health', 0, 'PASS'], equals: 'Эксперимент: health-check | Команда: curl /health | Exit code: 0 | Статус: PASS' },
           { label: 'Формат не зависит от конкретных данных', kind: 'call', fn: 'report_line', args: ['allowlist', 'pytest -k allowlist', 1, 'FAIL'], equals: 'Эксперимент: allowlist | Команда: pytest -k allowlist | Exit code: 1 | Статус: FAIL' },
+        ],
+      },
+    ],
+  },
+
+  {
+    id: 'qa-mutation',
+    tier: 'testing',
+    title: 'Кто проверяет тесты',
+    subtitle: 'Сломай код и посмотри, заметит ли тест',
+    skill: 'мутационное тестирование',
+    preamble: `${TEST_RUNNER}\n${MUTATION}`,
+    sprint: {
+      idea: 'Зелёный тест ничего не доказывает сам по себе. Проверить его можно так: подменить реализацию заведомо сломанной и убедиться, что тест упал. Если не упал — он пропустит и настоящий дефект.',
+    },
+    deep: {
+      theory: 'Это прямое продолжение правила NOT PROVEN. Мы уже знаем, что <code>assert result</code> проходит для любого непустого значения. Но и вполне приличный на вид тест может ничего не проверять — просто потому, что данные выбраны неудачно. Приём называется мутационным тестированием: берём рабочую функцию, вносим в неё типичную ошибку (забыли умножить, перепутали аргументы, поставили целочисленное деление) и запускаем тест на этой «мутации». Тест обязан упасть — тогда говорят, что он <b>убил</b> мутанта. Выживший мутант означает дыру: такая ошибка пройдёт мимо набора незамеченной. Здесь <code>kills(test, implementation)</code> возвращает <code>True</code>, если тест поймал подмену, а словарь <code>MUTANTS</code> хранит три типичные поломки функции процента.',
+      where: 'Так оценивают качество набора там, где покрытие строк уже стопроцентное, а уверенности нет. Покрытие говорит, что строка выполнилась; мутационный тест — что её поведение действительно проверяется.',
+      pitfall: 'Выбирать для теста данные, на которых верная и сломанная реализации совпадают. Классика: проверять процент на <code>7 из 7</code> — там и правильная формула, и целочисленное деление дадут одинаковые 100.',
+      examples: [
+        { code: 'def test_percent(percent):\n    assert percent(7, 10) == 70.0\n\nprint(kills(test_percent, percent_correct))\nprint(kills(test_percent, percent_no_hundred))', note: 'На верной реализации тест проходит (False), сломанную ловит (True).' },
+      ],
+    },
+    tasks: [
+      {
+        id: 'a', xp: 45, file: 'mutation.py',
+        brief: 'Напиши тест <code>test_percent(percent)</code>, который принимает реализацию аргументом и проверяет, что 7 из 10 — это <code>70.0</code>. Затем выведи две строки: ловит ли он верную реализацию и ловит ли мутанта <code>percent_no_hundred</code>.',
+        starter: 'def test_percent(percent):\n    \n\n\nprint(kills(test_percent, percent_correct))\nprint(kills(test_percent, percent_no_hundred))',
+        hint: 'Внутри теста одно утверждение: assert percent(7, 10) == 70.0',
+        solution: 'def test_percent(percent):\n    assert percent(7, 10) == 70.0\n\n\nprint(kills(test_percent, percent_correct))\nprint(kills(test_percent, percent_no_hundred))',
+        checks: [
+          { label: 'На верной реализации тест не падает, сломанную ловит', kind: 'stdout', mode: 'lines', value: ['False', 'True'] },
+          { label: 'Тест принимает реализацию аргументом', kind: 'source', pattern: 'def\\s+test_percent\\s*\\(\\s*percent\\s*\\)', detail: 'подменять реализацию можно только так' },
+          { label: 'Проверяется конкретное ожидаемое значение', kind: 'py', expr: 'kills(test_percent, percent_swapped) is True', detail: 'слабое утверждение не поймало бы и перестановку аргументов' },
+        ],
+      },
+      {
+        id: 'b', xp: 50, file: 'survivors.py',
+        brief: 'Напиши функцию <code>survivors(test_fn)</code>: она возвращает список имён мутантов из <code>MUTANTS</code>, которых тест не поймал. Слабый тест из заготовки должен оставить в живых двоих — выведи их.',
+        starter: 'def test_percent(percent):\n    assert percent(10, 10) == 100.0  # слабые данные\n\n\ndef survivors(test_fn):\n    \n\n\nprint(survivors(test_percent))',
+        hint: 'Пройди MUTANTS.items() и оставь те имена, для которых kills(...) вернул False.',
+        solution: 'def test_percent(percent):\n    assert percent(10, 10) == 100.0\n\n\ndef survivors(test_fn):\n    return [name for name, mutant in MUTANTS.items() if not kills(test_fn, mutant)]\n\n\nprint(survivors(test_percent))',
+        checks: [
+          { label: 'Слабый тест пропускает двух мутантов', kind: 'py', expr: 'len(survivors(test_percent)) == 2' },
+          { label: 'Названы именно перестановка аргументов и целочисленное деление', kind: 'py', expr: 'set(survivors(test_percent)) == {"перепутали местами аргументы", "целочисленное деление вместо обычного"}' },
+          { label: 'Список выживших выведен', kind: 'stdout', mode: 'contains', value: 'целочисленное деление' },
+          { label: 'Тест пока не переписан', kind: 'source', pattern: 'percent\\s*\\(\\s*10\\s*,\\s*10\\s*\\)', detail: 'в этой задаче инструмент, а не починка' },
+        ],
+      },
+      {
+        id: 'c', xp: 50, file: 'kill_all.py',
+        brief: 'Усиль тест так, чтобы не выжил ни один мутант, и выведи <code>выжило мутантов: 0</code>. На верной реализации тест обязан по-прежнему проходить.',
+        starter: 'def test_percent(percent):\n    assert percent(10, 10) == 100.0  # усиль эти данные\n\n\ndef survivors(test_fn):\n    return [name for name, mutant in MUTANTS.items() if not kills(test_fn, mutant)]\n\n\nprint(f"выжило мутантов: {len(survivors(test_percent))}")',
+        hint: 'Возьми данные, на которых сломанные формулы дают другой ответ: например 7 из 10.',
+        solution: 'def test_percent(percent):\n    assert percent(7, 10) == 70.0\n\n\ndef survivors(test_fn):\n    return [name for name, mutant in MUTANTS.items() if not kills(test_fn, mutant)]\n\n\nprint(f"выжило мутантов: {len(survivors(test_percent))}")',
+        checks: [
+          { label: 'Не выжил ни один мутант', kind: 'py', expr: 'survivors(test_percent) == []' },
+          { label: 'На верной реализации тест проходит', kind: 'py', expr: 'kills(test_percent, percent_correct) is False', detail: 'усиление не должно ломать тест на рабочем коде' },
+          { label: 'Отчёт выведен', kind: 'stdout', mode: 'contains', value: 'выжило мутантов: 0' },
+        ],
+      },
+    ],
+  },
+
+  {
+    id: 'qa-report',
+    tier: 'testing',
+    title: 'Отчёт о прогоне',
+    subtitle: 'Что показать вместо «вроде работает»',
+    skill: 'сводка и код возврата',
+    preamble: TEST_RUNNER,
+    sprint: {
+      idea: 'Прогон заканчивается не строчками в терминале, а двумя вещами: короткой сводкой для человека и кодом возврата для машины. Ноль — можно выкладывать, единица — нельзя.',
+    },
+    deep: {
+      theory: 'У результата прогона два адресата. Человеку нужна сводка: сколько всего, сколько прошло, что именно упало и почему — без неё падение приходится искать глазами в длинной простыне. Машине нужен код возврата: <code>0</code>, если всё зелёное, и любой ненулевой, если нет. Именно на него смотрит CI, чтобы решить, пускать ли изменение дальше. Отчёт полезно собирать структурой, а не текстом: словарь с числами легко сравнить со вчерашним, положить в JSON и построить график. Здесь <code>run_tests()</code> возвращает такой словарь: <code>passed</code>, <code>failed</code>, <code>names</code> и <code>failures</code> со списком имён и причин.',
+      where: 'GitHub Actions останавливает сборку по ненулевому коду возврата pytest. Allure и отчёты в JSON и Markdown строятся из тех же данных, что и сводка в терминале.',
+      pitfall: 'Печатать «всё хорошо» и завершаться нулём независимо от результата. Такой прогон зелёный всегда и не защищает ни от чего.',
+      examples: [
+        { code: 'result = run_tests()\nprint(f"тестов: {len(result[\'names\'])} · пройдено: {result[\'passed\']}")', note: 'Сводка строится из возвращённого словаря, а не из напечатанного текста.' },
+      ],
+    },
+    tasks: [
+      {
+        id: 'a', xp: 45, file: 'summary.py',
+        brief: 'Собери сводку по результату прогона в формате <code>тестов: 3 · пройдено: 2 · упало: 1</code>. Один из тестов в заготовке падает специально.',
+        starter: 'def test_код_200_успешный():\n    assert 200 <= 200 < 300\n\n\ndef test_код_404_не_успешный():\n    assert not 200 <= 404 < 300\n\n\ndef test_верхняя_граница():\n    assert 200 <= 300 < 300, "300 не входит в диапазон успешных"\n\n\nresult = run_tests()\n\nprint()',
+        hint: 'Всего тестов — len(result["names"]), остальное лежит в result["passed"] и result["failed"].',
+        solution: 'def test_код_200_успешный():\n    assert 200 <= 200 < 300\n\n\ndef test_код_404_не_успешный():\n    assert not 200 <= 404 < 300\n\n\ndef test_верхняя_граница():\n    assert 200 <= 300 < 300, "300 не входит в диапазон успешных"\n\n\nresult = run_tests()\n\nprint(f"тестов: {len(result[\'names\'])} · пройдено: {result[\'passed\']} · упало: {result[\'failed\']}")',
+        checks: [
+          { label: 'Сводка собрана верно', kind: 'stdout', mode: 'contains', value: 'тестов: 3 · пройдено: 2 · упало: 1' },
+          { label: 'Числа взяты из результата прогона', kind: 'source', pattern: 'result\\s*\\[', detail: 'сводка не должна быть вписана руками' },
+        ],
+      },
+      {
+        id: 'b', xp: 45, file: 'exit_code.py',
+        brief: 'Напиши функцию <code>exit_code(result)</code>: <code>0</code>, если ни один тест не упал, иначе <code>1</code>. Выведи код возврата текущего прогона.',
+        starter: 'def test_первый():\n    assert True\n\n\ndef test_второй_падает():\n    assert False, "заложенное падение"\n\n\ndef exit_code(result):\n    \n\n\nprint(exit_code(run_tests()))',
+        hint: 'Достаточно посмотреть на result["failed"].',
+        solution: 'def test_первый():\n    assert True\n\n\ndef test_второй_падает():\n    assert False, "заложенное падение"\n\n\ndef exit_code(result):\n    return 1 if result["failed"] else 0\n\n\nprint(exit_code(run_tests()))',
+        checks: [
+          { label: 'Зелёный прогон даёт 0', kind: 'call', fn: 'exit_code', args: [{ passed: 3, failed: 0 }], equals: 0 },
+          { label: 'Одно падение даёт 1', kind: 'call', fn: 'exit_code', args: [{ passed: 2, failed: 1 }], equals: 1 },
+          { label: 'Код возврата текущего прогона выведен', kind: 'stdout', mode: 'contains', value: '1' },
+        ],
+      },
+      {
+        id: 'c', xp: 50, file: 'failures.py',
+        brief: 'Допиши отчёт: после сводки выведи строку <code>упали:</code> и по строке на каждый упавший тест в формате <code>  имя — причина</code>. Данные бери из <code>result["failures"]</code>.',
+        starter: 'def test_очистка_заголовка():\n    assert "  вход  ".strip() == "вход"\n\n\ndef test_верхняя_граница_включена():\n    assert 5 <= 4, "пятёрка должна входить в диапазон"\n\n\nresult = run_tests()\nprint(f"пройдено: {result[\'passed\']}, упало: {result[\'failed\']}")\n\n',
+        hint: 'Каждый элемент failures — словарь с ключами name и reason. Пройди список циклом.',
+        solution: 'def test_очистка_заголовка():\n    assert "  вход  ".strip() == "вход"\n\n\ndef test_верхняя_граница_включена():\n    assert 5 <= 4, "пятёрка должна входить в диапазон"\n\n\nresult = run_tests()\nprint(f"пройдено: {result[\'passed\']}, упало: {result[\'failed\']}")\n\nif result["failures"]:\n    print("упали:")\n    for failure in result["failures"]:\n        print(f"  {failure[\'name\']} — {failure[\'reason\']}")',
+        checks: [
+          { label: 'Сводка выведена', kind: 'stdout', mode: 'contains', value: 'пройдено: 1, упало: 1' },
+          { label: 'Назван упавший тест и причина', kind: 'stdout', mode: 'contains', values: ['упали:', 'test_верхняя_граница_включена', 'пятёрка должна входить в диапазон'] },
+          { label: 'Список собран циклом по failures', kind: 'source', pattern: 'for\\s+\\w+\\s+in\\s+result\\s*\\[\\s*["\']failures["\']', detail: 'имена не должны быть вписаны руками' },
         ],
       },
     ],
