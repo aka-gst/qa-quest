@@ -78,13 +78,26 @@ if ! rsync -az --delete -e "$REMOTE_SHELL" "$SITE/" "$SSH_HOST:$SITE_ROOT/qa-que
   exit 1
 fi
 
+# Одиночный обрыв связи — не поломка выкладки. Без повтора случайная заминка
+# выдаёт ложную тревогу и заставляет искать несуществующую причину.
+check_url() {
+  attempt=1
+  while [ "$attempt" -le 3 ]; do
+    code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$1" || echo "000")
+    [ "$code" = 200 ] && { printf '%s' "$code"; return 0; }
+    attempt=$((attempt + 1))
+    sleep 2
+  done
+  printf '%s' "$code"
+  return 1
+}
+
 failed=0
 for path in /qa-quest/ /qa-quest/src/main.js /qa-quest/src/pyworker.js; do
-  code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "https://aka-gst.ru$path" || echo "нет ответа")
+  code=$(check_url "https://aka-gst.ru$path") || failed=1
   printf "  %-32s %s\n" "$path" "$code"
-  [ "$code" = 200 ] || failed=1
 done
-[ "$failed" = 0 ] || { echo "ОШИБКА: не все файлы отвечают 200" >&2; exit 1; }
+[ "$failed" = 0 ] || { echo "ОШИБКА: не все файлы отвечают 200 после трёх попыток" >&2; exit 1; }
 
 # Проверяем не только «отвечает 200», но и что на бою лежит именно та сборка
 # Python. Сверять один pyodide.mjs было бы самообманом: это 18 КБ из 13 МБ, и
@@ -100,7 +113,8 @@ sha256_of_stdin() {
 
 awk 'NF == 2 { gsub(/"/, "", $2); if ($2 ~ /^[0-9a-f]{64}$/) print $1, $2 }' \
   "$HERE/tools/fetch-pyodide.sh" | while read -r file expected; do
-  live=$(curl -s --max-time 300 "https://aka-gst.ru/qa-quest/vendor/pyodide/$file" | sha256_of_stdin)
+  live=$(curl -s --retry 2 --retry-delay 2 --max-time 300 \
+    "https://aka-gst.ru/qa-quest/vendor/pyodide/$file" | sha256_of_stdin)
   if [ "$live" != "$expected" ]; then
     echo "ОШИБКА: на бою не та сборка Pyodide — $file" >&2
     echo "        ожидали $expected" >&2
