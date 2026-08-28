@@ -48,8 +48,13 @@ python3 "$HERE/tools/verify_content.py" >/dev/null || {
 }
 
 mkdir -p "$SITE"
+# Исключается всё служебное. Скрытые каталоги перечислены поимённо, потому что
+# --archive копирует их молча: .githooks однажды так и уехал на публичный сервер,
+# где скрипт проверки секретов стал доступен по прямой ссылке.
 rsync --archive --delete \
-  --exclude '.git' --exclude '.gitignore' --exclude 'tools' --exclude 'docs' \
+  --exclude '.git' --exclude '.gitignore' --exclude '.githooks' \
+  --exclude '.claude' --exclude '.DS_Store' \
+  --exclude 'tools' --exclude 'docs' \
   --exclude 'README.md' --exclude 'vendor' --exclude 'practicum' \
   "$HERE/" "$SITE/"
 
