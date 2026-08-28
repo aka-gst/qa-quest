@@ -506,7 +506,21 @@ code, .task-card code, .brief code {
   .lesson-aside { max-height: none; }
   .aside-list { display: none; }
   .back-button { border-bottom: 0; padding: 12px 14px; }
-  .progress-hint, .mode-hint { display: none; }
+  /* Подсказка про режим на телефоне нужнее, чем на большом экране: там
+     переключатель занимает всю ширину и без пояснения выглядит загадкой. */
+  .progress-hint { display: none; }
+
+  /* Кнопка старта во всю ширину: на телефоне узкая кнопка посреди блока
+     читается как второстепенная, а это главное действие экрана. */
+  .welcome-start { width: 100%; }
+
+  /* iOS сам приближает страницу, когда фокус попадает в поле со шрифтом
+     мельче 16 пикселей, и человеку приходится отодвигать её руками. Лечится
+     размером шрифта, а не запретом масштабирования: запрет сломал бы
+     увеличение тем, кому оно нужно. Междустрочный интервал тот же, иначе
+     номера строк разъедутся с кодом. */
+  .code-editor, .gutter { font-size: 16px; line-height: 1.62; }
+  .dialog-body input { font-size: 16px; }
   .status-strip { justify-content: space-between; }
   .brief { max-height: none; }
   .editor-wrap { min-height: 260px; }
