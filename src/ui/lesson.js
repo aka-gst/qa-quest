@@ -451,16 +451,28 @@ function setupScrollHint(panel) {
     type: 'button',
     'aria-label': 'Прокрутить разбор дальше',
     onclick: () => panel.scrollBy({ top: panel.clientHeight * 0.8, behavior: 'smooth' }),
-  }, 'ниже есть ещё ↓');
-  panel.append(hint);
+  }, '↓');
+  // Подсказка живёт в обёртке, а не внутри прокрутки: иначе её появление
+  // меняло бы высоту содержимого и блок дёргался бы на последних пикселях.
+  (panel.parentElement || panel).append(hint);
 
   const update = () => {
     const left = panel.scrollHeight - panel.scrollTop - panel.clientHeight;
-    panel.classList.toggle('has-more', left > 8);
+    (panel.parentElement || panel).classList.toggle('has-more', left > 8);
   };
   panel.addEventListener('scroll', update, { passive: true });
-  // Размеры известны только после вёрстки, поэтому первый расчёт — следующим кадром.
-  requestAnimationFrame(update);
+
+  // Одного кадра мало: на первом проходе шрифты и вёрстка ещё не устоялись, и
+  // расчёт давал «прокручивать нечего» там, где текст на деле не помещался.
+  // Наблюдатель за размером сам пересчитает, когда высота станет настоящей —
+  // и при изменении окна тоже.
+  if (typeof ResizeObserver === 'function') {
+    const observer = new ResizeObserver(update);
+    observer.observe(panel);
+    const inner = panel.firstElementChild;
+    if (inner) observer.observe(inner);
+  }
+  requestAnimationFrame(() => requestAnimationFrame(update));
 }
 
 /* ---------- сборка экрана ---------- */
@@ -503,7 +515,7 @@ export function renderLesson(root, lesson, context) {
     ]),
 
     el('div', { class: 'lesson-main' }, [
-      el('article', { class: 'brief panel' }, [
+      el('div', { class: 'brief-wrap panel' }, el('article', { class: 'brief' }, [
         el('div', { class: 'brief-head' }, [
           el('div', {}, [
             el('div', { class: 'eyebrow' }, [
@@ -516,7 +528,7 @@ export function renderLesson(root, lesson, context) {
           el('div', { class: 'reward', text: `+${currentTask().xp} XP` }),
         ]),
         briefing(),
-      ]),
+      ])),
       // Задача живёт вне прокручиваемого разбора: в режиме «разобрать»
       // теория длинная, и условие не должно уезжать за край экрана.
       el('div', { class: 'task-block panel' }, [

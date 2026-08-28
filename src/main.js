@@ -61,6 +61,9 @@ function route() {
   if (lesson) {
     screens.map.hidden = true;
     screens.lesson.hidden = false;
+    // Урок занимает ровно экран и прокручивается внутри своих панелей. Карта
+    // длинная и прокручивается страницей. Разные режимы — разный класс.
+    document.body.classList.add('lesson-open');
     // Практикуму Python не нужен: там работа идёт на своей машине.
     if (lesson.kind !== 'lab') runnerConfig.then(bootRunner);
     renderLesson(screens.lesson, lesson, {
@@ -71,6 +74,7 @@ function route() {
   } else {
     screens.lesson.hidden = true;
     screens.map.hidden = false;
+    document.body.classList.remove('lesson-open');
     renderMap(screens.map, { onOpen: openLesson });
   }
 }

@@ -23,7 +23,10 @@
 /* display на секциях экранов перебивает стандартное поведение [hidden] */
 [hidden] { display: none !important; }
 
-html { min-height: 100%; background: var(--bg); }
+html { min-height: 100%; background: var(--bg); scrollbar-width: thin; scrollbar-color: #1d2c38 transparent; }
+html::-webkit-scrollbar { width: 10px; }
+html::-webkit-scrollbar-track { background: transparent; }
+html::-webkit-scrollbar-thumb { background: #1d2c38; border-radius: 5px; border: 3px solid transparent; background-clip: padding-box; }
 
 body {
   margin: 0;
@@ -40,7 +43,18 @@ body {
 .ambient-one { width: 380px; height: 380px; background: var(--cyan); right: -80px; top: 15%; }
 .ambient-two { width: 300px; height: 300px; background: var(--violet); left: 12%; bottom: -100px; }
 
-.app-shell { position: relative; z-index: 1; max-width: 1680px; margin: auto; padding: 0 22px 26px; }
+.app-shell {
+  position: relative; z-index: 1; max-width: 1680px; margin: auto; padding: 0 22px 26px;
+  /* Колонка на всю высоту вместо ручного calc(100vh - 140px): высота шапки
+     менялась сегодня трижды, и каждый раз вылезали лишние пиксели, а с ними
+     полоса прокрутки всей страницы там, где прокручивать нечего. */
+  display: flex; flex-direction: column; min-height: 100vh;
+}
+/* На экране урока высота задана точно, а не «не меньше»: иначе оболочка
+   растёт под содержимое, страница оказывается выше экрана и появляется
+   полоса прокрутки там, где прокручивать нечего. */
+body.lesson-open, body.lesson-open .app-shell { height: 100vh; min-height: 0; overflow: hidden; }
+.app-shell > main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 
 .panel {
   background: linear-gradient(150deg, rgba(16, 27, 37, .96), rgba(9, 18, 26, .96));
@@ -245,8 +259,8 @@ button:disabled { cursor: not-allowed; }
   grid-template-columns: 236px minmax(440px, 1fr) 350px;
   gap: 14px;
   padding-top: 8px;
-  height: calc(100vh - 140px);
-  min-height: 600px;
+  flex: 1;
+  min-height: 0;
 }
 
 .lesson-aside { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
@@ -271,7 +285,8 @@ button:disabled { cursor: not-allowed; }
 
 .lesson-main { display: grid; grid-template-rows: minmax(0, auto) auto minmax(0, 1fr); gap: 12px; min-height: 0; }
 
-.brief { padding: 18px 20px; overflow-y: auto; max-height: 40vh; position: relative; }
+.brief-wrap { position: relative; overflow: hidden; }
+.brief { padding: 18px 20px; overflow-y: auto; max-height: 40vh; }
 /* Полосу прокрутки видно всегда: системная на macOS прячется, и о том, что
    блок вообще прокручивается, узнать неоткуда. */
 .brief { scrollbar-width: thin; scrollbar-color: #2a4050 transparent; }
@@ -281,13 +296,16 @@ button:disabled { cursor: not-allowed; }
 .brief::-webkit-scrollbar-thumb:hover { background: #3a5a6e; background-clip: padding-box; }
 
 .scroll-hint {
-  display: none; position: sticky; bottom: -18px; width: calc(100% + 40px);
-  margin: 0 -20px -18px; padding: 26px 0 10px;
-  border: 0; text-align: center; cursor: pointer;
-  background: linear-gradient(to bottom, rgba(13, 22, 30, 0), rgba(13, 22, 30, .96) 55%);
-  color: var(--cyan); font: 600 11px "Roboto Mono", monospace; letter-spacing: .06em;
+  position: absolute; left: 0; right: 0; bottom: 0; height: 46px;
+  border: 0; cursor: pointer; padding: 0 0 6px;
+  background: linear-gradient(to bottom, rgba(13, 22, 30, 0), rgba(13, 22, 30, .97) 60%);
+  color: var(--cyan); font-size: 17px; line-height: 1;
+  /* Гасится прозрачностью, а не display: иначе на последних пикселях
+     прокрутки блок дёргался бы от перестройки вёрстки. */
+  opacity: 0; pointer-events: none; transition: opacity .2s;
 }
-.brief.has-more .scroll-hint { display: block; }
+.brief-wrap.has-more .scroll-hint { opacity: 1; pointer-events: auto; }
+.scroll-hint:hover { color: var(--mint); }
 .brief-head { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; }
 .eyebrow { font: 600 10px "Roboto Mono", monospace; color: var(--cyan); letter-spacing: .14em; }
 .brief-head h1 { font-size: 24px; margin: 7px 0 3px; line-height: 1.15; }
