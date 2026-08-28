@@ -139,6 +139,18 @@ sh tools/fetch-practicum.sh
 без сети и с одинаковым поведением у всех. Навык, которому учит третья ступень, —
 не «поболтать с моделью», а построить вокруг неё проверяемый контур.
 
+## Карточка для мессенджеров
+
+Ссылку на курс кидают в переписку, и от того, как она там выглядит, зависит,
+откроет её человек или пролистает. Картинка лежит в `og.png`, а её исходник —
+в `tools/og-card.html`. Пересобрать после правки текста:
+
+```bash
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new \
+  --disable-gpu --hide-scrollbars --screenshot=og.png --window-size=1200,630 \
+  "file://$PWD/tools/og-card.html"
+```
+
 ## Проверка проверок
 
 ```bash

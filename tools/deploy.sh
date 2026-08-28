@@ -57,7 +57,7 @@ mkdir -p "$SITE"
 # Список разрешённого ошибается в безопасную сторону: забытое не публикуется,
 # а не публикуется лишнее.
 rsync --archive --delete \
-  --include 'index.html' --include 'styles.css' --include 'favicon.svg' \
+  --include 'index.html' --include 'styles.css' --include 'favicon.svg' --include 'og.png' \
   --include 'src/' --include 'src/**' \
   --exclude '*' \
   "$HERE/" "$SITE/"
