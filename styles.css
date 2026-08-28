@@ -144,6 +144,22 @@ button:disabled { cursor: not-allowed; }
 .continue-card small { color: var(--muted); font-size: 14px; }
 .continue-go { position: absolute; right: 24px; top: 50%; transform: translateY(-50%); color: var(--mint); font: 600 14px Manrope; }
 
+.welcome {
+  border: 1px solid #2c5768; border-radius: var(--radius); padding: 24px 26px;
+  background: linear-gradient(120deg, #102b38, #0b1a24 70%);
+}
+.welcome h2 { margin: 7px 0 10px; font-size: 25px; line-height: 1.2; }
+.welcome > p { margin: 0; color: #c5d2d8; font-size: 15px; line-height: 1.6; max-width: 68ch; }
+.welcome-facts { margin: 14px 0 18px; padding-left: 20px; color: var(--muted); font-size: 13px; line-height: 1.7; max-width: 68ch; }
+.welcome-start {
+  border: 0; background: var(--mint); color: #052116;
+  border-radius: 10px; padding: 13px 22px; font: 700 14px Manrope;
+}
+.welcome-start:hover { filter: brightness(1.06); }
+
+.stuck-button { display: block; width: calc(100% - 32px); margin: 0 16px 14px; text-align: center; }
+.stuck-button:disabled { color: var(--mint); }
+
 .tier {
   border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px;
   background: linear-gradient(150deg, rgba(16, 27, 37, .9), rgba(9, 18, 26, .9));
