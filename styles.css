@@ -152,17 +152,18 @@ button:disabled { cursor: not-allowed; }
 .map-screen { display: flex; flex-direction: column; gap: 18px; padding-top: 8px; }
 
 .continue-card {
-  display: grid; gap: 4px; text-align: left; width: 100%;
-  border: 1px solid #2c5768; border-radius: var(--radius); padding: 20px 24px;
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  text-align: left; width: 100%;
+  border: 1px solid #2c5768; border-radius: var(--radius); padding: 13px 18px;
   background: linear-gradient(120deg, #102b38, #0b1a24 70%);
   color: var(--text); position: relative; transition: .2s;
 }
 .continue-card:hover { border-color: var(--cyan); transform: translateY(-1px); }
 .continue-card.done { cursor: default; }
 .continue-label { font: 600 10px "Roboto Mono", monospace; letter-spacing: .14em; color: var(--cyan); }
-.continue-card strong { font-size: 24px; }
-.continue-card small { color: var(--muted); font-size: 14px; }
-.continue-go { position: absolute; right: 24px; top: 50%; transform: translateY(-50%); color: var(--mint); font: 600 14px Manrope; }
+.continue-card strong { font-size: 18px; }
+.continue-card small { color: var(--muted); font-size: 13px; flex: 1; }
+.continue-go { color: var(--mint); font: 600 17px Manrope; margin-left: auto; }
 
 .welcome {
   border: 1px solid #2c5768; border-radius: var(--radius); padding: 22px 26px;

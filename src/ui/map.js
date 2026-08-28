@@ -91,7 +91,6 @@ function tierSection(tier, { onOpen }) {
   return el('section', { class: `tier accent-${tier.accent}` }, [
     header,
     bar,
-    el('p', { class: 'tier-about', text: tier.about }),
     ...groups.flatMap((group) => [
       groups.length > 1 ? el('div', { class: 'group-head' }, [
         el('h3', { text: group.title }),
@@ -147,10 +146,10 @@ export function renderMap(root, { onOpen }) {
       class: 'continue-card',
       onclick: () => onOpen(upNext),
     }, [
-      el('span', { class: 'continue-label', text: progress.doneCount ? 'Продолжить' : 'Следующий урок' }),
+      el('span', { class: 'continue-label', text: progress.doneCount ? 'Продолжить' : 'Начать' }),
       el('strong', { text: upNext.title }),
       el('small', { text: upNext.subtitle }),
-      el('span', { class: 'continue-go', text: 'Открыть →' }),
+      el('span', { class: 'continue-go', text: '→' }),
     ]));
   } else {
     root.append(el('div', { class: 'continue-card done' }, [
@@ -165,12 +164,6 @@ export function renderMap(root, { onOpen }) {
   // профессиональный материал. Раньше обе аудитории встречались на одном
   // экране, и ни одной он не говорил ничего внятного.
   root.append(tierSection(TIERS[0], { onOpen }));
-
-  root.append(el('p', {
-    class: 'map-footnote',
-    html: 'Python работает прямо в браузере через <b>Pyodide</b>. Устанавливать ничего не нужно, код никуда не отправляется.',
-  }));
-  decorateGlossary(root.querySelector('.map-footnote'));
 
   root.append(nextCourses(onOpen));
   return store.state;

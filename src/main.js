@@ -89,7 +89,8 @@ function renderHeader() {
 
   const streak = store.state.streak;
   const streakChip = $('streakChip');
-  streakChip.textContent = streak.current > 0 ? `🔥 ${streak.current}` : '🔥 0';
+  streakChip.hidden = streak.current === 0;
+  streakChip.textContent = `🔥 ${streak.current}`;
   streakChip.title = streak.current > 0
     ? `Серия: ${streak.current} дн. подряд, рекорд ${streak.best}`
     : 'Реши задачу сегодня, чтобы начать серию';
@@ -101,9 +102,10 @@ function renderHeader() {
 
   // Переключатель без объяснения выглядит бесполезным: человек видит две
   // кнопки и не понимает, что изменится. Говорим прямо, что он делает.
+  // Без названия режима: оно и так написано на нажатой кнопке прямо над строкой.
   $('modeHint').textContent = store.state.mode === 'sprint'
-    ? 'Пробежать: в уроке суть и одна задача'
-    : 'Разобрать: объяснение, примеры и три задачи в уроке';
+    ? 'в уроке суть и одна задача'
+    : 'в уроке объяснение, примеры и три задачи';
 }
 
 /* ---------- события прогресса ---------- */
@@ -133,7 +135,9 @@ function renderAccount() {
   // Почта необязательна, выводить имя из адреса больше нельзя — только ник.
   button.textContent = auth.status === 'signed' ? auth.nickname : 'Войти';
   button.classList.toggle('signed', auth.status === 'signed');
-  $('progressHint').textContent = progressHint();
+  const hint = $('progressHint');
+  hint.hidden = auth.status !== 'signed';
+  hint.textContent = progressHint();
 }
 
 /** Коды восстановления показываются один раз — без них дороги назад нет. */
