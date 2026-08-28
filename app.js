@@ -15,7 +15,7 @@ const missions = [
     }
   },
   {
-    id: 'py-02', chapter: 'Python Bootcamp', index: 2, title: 'Проверка допуска', subtitle: 'Научи шлюз принимать решение.', xp: 50,
+    id: 'py-02', chapter: 'Python Bootcamp', index: 6, title: 'Проверка допуска', subtitle: 'Научи шлюз принимать решение.', xp: 50,
     file: 'mission_02.py',
     theory: 'Условие <code>if</code> запускает блок кода, только когда выражение истинно. <code>else</code> описывает альтернативный путь. В тестировании условия помогают сравнивать фактический результат с ожидаемым.',
     task: 'Если <code>status_code</code> равен <code>200</code>, выведи <code>ACCESS GRANTED</code>, иначе — <code>ACCESS DENIED</code>.',
@@ -31,7 +31,7 @@ const missions = [
     }
   },
   {
-    id: 'py-03', chapter: 'Python Bootcamp', index: 3, title: 'Калибровка счётчика', subtitle: 'Вспомни числа и выражения.', xp: 50,
+    id: 'py-03', chapter: 'Python Bootcamp', index: 4, title: 'Калибровка счётчика', subtitle: 'Вспомни числа и выражения.', xp: 50,
     file: 'mission_03.py',
     theory: 'Python выполняет арифметику почти как калькулятор: <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>. Оператор <code>%</code> возвращает остаток от деления и часто используется для проверки чётности и циклических состояний.',
     task: 'Есть <code>passed = 7</code> и <code>total = 10</code>. Вычисли переменную <code>percent</code> как процент пройденных тестов и выведи её.',
@@ -42,7 +42,7 @@ const missions = [
     validate(code) { const vars=/passed\s*\/\s*total/.test(code), mult=/\*\s*100/.test(code), print=/print\s*\(\s*percent\s*\)/.test(code); return {passes:[vars,mult,vars&&mult&&print],output:vars&&mult&&print?'70.0':'0',data:{passed:7,total:10,percent:vars&&mult?70:0}}; }
   },
   {
-    id: 'py-04', chapter: 'Python Bootcamp', index: 4, title: 'Очередь дефектов', subtitle: 'Обработай коллекцию.', xp: 60,
+    id: 'py-04', chapter: 'Python Bootcamp', index: 12, title: 'Очередь дефектов', subtitle: 'Обработай коллекцию.', xp: 60,
     file: 'mission_04.py',
     theory: 'Список <code>list</code> хранит упорядоченную коллекцию. Цикл <code>for</code> проходит по элементам, а списковое включение создаёт новый список компактно: <code>[x for x in data if условие]</code>.',
     task: 'Из списка приоритетов оставь только значения больше или равные 3 и сохрани их в <code>critical</code>. Выведи новый список.',
@@ -53,7 +53,7 @@ const missions = [
     validate(code) { const loop=/for\s+\w+\s+in\s+priorities/.test(code), cond=/>=\s*3/.test(code), print=/print\s*\(\s*critical\s*\)/.test(code); return {passes:[loop,cond,loop&&cond&&print],output:loop&&cond&&print?'[4, 5, 3]':'[]',data:{input:5,critical:loop&&cond?3:0}}; }
   },
   {
-    id: 'py-05', chapter: 'Python Bootcamp', index: 5, title: 'Сканер ответа', subtitle: 'Упакуй логику в функцию.', xp: 70,
+    id: 'py-05', chapter: 'Python Bootcamp', index: 10, title: 'Сканер ответа', subtitle: 'Упакуй логику в функцию.', xp: 70,
     file: 'mission_05.py',
     theory: 'Функция объединяет повторяемую логику под именем. Параметр принимает вход, а <code>return</code> возвращает результат вызывающему коду. Маленькие чистые функции проще тестировать.',
     task: 'Напиши функцию <code>is_success(status)</code>, которая возвращает <code>True</code> для кодов от 200 до 299 включительно, и проверь её на коде 201.',
@@ -64,7 +64,7 @@ const missions = [
     validate(code) { const fn=/def\s+is_success\s*\(\s*status\s*\)\s*:/.test(code), range=/200\s*<=\s*status\s*<\s*300/.test(code)||/status\s*>=\s*200[\s\S]*status\s*<\s*300/.test(code), ret=/return\s+/.test(code); return {passes:[fn,range,fn&&range&&ret],output:fn&&range&&ret?'True':'None',data:{status:201,result:fn&&range&&ret}}; }
   },
   {
-    id: 'py-06', chapter: 'Python Bootcamp', index: 6, title: 'Защита от сбоя', subtitle: 'Перехвати ожидаемую ошибку.', xp: 70,
+    id: 'py-06', chapter: 'Python Bootcamp', index: 11, title: 'Защита от сбоя', subtitle: 'Перехвати ожидаемую ошибку.', xp: 70,
     file: 'mission_06.py',
     theory: 'Исключение сообщает, что обычное выполнение невозможно. Блок <code>try</code> содержит рискованную операцию, а <code>except</code> обрабатывает конкретную ошибку. Не стоит перехватывать все ошибки без разбора.',
     task: 'Преобразуй строку <code>"oops"</code> в число. Перехвати именно <code>ValueError</code> и выведи <code>INVALID DATA</code>.',
@@ -75,7 +75,7 @@ const missions = [
     validate(code) { const tr=/try\s*:/.test(code), ex=/except\s+ValueError\s*:/.test(code), msg=/print\s*\(\s*["']INVALID DATA["']\s*\)/.test(code); return {passes:[tr,ex,tr&&ex&&msg],output:tr&&ex&&msg?'INVALID DATA':'ValueError: invalid literal for int()',data:{raw:'oops',handled:tr&&ex&&msg}}; }
   },
   {
-    id: 'py-07', chapter: 'Python Bootcamp', index: 7, title: 'Чистые данные', subtitle: 'Освой строки и их методы.', xp: 70,
+    id: 'py-07', chapter: 'Python Bootcamp', index: 3, title: 'Чистые данные', subtitle: 'Освой строки и их методы.', xp: 70,
     file: 'mission_07.py',
     theory: 'Строка хранит текст. Методы <code>.strip()</code>, <code>.lower()</code> и <code>.replace()</code> возвращают новую обработанную строку, не изменяя исходную. Очистка пользовательского ввода нужна почти в любом настоящем приложении.',
     task: 'Очисти пробелы в <code>raw_title</code>, приведи текст к нижнему регистру и сохрани результат в <code>title</code>. Должно получиться <code>login button broken</code>.',
@@ -108,7 +108,7 @@ const missions = [
     validate(code) { const loop=/for\s+\w+\s+in\s+incidents\s*:/.test(code), cond=/\[["']status["']\]\s*==\s*["']open["']/.test(code), title=/print\s*\([^\)]*\[["']title["']\]/.test(code); return {passes:[loop,cond,loop&&cond&&title],output:loop&&cond&&title?'Login broken\nPayment timeout':'(нет вывода)',data:{total:3,shown:loop&&cond&&title?2:0}}; }
   },
   {
-    id: 'py-10', chapter: 'Итоговый проект', index: 10, title: 'Incident Tracker', subtitle: 'Собери рабочую программу из изученного.', xp: 150,
+    id: 'py-10', chapter: 'Итоговый проект', index: 14, title: 'Incident Tracker', subtitle: 'Собери рабочую программу из изученного.', xp: 150,
     file: 'incident_tracker.py',
     theory: 'Финальный проект соединяет переменные, строки, списки, словари, условия, циклы, функции и обработку ошибок. Такой консольный трекер уже является небольшой законченной программой: он принимает данные, валидирует их, хранит записи и строит отчёт.',
     task: 'Заверши <code>create_incident()</code>: очисти title, проверь severity от 1 до 5 и верни словарь. Затем циклом выведи только открытые инциденты. Большая часть решения повторяет код предыдущих девяти миссий.',
@@ -119,7 +119,51 @@ const missions = [
     validate(code) { const clean=/title\s*=\s*title\.strip\s*\(\s*\)/.test(code), range=/1\s*<=\s*severity\s*<=\s*5/.test(code)&&/raise\s+ValueError/.test(code), ret=/return\s*\{[\s\S]*["']title["'][\s\S]*["']severity["'][\s\S]*["']status["']/.test(code), append=(code.match(/incidents\.append/g)||[]).length>=2, loop=/for\s+\w+\s+in\s+incidents/.test(code)&&/print\s*\(/.test(code); return {passes:[clean&&range,ret&&append,loop],output:clean&&range&&ret&&append&&loop?'QA Incident Tracker\n[5] Login broken\n[2] Slow profile':'Проект пока не собран',data:{functions:ret?1:0,incidents:append?2:0,ready:clean&&range&&ret&&append&&loop}}; }
   },
   {
-    id: 'qa-01', chapter: 'QA Automation', index: 11, title: 'Первый автотест', subtitle: 'Сформулируй проверяемое ожидание.', xp: 80,
+    id: 'py-types', chapter: 'Python Bootcamp', index: 2, title: 'Паспорт данных', subtitle: 'Разберись с типами и преобразованиями.', xp: 50,
+    file: 'mission_02_types.py',
+    theory: 'У каждого значения есть тип: <code>str</code> хранит текст, <code>int</code> — целое число, <code>float</code> — дробное, <code>bool</code> — истину или ложь. Python не сложит строку <code>"5"</code> и число <code>1</code>, пока строка не будет преобразована через <code>int()</code>.',
+    task: 'Преобразуй <code>raw_severity = "5"</code> в число, прибавь 1 и сохрани результат в <code>next_severity</code>. Выведи значение и его тип.',
+    example: '<p><code>age = int("20")</code> создаёт число. <code>type(age)</code> возвращает <code>&lt;class \'int\'&gt;</code>.</p>',
+    starter: 'raw_severity = "5"\n\nseverity = raw_severity\nnext_severity = severity\n\nprint(next_severity)\nprint(type(next_severity))',
+    checks: ['Строка преобразована через int()', 'К severity прибавлена единица', 'Выводятся значение 6 и тип int'],
+    hint: 'severity = int(raw_severity), затем next_severity = severity + 1.',
+    validate(code) { const conv=/severity\s*=\s*int\s*\(\s*raw_severity\s*\)/.test(code), add=/next_severity\s*=\s*severity\s*\+\s*1/.test(code), out=/print\s*\(\s*next_severity\s*\)/.test(code)&&/print\s*\(\s*type\s*\(\s*next_severity\s*\)\s*\)/.test(code); return {passes:[conv,add,conv&&add&&out],output:conv&&add&&out?"6\n<class 'int'>":'TypeError: incompatible types',data:{raw:'5',value:conv&&add?6:'5',type:conv?'int':'str'}}; }
+  },
+  {
+    id: 'py-logic', chapter: 'Python Bootcamp', index: 5, title: 'Логический шлюз', subtitle: 'Соедини несколько условий.', xp: 60,
+    file: 'mission_05_logic.py',
+    theory: 'Сравнения <code>==</code>, <code>!=</code>, <code>&gt;=</code> возвращают <code>bool</code>. Оператор <code>and</code> требует истинности обоих условий, <code>or</code> — хотя бы одного, а <code>not</code> меняет результат на противоположный.',
+    task: 'Создай <code>needs_attention</code>: значение истинно, если severity не меньше 4 и status не равен <code>"closed"</code>. Выведи результат.',
+    example: '<p><code>can_enter = age &gt;= 18 and not blocked</code> объединяет несколько логических проверок.</p>',
+    starter: 'severity = 5\nstatus = "open"\n\nneeds_attention = False\nprint(needs_attention)',
+    checks: ['Проверяется severity >= 4', 'Проверяется, что status не closed', 'Получен результат True'],
+    hint: 'needs_attention = severity >= 4 and status != "closed"',
+    validate(code) { const sev=/severity\s*>=\s*4/.test(code), status=/status\s*!=\s*["']closed["']/.test(code), both=/\band\b/.test(code)&&/print\s*\(\s*needs_attention\s*\)/.test(code); return {passes:[sev,status,sev&&status&&both],output:sev&&status&&both?'True':'False',data:{severity:5,status:'open',needs_attention:sev&&status&&both}}; }
+  },
+  {
+    id: 'py-list-methods', chapter: 'Python Bootcamp', index: 7, title: 'Инвентарь инцидентов', subtitle: 'Изменяй список и читай элементы.', xp: 70,
+    file: 'mission_07_lists.py',
+    theory: 'Список <code>list</code> хранит элементы по порядку. Индексация начинается с нуля: <code>items[0]</code> — первый элемент. Метод <code>.append()</code> добавляет элемент в конец, а <code>len()</code> возвращает количество элементов.',
+    task: 'Добавь <code>"Payment timeout"</code> в incidents, затем выведи первый элемент и длину списка.',
+    example: '<p><code>tasks.append("Deploy")</code> добавляет задачу; <code>len(tasks)</code> показывает размер списка.</p>',
+    starter: 'incidents = ["Login broken", "Slow profile"]\n\n# Добавь третий инцидент\n\nprint(incidents[0])\nprint(len(incidents))',
+    checks: ['Используется append()', 'Добавлен Payment timeout', 'Выводятся первый элемент и длина 3'],
+    hint: 'incidents.append("Payment timeout")',
+    validate(code) { const app=/incidents\.append\s*\(\s*["']Payment timeout["']\s*\)/.test(code), first=/print\s*\(\s*incidents\s*\[\s*0\s*\]\s*\)/.test(code), len=/print\s*\(\s*len\s*\(\s*incidents\s*\)\s*\)/.test(code); return {passes:[app,app,app&&first&&len],output:app&&first&&len?'Login broken\n3':'Login broken\n2',data:{first:'Login broken',count:app?3:2}}; }
+  },
+  {
+    id: 'py-assert', chapter: 'Python Bootcamp', index: 13, title: 'Встроенная сигнализация', subtitle: 'Проверь ожидания через assert.', xp: 90,
+    file: 'mission_13_assert.py',
+    theory: '<code>assert</code> останавливает выполнение, если условие ложно. Это база автотестов: фактический результат сравнивается с ожидаемым контрактом. Сообщение после запятой объясняет причину падения.',
+    task: 'Для результата <code>normalize_title()</code> добавь три проверки: точное значение, непустую строку и отличие от исходной строки.',
+    example: '<p><code>assert total == 3, "ожидали три записи"</code> падает с понятным сообщением, если результат другой.</p>',
+    starter: 'def normalize_title(text):\n    return text.strip().lower()\n\nraw = "  Login Broken  "\nresult = normalize_title(raw)\n\n# Добавь три assert ниже\n',
+    checks: ['Проверяется точное значение login broken', 'Проверяется, что строка непустая', 'Проверяется отличие result от raw'],
+    hint: 'assert result == "login broken"; assert len(result) > 0; assert result != raw',
+    validate(code) { const exact=/assert\s+result\s*==\s*["']login broken["']/.test(code), nonempty=/assert\s+(?:len\s*\(\s*result\s*\)\s*>\s*0|result\s*$)/m.test(code), diff=/assert\s+result\s*!=\s*raw/.test(code); return {passes:[exact,nonempty,exact&&nonempty&&diff],output:exact&&nonempty&&diff?'3 assertions passed':'AssertionError',data:{raw:'  Login Broken  ',result:'login broken',assertions:[exact,nonempty,diff].filter(Boolean).length}}; }
+  },
+  {
+    id: 'qa-01', chapter: 'QA Automation', index: 15, title: 'Первый автотест', subtitle: 'Сформулируй проверяемое ожидание.', xp: 80,
     file: 'test_status.py',
     theory: 'Автотест состоит из подготовки, действия и проверки. <code>assert</code> сравнивает фактический результат с ожидаемым и делает тест красным, если условие ложно. Хорошее падение объясняет, что сломалось.',
     task: 'Создай функцию теста <code>test_success_status</code> и проверь через <code>assert</code>, что <code>response_status == 200</code>.',
@@ -130,7 +174,7 @@ const missions = [
     validate(code) { const fn=/def\s+test_\w+\s*\(/.test(code), ass=/assert\s+/.test(code), eq=/response_status\s*==\s*200/.test(code); return {passes:[fn,ass,fn&&ass&&eq],output:fn&&ass&&eq?'1 passed in 0.01s':'no tests ran',data:{collected:fn?1:0,passed:fn&&ass&&eq?1:0}}; }
   },
   {
-    id: 'qa-02', chapter: 'QA Automation', index: 12, title: 'Контракт шлюза', subtitle: 'Проверь API без интерфейса.', xp: 90,
+    id: 'qa-02', chapter: 'QA Automation', index: 16, title: 'Контракт шлюза', subtitle: 'Проверь API без интерфейса.', xp: 90,
     file: 'test_gateway.py',
     theory: 'API-тест вызывает программный интерфейс напрямую. Обычно проверяют HTTP-статус, структуру JSON, обязательные поля и бизнес-правила. Такие тесты быстрее и стабильнее сквозных UI-сценариев.',
     task: 'Для ответа без токена проверь статус <code>401</code> и наличие ключа <code>"detail"</code> в JSON-теле.',
@@ -141,7 +185,7 @@ const missions = [
     validate(code) { const st=/assert\s+response\.status_code\s*==\s*401/.test(code), json=/response\.json\s*\(\s*\)/.test(code), detail=/["']detail["']\s+in\s+response\.json/.test(code); return {passes:[st,json,st&&json&&detail],output:st&&json&&detail?'2 passed in 0.04s':'AssertionError',data:{http_status:401,schema:detail?'valid':'unchecked'}}; }
   },
   {
-    id: 'qa-03', chapter: 'QA Automation', index: 13, title: 'Матрица границ', subtitle: 'Один тест — много входов.', xp: 100,
+    id: 'qa-03', chapter: 'QA Automation', index: 17, title: 'Матрица границ', subtitle: 'Один тест — много входов.', xp: 100,
     file: 'test_request_id.py',
     theory: 'Параметризация запускает один тест с набором входных данных. Она убирает копипаст и явно показывает классы эквивалентности и граничные значения. В pytest используется <code>@pytest.mark.parametrize</code>.',
     task: 'Параметризуй тест значениями длины Request-ID <code>31, 32, 33</code> и ожидаемыми результатами <code>True, True, False</code>.',
@@ -152,7 +196,7 @@ const missions = [
     validate(code) { const par=/pytest\.mark\.parametrize/.test(code), bounds=/31/.test(code)&&/32/.test(code)&&/33/.test(code), bool=(code.match(/True/g)||[]).length>=2&&/False/.test(code); return {passes:[par,bounds,par&&bounds&&bool],output:par&&bounds&&bool?'3 passed in 0.03s':'fixture not found',data:{cases:par&&bounds?3:0,boundary:'32 chars'}}; }
   },
   {
-    id: 'llm-01', chapter: 'AI / LLM QA', index: 14, title: 'Детектор галлюцинаций', subtitle: 'Проверь смысл, а не точную строку.', xp: 120,
+    id: 'llm-01', chapter: 'AI / LLM QA', index: 18, title: 'Детектор галлюцинаций', subtitle: 'Проверь смысл, а не точную строку.', xp: 120,
     file: 'test_evaluation.py',
     theory: 'Ответ LLM недетерминирован: корректные формулировки могут отличаться. Поэтому LLM-eval проверяет критерии — релевантность, опору на контекст, безопасность и отсутствие запрещённых утверждений — вместо полного совпадения строки.',
     task: 'Создай список <code>required_facts</code> со словами <code>"401"</code> и <code>"authorization"</code>. Проверь через <code>all()</code>, что каждый факт встречается в ответе.',
@@ -163,6 +207,38 @@ const missions = [
     validate(code) { const facts=/required_facts\s*=\s*\[[^\]]*["']401["'][^\]]*["']authorization["']/.test(code), all=/all\s*\(/.test(code), membership=/\w+\s+in\s+answer/.test(code); return {passes:[facts,all,facts&&all&&membership],output:facts&&all&&membership?'evaluation: PASS':'evaluation: FAIL',data:{grounded:facts&&all&&membership,score:facts&&all&&membership?1:0}}; }
   }
 ];
+
+missions.sort((a, b) => a.index - b.index);
+
+const lessonNotes = {
+  'py-01': ['Логи, быстрая диагностика и просмотр промежуточных значений.', 'Печатать текст без кавычек или путать имя переменной с её значением.'],
+  'py-types': ['Данные из форм, файлов и API почти всегда приходится преобразовывать.', 'Складывать строку и число без явного преобразования типа.'],
+  'py-07': ['Очистка пользовательского ввода, названий и данных из JSON.', 'Ждать, что методы строк изменят исходную строку: они возвращают новую.'],
+  'py-03': ['Метрики, проценты успешных тестов, лимиты и расчёт времени.', 'Забыть порядок операций или делить на ноль.'],
+  'py-logic': ['Фильтры, права доступа, правила валидации и критерии автотестов.', 'Использовать <code>=</code> вместо <code>==</code> или неверно соединить условия.'],
+  'py-02': ['Ветвление бизнес-логики и обработка разных HTTP-статусов.', 'Забыть двоеточие или нарушить отступ внутри блока.'],
+  'py-list-methods': ['Очереди задач, наборы ответов и коллекции тестовых данных.', 'Забыть, что первый индекс равен 0, а не 1.'],
+  'py-08': ['JSON-подобные записи, конфигурации и ответы API.', 'Обратиться к отсутствующему ключу и получить KeyError.'],
+  'py-09': ['Пакетная обработка файлов, ответов API и тестовых сценариев.', 'Изменять список во время обхода или забыть отступы.'],
+  'py-05': ['Повторяемая логика и маленькие функции, удобные для unit-тестов.', 'Напечатать результат вместо return: вызывающий код получит None.'],
+  'py-06': ['Валидация ввода и ожидаемые сбои внешних данных.', 'Ловить голый except и случайно скрывать настоящие дефекты.'],
+  'py-04': ['Фильтрация данных и подготовка ожидаемых наборов в тестах.', 'Сделать выражение слишком сложным и потерять читаемость.'],
+  'py-assert': ['Автотесты и ранняя проверка внутренних контрактов.', 'Писать assert без понятного сравнения или сообщения о причине.'],
+  'py-10': ['Сборка законченной программы из функций, коллекций и проверок.', 'Писать всё одним большим блоком вместо разделения обязанностей.']
+};
+
+const glossary = {
+  JSON: 'Текстовый формат обмена данными: объекты, массивы, строки, числа и логические значения.',
+  API: 'Программный интерфейс, через который системы обмениваются запросами и ответами.',
+  bool: 'Логический тип с двумя значениями: True или False.',
+  return: 'Завершает функцию и передаёт результат вызывающему коду.',
+  assert: 'Проверяет условие и вызывает AssertionError, если оно ложно.',
+  list: 'Изменяемая упорядоченная коллекция значений.',
+  dict: 'Коллекция пар «ключ — значение».',
+  str: 'Тип для хранения текста.',
+  int: 'Тип для хранения целых чисел.',
+  float: 'Тип для чисел с дробной частью.'
+};
 
 const state = { current: 0, completed: JSON.parse(localStorage.getItem('qaquest.completed') || '[]'), xp: Number(localStorage.getItem('qaquest.xp') || 0), hints: {} };
 const $ = (id) => document.getElementById(id);
@@ -184,9 +260,35 @@ function loadMission(index) {
   $('missionChapter').textContent = `${m.chapter.toUpperCase()} · ${String(m.index).padStart(2,'0')}`;
   $('missionTitle').textContent = m.title; $('missionSubtitle').textContent = m.subtitle; $('missionXp').textContent = m.xp;
   $('missionTheory').innerHTML = m.theory; $('missionTask').innerHTML = m.task; $('missionExample').innerHTML = m.example; $('fileName').textContent = m.file;
+  const notes = lessonNotes[m.id] || ['Навык применяется в задачах этого раздела.', 'Проверяй типы, границы и фактический результат.'];
+  $('missionWhy').innerHTML = notes[0]; $('missionPitfall').innerHTML = notes[1];
+  ['missionTheory', 'missionTask', 'missionExample', 'missionNotes'].forEach(id => decorateGlossary($(id)));
   $('codeEditor').value = localStorage.getItem(`qaquest.code.${m.id}`) || m.starter; updateLines();
   $('consoleOutput').textContent = '> Система готова. Запусти код, когда будешь готов.'; $('runState').textContent = 'ожидает запуска';
   $('hintBox').hidden = true; renderChecks(m.checks.map(() => null)); renderVisual({data:{}}); renderCampaign();
+}
+
+function decorateGlossary(root) {
+  const terms = Object.keys(glossary);
+  const pattern = new RegExp(`(${terms.join('|')})`, 'gi');
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    if (!node.parentElement.closest('code, .term-tip') && pattern.test(node.textContent)) nodes.push(node);
+    pattern.lastIndex = 0;
+  }
+  nodes.forEach(node => {
+    const fragment = document.createDocumentFragment();
+    node.textContent.split(pattern).forEach(part => {
+      const key = terms.find(term => term.toLowerCase() === part.toLowerCase());
+      if (!key) { fragment.appendChild(document.createTextNode(part)); return; }
+      const span = document.createElement('span');
+      span.className = 'term-tip'; span.tabIndex = 0; span.textContent = part; span.dataset.tip = glossary[key];
+      span.setAttribute('aria-label', `${part}: ${glossary[key]}`); fragment.appendChild(span);
+    });
+    node.replaceWith(fragment);
+  });
 }
 
 function updateLines() { $('lineNumbers').textContent = $('codeEditor').value.split('\n').map((_, i) => i + 1).join('\n'); localStorage.setItem(`qaquest.code.${missions[state.current].id}`, $('codeEditor').value); }
