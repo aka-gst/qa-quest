@@ -111,6 +111,10 @@ function editorPanel() {
   const editor = el('textarea', {
     class: 'code-editor',
     spellcheck: 'false',
+    // Без переноса: иначе длинная строка занимает две визуальные и номера
+    // перестают соответствовать коду. В обучении это не косметика — ошибки
+    // Python указывают на номер строки, и он должен показывать на неё.
+    wrap: 'off',
     'aria-label': 'Редактор Python',
     oninput: () => {
       syncLines();
