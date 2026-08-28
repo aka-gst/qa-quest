@@ -220,6 +220,15 @@ button:disabled { cursor: not-allowed; }
 }
 .node-copy strong { display: block; font-size: 13px; }
 .node-copy small { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+.node-time {
+  display: block; font-style: normal; color: var(--violet);
+  font-size: 10px; letter-spacing: .06em; margin-bottom: 2px;
+}
+.welcome-story {
+  color: #c3bce0 !important; font-style: italic;
+  border-left: 3px solid var(--violet); padding-left: 13px; margin-bottom: 14px !important;
+}
+
 .node-progress { font: 500 11px "Roboto Mono", monospace; color: var(--muted); }
 .node.done .node-badge { border-color: #2d9269; color: var(--mint); }
 .node.mastered .node-badge { border-color: var(--yellow); color: var(--yellow); }

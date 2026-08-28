@@ -33,7 +33,12 @@ function lessonNode(lesson, index, onOpen) {
       el('strong', { text: lesson.title }),
       el('small', { text: lesson.skill }),
     ]),
-    el('span', { class: 'node-progress', text: `${progress.requiredDone}/${progress.requiredTotal}` }),
+    el('span', { class: 'node-progress' }, [
+      // Время шага показывает, что ночь идёт: карта читается как журнал, а не
+      // как оглавление. Есть только там, где есть сюжет.
+      lesson.time ? el('i', { class: 'node-time', text: lesson.time }) : null,
+      `${progress.requiredDone}/${progress.requiredTotal}`,
+    ]),
   ]);
 }
 
@@ -108,9 +113,10 @@ function tierSection(tier, { onOpen }) {
 function welcome(upNext, onOpen) {
   return el('section', { class: 'welcome' }, [
     el('div', { class: 'welcome-text' }, [
-      el('span', { class: 'continue-label', text: 'Питон с нуля, прямо в браузере' }),
-      el('h2', { text: 'Научиться программировать, ничего не устанавливая' }),
-      el('p', { text: 'Код запускается прямо на этой странице — настоящий Python, а не имитация. Ни на компьютер, ни на телефон ставить ничего не нужно.' }),
+      el('span', { class: 'continue-label', text: '02:14 · доступ получен' }),
+      el('h2', { text: 'Шестнадцать шагов одной ночи' }),
+      el('p', { class: 'welcome-story', text: 'Ты внутри чужой сети, и экран пуст. К утру ты научишься разговаривать с системой, читать чужие записи, собрать свой инструмент — и на последнем шаге построишь защиту собственного сервера, а потом сам её сломаешь.' }),
+      el('p', { text: 'Это курс питона с нуля. Код запускается прямо на этой странице — настоящий Python, а не имитация. Ни на компьютер, ни на телефон ставить ничего не нужно.' }),
       upNext ? el('button', {
         class: 'welcome-start',
         onclick: () => onOpen(upNext),
