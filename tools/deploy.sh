@@ -16,12 +16,30 @@ SSH_HOST="${SSH_HOST:-bonita}"
 SITE_ROOT="${SITE_ROOT:-/opt/zakriva/caddy/site}"
 
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
-SITE="${SITE_DIR:-$HOME/dev/Zakriva/zakriva-site}/qa-quest"
 
-if [ ! -d "$(dirname "$SITE")" ]; then
-  echo "ОШИБКА: нет дерева сайта $(dirname "$SITE")" >&2
+# Дерево сайта переезжало, поэтому путь не зашит: ищем по кандидатам и даём
+# переопределить через SITE_DIR. Жёсткий путь ломает выкладку при следующем
+# переносе каталога, а это не та поломка, которую хочется искать в спешке.
+find_site() {
+  if [ -n "${SITE_DIR:-}" ]; then
+    printf '%s' "$SITE_DIR"
+    return 0
+  fi
+  for candidate in "$HOME/dev/zakriva-site" "$HOME/dev/Zakriva/zakriva-site"; do
+    if [ -d "$candidate" ]; then
+      printf '%s' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+SITE_ROOT_LOCAL="$(find_site)" || {
+  echo "ОШИБКА: не нашёл дерево сайта. Укажите его через SITE_DIR=..." >&2
   exit 1
-fi
+}
+SITE="$SITE_ROOT_LOCAL/qa-quest"
+echo "дерево сайта: $SITE_ROOT_LOCAL"
 
 echo "проверка содержания"
 python3 "$HERE/tools/verify_content.py" >/dev/null || {
