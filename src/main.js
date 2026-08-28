@@ -94,6 +94,12 @@ function renderHeader() {
     button.classList.toggle('active', button.dataset.mode === store.state.mode);
     button.setAttribute('aria-pressed', String(button.dataset.mode === store.state.mode));
   });
+
+  // Переключатель без объяснения выглядит бесполезным: человек видит две
+  // кнопки и не понимает, что изменится. Говорим прямо, что он делает.
+  $('modeHint').textContent = store.state.mode === 'sprint'
+    ? 'Пробежать: в уроке суть и одна задача'
+    : 'Разобрать: объяснение, примеры и три задачи в уроке';
 }
 
 /* ---------- события прогресса ---------- */

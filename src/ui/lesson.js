@@ -471,7 +471,7 @@ export function renderLesson(root, lesson, context) {
           el('div', {}, [
             el('div', { class: 'eyebrow' }, [
               lab ? el('b', { class: 'lab-badge', text: 'ПРАКТИКУМ' }) : null,
-              `${lesson.skill.toUpperCase()} · ${progress.doneCount}/${progress.total}`,
+              `${lesson.skill.toUpperCase()} · ${progress.requiredDone}/${progress.requiredTotal}`,
             ]),
             el('h1', { text: lesson.title }),
             el('p', { class: 'brief-subtitle', text: lesson.subtitle }),

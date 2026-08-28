@@ -33,7 +33,7 @@ function lessonNode(lesson, index, onOpen) {
       el('strong', { text: lesson.title }),
       el('small', { text: lesson.skill }),
     ]),
-    el('span', { class: 'node-progress', text: `${progress.doneCount}/${progress.total}` }),
+    el('span', { class: 'node-progress', text: `${progress.requiredDone}/${progress.requiredTotal}` }),
   ]);
 }
 
@@ -107,18 +107,20 @@ function tierSection(tier, { onOpen }) {
  */
 function welcome(upNext, onOpen) {
   return el('section', { class: 'welcome' }, [
-    el('span', { class: 'continue-label', text: 'Питон с нуля, прямо в браузере' }),
-    el('h2', { text: 'Научиться программировать, ничего не устанавливая' }),
-    el('p', { text: 'Код запускается прямо на этой странице — настоящий Python, а не имитация. Ни на компьютер, ни на телефон ставить ничего не нужно.' }),
+    el('div', { class: 'welcome-text' }, [
+      el('span', { class: 'continue-label', text: 'Питон с нуля, прямо в браузере' }),
+      el('h2', { text: 'Научиться программировать, ничего не устанавливая' }),
+      el('p', { text: 'Код запускается прямо на этой странице — настоящий Python, а не имитация. Ни на компьютер, ни на телефон ставить ничего не нужно.' }),
+      upNext ? el('button', {
+        class: 'welcome-start',
+        onclick: () => onOpen(upNext),
+      }, 'Начать с первого урока →') : null,
+    ]),
     el('ul', { class: 'welcome-facts' }, [
       el('li', { text: 'Первый урок — минуты три. Знать заранее ничего не надо.' }),
       el('li', { text: 'Прогресс сохранится сам. Войти можно потом, чтобы он не потерялся при смене телефона.' }),
       el('li', { text: 'Первый запуск кода скачает около 13 МБ — если вы на мобильном интернете, лучше дождаться Wi-Fi.' }),
     ]),
-    upNext ? el('button', {
-      class: 'welcome-start',
-      onclick: () => onOpen(upNext),
-    }, 'Начать с первого урока →') : null,
   ]);
 }
 

@@ -145,17 +145,31 @@ button:disabled { cursor: not-allowed; }
 .continue-go { position: absolute; right: 24px; top: 50%; transform: translateY(-50%); color: var(--mint); font: 600 14px Manrope; }
 
 .welcome {
-  border: 1px solid #2c5768; border-radius: var(--radius); padding: 24px 26px;
+  border: 1px solid #2c5768; border-radius: var(--radius); padding: 22px 26px;
   background: linear-gradient(120deg, #102b38, #0b1a24 70%);
+  display: grid; gap: 20px 40px; align-items: center;
 }
-.welcome h2 { margin: 7px 0 10px; font-size: 25px; line-height: 1.2; }
-.welcome > p { margin: 0; color: #c5d2d8; font-size: 15px; line-height: 1.6; max-width: 68ch; }
-.welcome-facts { margin: 14px 0 18px; padding-left: 20px; color: var(--muted); font-size: 13px; line-height: 1.7; max-width: 68ch; }
+/* На широком экране текст не должен жаться в левую треть, оставляя половину
+   карточки пустой: факты уезжают во вторую колонку и заполняют её. */
+@media (min-width: 900px) { .welcome { grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr); } }
+.welcome h2 { margin: 7px 0 10px; font-size: 26px; line-height: 1.2; }
+.welcome-text p { margin: 0 0 18px; color: #c5d2d8; font-size: 15px; line-height: 1.6; }
+.welcome-facts {
+  margin: 0; padding: 14px 16px 14px 34px; list-style: none;
+  border: 1px solid var(--line); border-radius: 12px; background: rgba(9, 21, 30, .5);
+  color: var(--muted); font-size: 13px; line-height: 1.55;
+}
+.welcome-facts li { position: relative; padding: 5px 0; }
+.welcome-facts li::before {
+  content: "→"; position: absolute; left: -20px; color: var(--cyan); font-size: 12px;
+}
 .welcome-start {
   border: 0; background: var(--mint); color: #052116;
   border-radius: 10px; padding: 13px 22px; font: 700 14px Manrope;
 }
 .welcome-start:hover { filter: brightness(1.06); }
+
+.mode-hint { color: var(--cyan); white-space: nowrap; }
 
 .stuck-button { display: block; width: calc(100% - 32px); margin: 0 16px 14px; text-align: center; }
 .stuck-button:disabled { color: var(--mint); }
@@ -492,7 +506,7 @@ code, .task-card code, .brief code {
   .lesson-aside { max-height: none; }
   .aside-list { display: none; }
   .back-button { border-bottom: 0; padding: 12px 14px; }
-  .progress-hint { display: none; }
+  .progress-hint, .mode-hint { display: none; }
   .status-strip { justify-content: space-between; }
   .brief { max-height: none; }
   .editor-wrap { min-height: 260px; }
