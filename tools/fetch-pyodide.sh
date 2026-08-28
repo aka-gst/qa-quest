@@ -19,7 +19,8 @@ LICENSE_URL="https://raw.githubusercontent.com/pyodide/pyodide/${VERSION}/LICENS
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 TARGET="$HERE/vendor/pyodide"
 
-CHECKSUMS="pyodide.mjs 69e3f6ccec3e14b465df60be577ca62f536251406b9a00cce019eac5252a2495
+CHECKSUMS="
+pyodide.mjs 69e3f6ccec3e14b465df60be577ca62f536251406b9a00cce019eac5252a2495
 pyodide.asm.mjs 2ac5eba365ec12839c75c03b39b3be1dd63b798852cc460b014b52238be042f7
 pyodide.asm.wasm 3a0a00dfeaa348ac20f9ef09904233d32d33f644339662d4af368f8a2010f37a
 python_stdlib.zip 80c5be6babfe03297069703410c3c29404dcf2525d2b128746bae5536f94831f

@@ -18,7 +18,7 @@ find_site() {
     printf '%s' "$SITE_DIR"
     return 0
   fi
-  for candidate in "$HOME/dev/zakriva-site" "$HOME/dev/Zakriva/zakriva-site"; do
+  for candidate in "$HOME/dev/aka-gst.ru" "$HOME/dev/zakriva-site" "$HOME/dev/Zakriva/zakriva-site"; do
     if [ -d "$candidate" ]; then
       printf '%s' "$candidate"
       return 0
