@@ -25,6 +25,7 @@ function blank() {
     mode: 'sprint',
     tasks: {},
     code: {},
+    checks: {},
     streak: { current: 0, best: 0, lastDay: null },
     unlocked: { python: true, testing: false, llm: false },
     updatedAt: 0,
@@ -94,6 +95,7 @@ export function loadStore() {
     saved = JSON.parse(localStorage.getItem(KEY) || 'null');
   } catch (_) { saved = null; }
   store.state = saved && saved.version === 2 ? { ...blank(), ...saved } : importLegacy(blank());
+  store.state.checks = store.state.checks || {};
   store.state.unlocked = { ...blank().unlocked, ...(store.state.unlocked || {}) };
   refreshUnlocks();
   notify();
@@ -155,10 +157,15 @@ export function levelInfo() {
   return { xp, level, into: rest, need };
 }
 
-/** Урок открыт, если ступень открыта и предыдущий урок ступени закрыт. */
+/**
+ * Урок открыт, если ступень открыта и закрыт предыдущий урок того же слоя.
+ * Тренажёр и практикум — две независимые цепочки: практикум не заперт за
+ * одиннадцатью браузерными упражнениями, а тому, кто пришёл именно за
+ * практикумом, не нужно сначала проходить тренажёр.
+ */
 export function isLessonOpen(lesson) {
   if (!store.state.unlocked[lesson.tier]) return false;
-  const list = lessons.filter((item) => item.tier === lesson.tier);
+  const list = lessons.filter((item) => item.tier === lesson.tier && item.kind === lesson.kind);
   const position = list.findIndex((item) => item.id === lesson.id);
   if (position <= 0) return true;
   return lessonState(list[position - 1]).complete;
@@ -180,6 +187,28 @@ export function setMode(mode) {
 export function saveCode(lessonId, taskId, code) {
   store.state.code[taskKey(lessonId, taskId)] = code;
   persist();
+}
+
+/* ---------- чек-лист практикума ---------- */
+
+/**
+ * Ступени 2 и 3 выполняются на своей машине, автоматически их не проверить.
+ * Поэтому критерий завершения — отмеченные пункты done_when из практикума.
+ */
+export function checkedItems(lesson, task) {
+  const saved = store.state.checks[taskKey(lesson.id, task.id)];
+  const items = task.items || [];
+  return items.map((_, index) => Boolean(saved && saved[index]));
+}
+
+export function toggleCheck(lesson, task, index) {
+  const key = taskKey(lesson.id, task.id);
+  const marks = checkedItems(lesson, task);
+  marks[index] = !marks[index];
+  store.state.checks[key] = marks;
+  if (marks.every(Boolean)) return completeTask(lesson, task, { firstTry: false });
+  persist();
+  return null;
 }
 
 export function loadCode(lessonId, taskId, fallback) {
@@ -263,6 +292,14 @@ export function mergeState(remote) {
       at: Math.min(mine.at || Infinity, value.at || Infinity) || 0,
       firstTry: Boolean(mine.firstTry || value.firstTry),
     };
+  });
+  Object.entries(remote.checks || {}).forEach(([key, value]) => {
+    const mine = local.checks[key];
+    if (!mine) {
+      local.checks[key] = value;
+      return;
+    }
+    local.checks[key] = mine.map((mark, index) => Boolean(mark || value[index]));
   });
   Object.entries(remote.code || {}).forEach(([key, value]) => {
     if (!local.code[key] || (remote.updatedAt || 0) > (local.updatedAt || 0)) local.code[key] = value;

@@ -2,7 +2,7 @@
  * Сборка приложения: шапка, маршруты, режимы подачи и вход.
  */
 
-import { lessonById } from './content/index.js';
+import { lessonById, loadPracticums } from './content/index.js';
 import {
   loadStore, subscribe, store, setMode, levelInfo, resetProgress, isLessonOpen,
 } from './store.js';
@@ -54,7 +54,8 @@ function route() {
   if (lesson) {
     screens.map.hidden = true;
     screens.lesson.hidden = false;
-    runnerConfig.then(bootRunner);
+    // Практикуму Python не нужен: там работа идёт на своей машине.
+    if (lesson.kind !== 'lab') runnerConfig.then(bootRunner);
     renderLesson(screens.lesson, lesson, {
       onBack: openMap,
       onOpen: openLesson,
@@ -211,6 +212,12 @@ onRunnerChange((state) => {
 onAuthChange(renderAccount);
 window.addEventListener('hashchange', route);
 route();
+
+// Практикумы ступеней 2 и 3 подтягиваются из course.json. Если их нет рядом,
+// ступени остаются с одним тренажёром — страница от этого не ломается.
+loadPracticums().then(({ imported }) => {
+  if (imported) route();
+});
 
 // Вход подтянет серверный прогресс, и карту придётся перерисовать.
 probeAuth().then((state) => {

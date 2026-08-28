@@ -1,12 +1,16 @@
 /*
- * Рабочая область урока: разбор, редактор, терминал и проверки.
- * Одно и то же содержание показывается в двух режимах.
+ * Рабочая область урока.
+ *
+ * Уроков два вида, и они устроены по-разному. Тренажёр («drill») — редактор,
+ * терминал и автоматические проверки: код выполняется прямо здесь. Практикум
+ * («lab») — команды для своей машины и чек-лист, который участник отмечает сам,
+ * потому что установку Ollama и прогон pytest браузер проверить не может.
  */
 
 import { lessonsOfTier } from '../content/index.js';
 import {
   store, lessonState, isTaskDone, isLessonOpen, loadCode, saveCode,
-  completeTask, requiredTasks, nextLesson,
+  completeTask, requiredTasks, nextLesson, checkedItems, toggleCheck,
 } from '../store.js';
 import { runPython, runner, onRunnerChange } from '../runner.js';
 import { decorateGlossary } from '../glossary.js';
@@ -25,6 +29,7 @@ const view = {
 };
 
 const resultKey = () => `${view.lesson.id}:${currentTask().id}`;
+const isLab = () => view.lesson.kind === 'lab';
 
 function currentTask() {
   return view.lesson.tasks[view.taskIndex];
@@ -42,7 +47,7 @@ function briefing() {
   const body = el('div', { class: 'brief-body' });
 
   if (mode === 'sprint') {
-    body.append(el('p', { class: 'brief-idea', html: lesson.sprint.idea }));
+    body.append(el('div', { class: 'brief-idea', html: lesson.sprint.idea }));
     if (lesson.tasks.length > 1) {
       body.append(el('p', {
         class: 'brief-more',
@@ -50,19 +55,20 @@ function briefing() {
       }));
     }
   } else {
-    body.append(el('p', { class: 'brief-theory', html: lesson.deep.theory }));
+    body.append(el('div', { class: 'brief-theory', html: lesson.deep.theory }));
     body.append(el('div', { class: 'brief-notes' }, [
-      el('div', {}, [el('span', { text: 'ГДЕ ПРИМЕНЯЕТСЯ' }), el('p', { html: lesson.deep.where })]),
-      el('div', {}, [el('span', { text: 'ТИПИЧНАЯ ОШИБКА' }), el('p', { html: lesson.deep.pitfall })]),
+      el('div', {}, [el('span', { text: isLab() ? 'ГДЕ ВЫПОЛНЯТЬ' : 'ГДЕ ПРИМЕНЯЕТСЯ' }), el('div', { html: lesson.deep.where })]),
+      el('div', {}, [el('span', { text: 'ТИПИЧНАЯ ОШИБКА' }), el('div', { html: lesson.deep.pitfall })]),
     ]));
-    const examples = el('details', { class: 'brief-examples' }, [
-      el('summary', { text: 'Примеры' }),
-      ...lesson.deep.examples.map((example) => el('div', { class: 'example' }, [
-        el('pre', { text: example.code }),
-        el('p', { html: example.note }),
-      ])),
-    ]);
-    body.append(examples);
+    if (lesson.deep.examples.length) {
+      body.append(el('details', { class: 'brief-examples' }, [
+        el('summary', { text: isLab() ? 'Фрагменты из практикума' : 'Примеры' }),
+        ...lesson.deep.examples.map((example) => el('div', { class: 'example' }, [
+          el('pre', { text: example.code }),
+          example.note ? el('p', { html: example.note }) : null,
+        ])),
+      ]));
+    }
   }
 
   decorateGlossary(body);
@@ -88,10 +94,11 @@ function taskTabs(rerender) {
   ])));
 }
 
-/* ---------- редактор ---------- */
+/* ---------- редактор тренажёра ---------- */
 
 function syncLines() {
   const { editor, gutter } = view.nodes;
+  if (!editor) return;
   const count = editor.value.split('\n').length;
   gutter.textContent = Array.from({ length: count }, (_, i) => i + 1).join('\n');
   gutter.scrollTop = editor.scrollTop;
@@ -153,7 +160,61 @@ function editorPanel() {
   ]);
 }
 
-/* ---------- терминал и проверки ---------- */
+/* ---------- команды практикума ---------- */
+
+function copyButton(text) {
+  const button = el('button', { class: 'ghost-button copy-button' }, 'Скопировать');
+  button.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      button.textContent = 'Скопировано';
+    } catch (_) {
+      button.textContent = 'Выдели и скопируй вручную';
+    }
+    setTimeout(() => { button.textContent = 'Скопировать'; }, 2000);
+  });
+  return button;
+}
+
+function commandsPanel() {
+  const task = currentTask();
+  const blocks = [];
+
+  task.commands.forEach((command, index) => {
+    blocks.push(el('div', { class: 'command-block' }, [
+      el('div', { class: 'command-head' }, [
+        el('span', { text: command.language || 'shell' }),
+        copyButton(command.text),
+      ]),
+      el('pre', { text: command.text }),
+    ]));
+    if (index === 0 && task.commands.length > 1) blocks.push(el('div', { class: 'command-more', text: 'Дальше по шагам:' }));
+  });
+
+  if (task.expected.length) {
+    blocks.push(el('div', { class: 'command-expected' }, [
+      el('span', { text: 'ЧТО ДОЛЖНО ПОЛУЧИТЬСЯ' }),
+      el('ul', {}, task.expected.map((item) => el('li', { text: item }))),
+    ]));
+  }
+
+  if (!blocks.length) {
+    blocks.push(el('p', {
+      class: 'command-empty',
+      text: 'Команды и разбор — на полной странице эксперимента, ссылка справа.',
+    }));
+  }
+
+  return el('section', { class: 'commands-panel panel' }, [
+    el('div', { class: 'panel-heading' }, [
+      el('span', { text: 'НА СВОЕЙ МАШИНЕ' }),
+      el('span', { class: 'run-state', text: view.lesson.course.title }),
+    ]),
+    el('div', { class: 'commands-body' }, blocks),
+  ]);
+}
+
+/* ---------- терминал и проверки тренажёра ---------- */
 
 function renderChecks(results) {
   const task = currentTask();
@@ -178,40 +239,44 @@ function writeConsole(text, tone = '') {
   output.textContent = text;
 }
 
-function labPanel(rerender) {
-  const task = currentTask();
-  const consoleOutput = el('pre', { class: 'console-output' });
-  const checkList = el('div', { class: 'check-list' });
-  const hintBox = el('div', { class: 'hint-box', hidden: true });
-  view.nodes.console = consoleOutput;
-  view.nodes.checkList = checkList;
-  view.nodes.hintBox = hintBox;
-  view.nodes.runState = el('span', { class: 'run-state', text: 'ожидает запуска' });
-
-  const hintButton = el('button', {
+function hintButton(task) {
+  const box = el('div', { class: 'hint-box', hidden: true });
+  const button = el('button', {
     class: 'hint-button',
     onclick: () => {
       view.hintLevel += 1;
       if (view.hintLevel === 1) {
-        hintBox.hidden = false;
-        hintBox.replaceChildren(el('p', { text: task.hint }));
-        hintButton.textContent = 'Показать решение';
+        box.hidden = false;
+        box.replaceChildren(el('p', { text: task.hint }));
+        if (task.solution) button.textContent = 'Показать решение';
+        else button.disabled = true;
       } else {
-        hintBox.replaceChildren(
+        box.replaceChildren(
           el('p', { class: 'hint-note', text: 'Решение целиком. Лучше сначала перепиши его руками, а не вставляй.' }),
           el('pre', { text: task.solution }),
         );
-        hintButton.disabled = true;
+        button.disabled = true;
       }
     },
   }, 'Подсказка');
+  return [button, box];
+}
+
+function consolePanel() {
+  const task = currentTask();
+  const consoleOutput = el('pre', { class: 'console-output' });
+  const checkList = el('div', { class: 'check-list' });
+  view.nodes.console = consoleOutput;
+  view.nodes.checkList = checkList;
+  view.nodes.runState = el('span', { class: 'run-state', text: 'ожидает запуска' });
+  const [button, box] = hintButton(task);
 
   const panel = el('aside', { class: 'lab-panel panel' }, [
     el('div', { class: 'panel-heading' }, [el('span', { text: 'ТЕРМИНАЛ' }), view.nodes.runState]),
     consoleOutput,
     el('div', { class: 'checks' }, [el('h2', { text: 'ПРОВЕРКИ' }), checkList]),
-    hintButton,
-    hintBox,
+    button,
+    box,
   ]);
 
   const previous = view.results.get(resultKey());
@@ -224,6 +289,42 @@ function labPanel(rerender) {
       : '> Python загрузится при первом запуске.');
   }
   return panel;
+}
+
+/* ---------- чек-лист практикума ---------- */
+
+function checklistPanel(rerender) {
+  const lesson = view.lesson;
+  const task = currentTask();
+  const marks = checkedItems(lesson, task);
+  const done = marks.filter(Boolean).length;
+
+  const list = el('div', { class: 'check-list' }, task.items.map((item, index) => el('button', {
+    class: `check-row tickable ${marks[index] ? 'pass' : ''}`,
+    'aria-pressed': String(Boolean(marks[index])),
+    onclick: () => {
+      const outcome = toggleCheck(lesson, task, index);
+      if (outcome && !outcome.already) view.onProgress(outcome, lesson, task);
+      else rerender();
+    },
+  }, [
+    el('span', { class: 'check-icon', text: marks[index] ? '✓' : '·' }),
+    el('span', {}, el('b', { text: item })),
+  ])));
+
+  const [button, box] = hintButton(task);
+
+  return el('aside', { class: 'lab-panel panel' }, [
+    el('div', { class: 'panel-heading' }, [
+      el('span', { text: 'КРИТЕРИЙ ЗАВЕРШЕНИЯ' }),
+      el('span', { class: 'run-state', text: `${done} из ${task.items.length}` }),
+    ]),
+    el('p', { class: 'checklist-note', text: 'Отметь пункт, когда он действительно выполнен и есть чем это подтвердить. Проверяешь здесь только ты.' }),
+    el('div', { class: 'checks' }, list),
+    el('a', { class: 'page-link', href: lesson.page, target: '_blank', rel: 'noopener' }, 'Разобрать подробно →'),
+    button,
+    box,
+  ]);
 }
 
 /** Показывает результат прогона: терминал, проверки и переход к следующему шагу. */
@@ -281,7 +382,7 @@ async function run() {
   view.nodes.runState.textContent = runner.status === 'ready' ? 'выполняю' : 'загружаю Python';
   writeConsole(runner.status === 'ready'
     ? '> Выполняю…'
-    : '> Загружаю Python в браузер. Первый раз это около 12 МБ, дальше он берётся из кэша.');
+    : '> Загружаю Python в браузер. Первый раз это около 13 МБ, дальше он берётся из кэша.');
 
   const result = await runPython({
     source,
@@ -311,6 +412,7 @@ export function renderLesson(root, lesson, context) {
   const sameLesson = view.lesson && view.lesson.id === lesson.id;
   view.lesson = lesson;
   view.onProgress = context.onProgress;
+  view.nodes = {};
   if (!sameLesson) {
     view.taskIndex = 0;
     view.hintLevel = 0;
@@ -322,8 +424,10 @@ export function renderLesson(root, lesson, context) {
   const rerender = () => renderLesson(root, lesson, context);
   view.rerender = rerender;
   view.onOpen = context.onOpen;
+
   const siblings = lessonsOfTier(lesson.tier);
   const progress = lessonState(lesson);
+  const lab = isLab();
 
   clear(root);
   root.append(
@@ -343,7 +447,10 @@ export function renderLesson(root, lesson, context) {
       el('article', { class: 'brief panel' }, [
         el('div', { class: 'brief-head' }, [
           el('div', {}, [
-            el('div', { class: 'eyebrow', text: `${lesson.skill.toUpperCase()} · ${progress.doneCount}/${progress.total}` }),
+            el('div', { class: 'eyebrow' }, [
+              lab ? el('b', { class: 'lab-badge', text: 'ПРАКТИКУМ' }) : null,
+              `${lesson.skill.toUpperCase()} · ${progress.doneCount}/${progress.total}`,
+            ]),
             el('h1', { text: lesson.title }),
             el('p', { class: 'brief-subtitle', text: lesson.subtitle }),
           ]),
@@ -356,24 +463,27 @@ export function renderLesson(root, lesson, context) {
       el('div', { class: 'task-block panel' }, [
         taskTabs(rerender),
         el('div', { class: 'task-card' }, [
-          el('span', { text: 'ЗАДАЧА' }),
-          el('p', { html: currentTask().brief }),
+          el('span', { text: lab ? 'ЧТО СДЕЛАТЬ' : 'ЗАДАЧА' }),
+          el('div', { html: currentTask().brief }),
         ]),
       ]),
-      editorPanel(),
+      lab ? commandsPanel() : editorPanel(),
     ]),
 
-    labPanel(rerender),
+    lab ? checklistPanel(rerender) : consolePanel(),
   );
 
   decorateGlossary(root.querySelector('.task-card'));
-  syncLines();
-
-  view.detachRunner = onRunnerChange((state) => {
-    if (!view.nodes.runState) return;
-    if (state.status === 'loading') view.nodes.runState.textContent = state.message || 'загружаю Python';
-    if (state.status === 'failed') writeConsole(`Не удалось загрузить Python: ${state.message}`, 'error');
-  });
+  if (!lab) {
+    syncLines();
+    view.detachRunner = onRunnerChange((state) => {
+      if (!view.nodes.runState) return;
+      if (state.status === 'loading') view.nodes.runState.textContent = state.message || 'загружаю Python';
+      if (state.status === 'failed') writeConsole(`Не удалось загрузить Python: ${state.message}`, 'error');
+    });
+  } else {
+    view.detachRunner = null;
+  }
 }
 
 export function activeLesson() {

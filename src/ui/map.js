@@ -20,6 +20,7 @@ function lessonNode(lesson, index, onOpen) {
   if (isNext) classes.push('next');
 
   const badge = progress.mastered ? '★' : progress.complete ? '✓' : open ? String(index + 1).padStart(2, '0') : '🔒';
+  if (lesson.kind === 'lab') classes.push('lab');
 
   return el('button', {
     class: classes.join(' '),
@@ -66,11 +67,36 @@ function tierSection(tier, { onOpen }) {
     ]);
   }
 
+  // Внутри ступени два слоя: тренажёр в браузере и практикум на своей машине.
+  // Порядок не случайный — сначала попробовать без установки, потом сделать по-настоящему.
+  const groups = [
+    {
+      lessons: state.lessons.filter((lesson) => lesson.kind !== 'lab'),
+      title: 'Тренажёр в браузере',
+      note: 'Код выполняется здесь, проверки автоматические.',
+    },
+    {
+      lessons: state.lessons.filter((lesson) => lesson.kind === 'lab'),
+      title: 'Практикум на своей машине',
+      note: 'Настоящая работа: установка, запуск, прогон. Отмечаешь выполненное сам.',
+    },
+  ].filter((group) => group.lessons.length);
+
+  let counter = -1;
   return el('section', { class: `tier accent-${tier.accent}` }, [
     header,
     bar,
     el('p', { class: 'tier-about', text: tier.about }),
-    el('div', { class: 'node-grid' }, state.lessons.map((lesson, index) => lessonNode(lesson, index, onOpen))),
+    ...groups.flatMap((group) => [
+      groups.length > 1 ? el('div', { class: 'group-head' }, [
+        el('h3', { text: group.title }),
+        el('span', { text: group.note }),
+      ]) : null,
+      el('div', { class: 'node-grid' }, group.lessons.map((lesson) => {
+        counter += 1;
+        return lessonNode(lesson, counter, onOpen);
+      })),
+    ]).filter(Boolean),
   ]);
 }
 

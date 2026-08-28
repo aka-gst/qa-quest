@@ -31,8 +31,8 @@ python3 "$HERE/tools/verify_content.py" >/dev/null || {
 
 mkdir -p "$SITE"
 rsync --archive --delete \
-  --exclude '.git' --exclude 'tools' --exclude 'docs' --exclude 'README.md' \
-  --exclude 'vendor' \
+  --exclude '.git' --exclude '.gitignore' --exclude 'tools' --exclude 'docs' \
+  --exclude 'README.md' --exclude 'vendor' --exclude 'practicum' \
   "$HERE/" "$SITE/"
 
 if [ -d "$HERE/vendor/pyodide" ]; then
@@ -44,6 +44,9 @@ else
   echo "  (sh tools/fetch-pyodide.sh, если нужен свой хостинг)"
 fi
 
+# practicum/ — локальная копия для разработки. На домене практикумы лежат в
+# /praktikum/ и выкладываются отдельно (sync-portfolio.sh); копия туда не едет,
+# иначе появится второй, устаревающий источник тех же уроков.
 echo "локальное дерево обновлено: $SITE"
 [ "$DEPLOY" = yes ] || exit 0
 
