@@ -271,7 +271,23 @@ button:disabled { cursor: not-allowed; }
 
 .lesson-main { display: grid; grid-template-rows: minmax(0, auto) auto minmax(0, 1fr); gap: 12px; min-height: 0; }
 
-.brief { padding: 18px 20px; overflow-y: auto; max-height: 40vh; }
+.brief { padding: 18px 20px; overflow-y: auto; max-height: 40vh; position: relative; }
+/* Полосу прокрутки видно всегда: системная на macOS прячется, и о том, что
+   блок вообще прокручивается, узнать неоткуда. */
+.brief { scrollbar-width: thin; scrollbar-color: #2a4050 transparent; }
+.brief::-webkit-scrollbar { width: 9px; }
+.brief::-webkit-scrollbar-track { background: transparent; }
+.brief::-webkit-scrollbar-thumb { background: #294050; border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+.brief::-webkit-scrollbar-thumb:hover { background: #3a5a6e; background-clip: padding-box; }
+
+.scroll-hint {
+  display: none; position: sticky; bottom: -18px; width: calc(100% + 40px);
+  margin: 0 -20px -18px; padding: 26px 0 10px;
+  border: 0; text-align: center; cursor: pointer;
+  background: linear-gradient(to bottom, rgba(13, 22, 30, 0), rgba(13, 22, 30, .96) 55%);
+  color: var(--cyan); font: 600 11px "Roboto Mono", monospace; letter-spacing: .06em;
+}
+.brief.has-more .scroll-hint { display: block; }
 .brief-head { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; }
 .eyebrow { font: 600 10px "Roboto Mono", monospace; color: var(--cyan); letter-spacing: .14em; }
 .brief-head h1 { font-size: 24px; margin: 7px 0 3px; line-height: 1.15; }

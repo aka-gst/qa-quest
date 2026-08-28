@@ -443,6 +443,26 @@ async function run() {
   if (!outcome.already) view.onProgress(outcome, lesson, task);
 }
 
+/** Показывает, что в прокручиваемом блоке осталось нечитанное. */
+function setupScrollHint(panel) {
+  if (!panel) return;
+  const hint = el('button', {
+    class: 'scroll-hint',
+    type: 'button',
+    'aria-label': 'Прокрутить разбор дальше',
+    onclick: () => panel.scrollBy({ top: panel.clientHeight * 0.8, behavior: 'smooth' }),
+  }, 'ниже есть ещё ↓');
+  panel.append(hint);
+
+  const update = () => {
+    const left = panel.scrollHeight - panel.scrollTop - panel.clientHeight;
+    panel.classList.toggle('has-more', left > 8);
+  };
+  panel.addEventListener('scroll', update, { passive: true });
+  // Размеры известны только после вёрстки, поэтому первый расчёт — следующим кадром.
+  requestAnimationFrame(update);
+}
+
 /* ---------- сборка экрана ---------- */
 
 export function renderLesson(root, lesson, context) {
@@ -511,6 +531,11 @@ export function renderLesson(root, lesson, context) {
 
     lab ? checklistPanel(rerender) : consolePanel(),
   );
+
+  // Разбор прокручивается, но на macOS полоса прокрутки скрыта, и текст
+  // просто обрывается на полуслове — со стороны это выглядит как конец урока.
+  // Затемнение снизу и кнопка говорят, что там есть ещё, и доводят до конца.
+  setupScrollHint(root.querySelector('.brief'));
 
   decorateGlossary(root.querySelector('.task-card'));
   if (!lab) {
