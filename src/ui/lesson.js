@@ -263,9 +263,26 @@ function writeConsole(text, tone = '') {
  * переписывать. Без неё остаётся гадать по числу брошенных попыток.
  */
 function stuckButton(task) {
+  const lesson = view.lesson;
+
+  // Если бот заведён, кнопка ведёт прямо в переписку с автором и приносит
+  // туда контекст: он сразу знает, на каком шаге человек застрял. Молча
+  // отмеченное место в счётчике не помогает тому, кто застрял сейчас.
+  const bot = window.QA_QUEST_BOT;
+  if (bot) {
+    const link = el('a', {
+      class: 'text-button stuck-button',
+      href: `https://t.me/${bot}?start=stuck-${lesson.id}-${task.id}`,
+      target: '_blank',
+      rel: 'noopener',
+    }, 'Здесь непонятно — спросить автора');
+    link.addEventListener('click', () => track.stuck(lesson, task));
+    return link;
+  }
+
   const button = el('button', { class: 'text-button stuck-button' }, 'Здесь непонятно');
   button.addEventListener('click', () => {
-    track.stuck(view.lesson, task);
+    track.stuck(lesson, task);
     button.textContent = 'Спасибо, отмечено';
     button.disabled = true;
   });

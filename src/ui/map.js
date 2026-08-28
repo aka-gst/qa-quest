@@ -160,11 +160,47 @@ export function renderMap(root, { onOpen }) {
     ]));
   }
 
-  TIERS.forEach((tier) => root.append(tierSection(tier, { onOpen })));
+  // Первая ступень — это и есть продукт для того, кто пришёл учиться питону.
+  // Ступени 2 и 3 обращены к другому человеку: он уже пишет код и ищет
+  // профессиональный материал. Раньше обе аудитории встречались на одном
+  // экране, и ни одной он не говорил ничего внятного.
+  root.append(tierSection(TIERS[0], { onOpen }));
+
   root.append(el('p', {
     class: 'map-footnote',
     html: 'Python работает прямо в браузере через <b>Pyodide</b>. Устанавливать ничего не нужно, код никуда не отправляется.',
   }));
   decorateGlossary(root.querySelector('.map-footnote'));
+
+  root.append(nextCourses(onOpen));
   return store.state;
+}
+
+/** Вторая и третья ступени: отдельный разговор с другим человеком. */
+function nextCourses(onOpen) {
+  const rest = TIERS.slice(1).map((tier) => {
+    const state = tierState(tier.id);
+    const open = state.unlocked;
+    return el('button', {
+      class: `next-course accent-${tier.accent} ${open ? '' : 'locked'}`,
+      onclick: () => {
+        if (!open) {
+          unlockTier(tier.id);
+          return;
+        }
+        const first = state.lessons.find((lesson) => isLessonOpen(lesson)) || state.lessons[0];
+        if (first) onOpen(first);
+      },
+    }, [
+      el('strong', { text: tier.title }),
+      el('small', { text: tier.about }),
+      el('span', { class: 'next-course-go', text: open ? `${state.complete} / ${state.total} · открыть →` : 'открыть ступень →' }),
+    ]);
+  });
+
+  return el('section', { class: 'next-courses' }, [
+    el('h2', { text: 'Дальше, когда код уже пишется' }),
+    el('p', { text: 'Продолжение для тех, кто программирует: как проверять чужой код и как работать с языковыми моделями. Отдельный материал и другой уровень — новичку сюда рано, и ничего страшного, если вы сюда не пойдёте.' }),
+    el('div', { class: 'next-course-grid' }, rest),
+  ]);
 }

@@ -191,7 +191,7 @@ button:disabled { cursor: not-allowed; }
 
 .mode-hint { color: var(--cyan); white-space: nowrap; }
 
-.stuck-button { display: block; width: calc(100% - 32px); margin: 0 16px 14px; text-align: center; }
+.stuck-button { display: block; width: calc(100% - 32px); margin: 0 16px 14px; text-align: center; text-decoration: none; }
 .stuck-button:disabled { color: var(--mint); }
 
 .tier {
@@ -248,6 +248,21 @@ button:disabled { cursor: not-allowed; }
 .node.mastered .node-badge { border-color: var(--yellow); color: var(--yellow); }
 .node.next { border-color: var(--cyan); box-shadow: 0 0 0 1px #67e8f925; }
 .node.locked { opacity: .4; }
+
+.next-courses { border-top: 1px solid var(--line); padding-top: 22px; margin-top: 6px; }
+.next-courses h2 { margin: 0 0 6px; font-size: 17px; color: #cfdae0; }
+.next-courses > p { margin: 0 0 14px; color: var(--muted); font-size: 13px; line-height: 1.55; max-width: 74ch; }
+.next-course-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 10px; }
+.next-course {
+  display: grid; gap: 5px; text-align: left; padding: 15px 17px;
+  border: 1px solid var(--line-soft); border-radius: 12px; background: #0b1620; color: var(--text);
+  transition: .16s;
+}
+.next-course:hover { border-color: #315368; background: #12222d; }
+.next-course strong { font-size: 14px; }
+.next-course small { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.next-course-go { color: var(--mint); font: 600 11px "Roboto Mono", monospace; margin-top: 3px; }
+.next-course.accent-violet .next-course-go { color: var(--violet); }
 
 .map-footnote { color: var(--muted); font-size: 12px; text-align: center; margin: 2px 0 0; }
 .map-footnote b { color: var(--cyan); }
