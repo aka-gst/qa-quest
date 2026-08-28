@@ -267,6 +267,12 @@ button:disabled { cursor: not-allowed; }
 }
 
 .brief-body { margin-top: 12px; }
+.brief-story {
+  margin: 0 0 14px; padding: 10px 14px; border-left: 3px solid var(--violet);
+  background: rgba(167, 139, 250, .07); border-radius: 0 9px 9px 0;
+  color: #c3bce0; font-size: 13px; line-height: 1.55; font-style: italic;
+}
+
 .brief-idea, .brief-theory { color: #c5d2d8; font-size: 14px; line-height: 1.62; margin: 0; }
 .brief-idea p, .brief-theory p { margin: 0 0 8px; }
 .brief-idea p:last-child, .brief-theory p:last-child { margin-bottom: 0; }

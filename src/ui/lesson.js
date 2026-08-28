@@ -47,6 +47,10 @@ function briefing() {
   const mode = store.state.mode;
   const body = el('div', { class: 'brief-body' });
 
+  // Сюжетная рамка идёт отдельным блоком и намеренно не смешивается с
+  // объяснением: обстановка помогает дойти до финала, но учит не она.
+  if (lesson.story) body.append(el('p', { class: 'brief-story', text: lesson.story }));
+
   if (mode === 'sprint') {
     body.append(el('div', { class: 'brief-idea', html: lesson.sprint.idea }));
     if (lesson.tasks.length > 1) {
