@@ -72,6 +72,15 @@ function briefing() {
     }
   }
 
+  // Сеттинг не должен съесть предмет: за сюжетной рамкой человек обязан видеть,
+  // какой именно навык он унёс. Строка показывается в обоих режимах.
+  if (lesson.learned) {
+    body.append(el('p', { class: 'brief-learned' }, [
+      el('span', { text: 'Чему ты здесь научился: ' }),
+      lesson.learned,
+    ]));
+  }
+
   decorateGlossary(body);
   return body;
 }

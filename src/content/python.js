@@ -7,6 +7,8 @@
  * Первая задача урока общая для обоих режимов, поэтому прогресс не раздваивается.
  */
 
+import { SERVER } from './stands.js';
+
 export const pythonLessons = [
   {
     id: 'py-print',
@@ -860,6 +862,68 @@ export const pythonLessons = [
           { label: 'Первая запись закрыта, вторая открыта', kind: 'py', expr: 'storage[0]["status"] == "closed" and storage[1]["status"] == "open"' },
           { label: 'Отчёт выведен построчно', kind: 'stdout', mode: 'lines', value: ['[5] вход сломан — closed', '[3] оплата зависает — open'] },
           { label: 'Неверный severity отклоняется', kind: 'call', fn: 'add', args: ['проверка', 0], raises: 'ValueError' },
+        ],
+      },
+    ],
+  },
+
+  {
+    id: 'py-ice',
+    tier: 'python',
+    title: 'Лёд',
+    subtitle: 'Построй защиту. Потом сломай её сам',
+    skill: 'финал первой ступени',
+    preamble: SERVER,
+    learned: 'Проверять условия через and, находить случай, о котором автор не подумал, и доказывать, что дыра закрыта.',
+    sprint: {
+      idea: 'Последняя ночь. Ты пишешь защиту своего сервера, потом пробуешь войти в чужой — и обнаруживаешь, что чужая защита пропускает не только своих. Дальше самое важное: возвращаешься к своей и проверяешь, нет ли в ней той же дыры.',
+    },
+    deep: {
+      theory: 'Защита и взлом — не два разных умения, а одно, повёрнутое разными сторонами. Защищать значит перечислить все условия, при которых пускать можно. Ломать значит найти случай, который автор перечислить забыл. Поэтому человек, который умеет ломать свою защиту, пишет её лучше — он проверяет не только то, что задумал, но и то, что упустил.<br><br>В этом уроке всё три раза подряд: сначала пишешь защиту, потом ищешь дыру в чужой, потом доказываешь, что в твоей её нет. Последний шаг — самый важный и самый пропускаемый. «Кажется, я всё предусмотрел» — это не доказательство; доказательство — отмычка, которая перестала подходить, и свой человек, который по-прежнему проходит.',
+      where: 'Так устроена работа по безопасности целиком, и так же — обычное тестирование. Проверка границ, негативные сценарии и мутационное тестирование на второй ступени — это то же самое, только без неона.',
+      pitfall: 'Проверить, что защита пускает своего, и на этом успокоиться. Дыра живёт не там, где ты смотришь, а там, где не смотришь: в условии, которое соединено через <code>or</code> вместо <code>and</code>.',
+      examples: [
+        { code: 'user = {"token": SECRET_TOKEN, "role": "admin"}\nprint(try_enter(weak_allow, user))', note: 'Свой проходит — это ожидаемо и ничего не доказывает.' },
+        { code: 'print(weak_allow({"role": "admin"}))', note: 'А вот это уже интересно: токена нет вовсе.' },
+      ],
+    },
+    tasks: [
+      {
+        id: 'a', xp: 60, file: 'ice.py',
+        brief: 'Напиши защиту <code>allow(user)</code> своего сервера: пускать, только если токен совпадает с <code>SECRET_TOKEN</code> <b>и</b> роль есть в <code>ALLOWED_ROLES</code>. Во всех остальных случаях — не пускать.',
+        starter: 'def allow(user):\n    \n\n\nprint(allow({"token": SECRET_TOKEN, "role": "admin"}))\nprint(allow({"token": "чужой", "role": "admin"}))',
+        hint: 'Одно выражение: user.get("token") == SECRET_TOKEN and user.get("role") in ALLOWED_ROLES',
+        solution: 'def allow(user):\n    return user.get("token") == SECRET_TOKEN and user.get("role") in ALLOWED_ROLES\n\n\nprint(allow({"token": SECRET_TOKEN, "role": "admin"}))\nprint(allow({"token": "чужой", "role": "admin"}))',
+        checks: [
+          { label: 'Свой с верным токеном проходит', kind: 'call', fn: 'allow', args: [{ token: 'ice-7f3a-9b2c', role: 'admin' }], equals: true },
+          { label: 'Чужой токен не проходит', kind: 'call', fn: 'allow', args: [{ token: 'чужой', role: 'admin' }], equals: false },
+          { label: 'Верный токен с посторонней ролью не проходит', kind: 'call', fn: 'allow', args: [{ token: 'ice-7f3a-9b2c', role: 'guest' }], equals: false },
+          { label: 'Запись без токена не проходит', kind: 'call', fn: 'allow', args: [{ role: 'admin' }], equals: false },
+        ],
+      },
+      {
+        id: 'b', xp: 70, file: 'picklock.py',
+        brief: 'Перед тобой чужая защита <code>weak_allow</code>. Напиши <code>picklock()</code> — функцию, возвращающую словарь, который проходит эту защиту, <b>не зная токена</b>. Подбирать токен нельзя, дыра не в нём.',
+        starter: '# Чужая защита уже написана и доступна как weak_allow.\n# Посмотри, при каких условиях она возвращает True.\n\ndef picklock():\n    \n\n\nprint(try_enter(weak_allow, picklock()))',
+        hint: 'Прочитай weak_allow вслух: «пускаем, если токен верный ИЛИ роль admin». Второе условие само по себе достаточно.',
+        solution: 'def picklock():\n    return {"role": "admin"}\n\n\nprint(try_enter(weak_allow, picklock()))',
+        checks: [
+          { label: 'Отмычка проходит чужую защиту', kind: 'py', expr: 'weak_allow(picklock()) is True' },
+          { label: 'Токен не подобран — его в отмычке нет', kind: 'py', expr: 'picklock().get("token") != SECRET_TOKEN', detail: 'дыра не в токене' },
+          { label: 'Попытка записана в журнал', kind: 'py', expr: 'len(ACCESS_LOG) >= 1 and ACCESS_LOG[-1]["passed"] is True' },
+        ],
+      },
+      {
+        id: 'c', xp: 90, file: 'patch.py',
+        brief: 'Теперь докажи, что у тебя такой дыры нет. Напиши <code>strong_allow(user)</code>, которую отмычка не проходит, а свой — проходит. Затем выведи две строки: <code>отмычка: не прошла</code> и <code>свой: прошёл</code>.',
+        starter: 'def picklock():\n    return {"role": "admin"}\n\n\ndef strong_allow(user):\n    \n\n\n# Докажи оба факта, а не один\n',
+        hint: 'Защита та же, что в первой задаче. Дальше две проверки: strong_allow(picklock()) должно быть False, strong_allow со своим токеном и ролью — True.',
+        solution: 'def picklock():\n    return {"role": "admin"}\n\n\ndef strong_allow(user):\n    return user.get("token") == SECRET_TOKEN and user.get("role") in ALLOWED_ROLES\n\n\nif not strong_allow(picklock()):\n    print("отмычка: не прошла")\nif strong_allow({"token": SECRET_TOKEN, "role": "admin"}):\n    print("свой: прошёл")',
+        checks: [
+          { label: 'Отмычка больше не проходит', kind: 'py', expr: 'strong_allow(picklock()) is False' },
+          { label: 'Свой по-прежнему проходит', kind: 'py', expr: 'strong_allow({"token": SECRET_TOKEN, "role": "admin"}) is True' },
+          { label: 'Чужой токен не проходит', kind: 'call', fn: 'strong_allow', args: [{ token: 'чужой', role: 'admin' }], equals: false },
+          { label: 'Доказаны оба факта, а не один', kind: 'stdout', mode: 'lines', value: ['отмычка: не прошла', 'свой: прошёл'] },
         ],
       },
     ],

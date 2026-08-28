@@ -272,6 +272,13 @@ button:disabled { cursor: not-allowed; }
 .brief-idea p:last-child, .brief-theory p:last-child { margin-bottom: 0; }
 .brief-notes p { margin: 0 0 5px; }
 .brief-notes p:last-child { margin-bottom: 0; }
+.brief-learned {
+  margin: 14px 0 0; padding: 10px 13px; border-left: 3px solid var(--yellow);
+  background: rgba(255, 209, 102, .06); border-radius: 0 9px 9px 0;
+  color: #d3cbb4; font-size: 13px; line-height: 1.5;
+}
+.brief-learned span { color: var(--yellow); font-weight: 600; }
+
 .brief-more { color: var(--muted); font-size: 12px; margin: 10px 0 0; font-style: italic; }
 .brief-notes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 0; }
 .brief-notes > div { padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; background: rgba(35, 211, 159, .06); }
