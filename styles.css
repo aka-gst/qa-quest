@@ -440,6 +440,14 @@ code, .task-card code, .brief code {
 .dialog-error { color: var(--yellow) !important; min-height: 1em; font-size: 12px; }
 .dialog-note { font-size: 12px; }
 
+.dialog-warn { color: var(--yellow) !important; font-size: 12px; line-height: 1.45; }
+.dialog-link { align-self: center; text-decoration: underline; text-underline-offset: 3px; }
+.recovery-codes {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  border: 1px solid var(--line); border-radius: 10px; background: #0a151e; padding: 11px;
+}
+.recovery-codes code { text-align: center; background: transparent; border: 0; font-size: 13px; letter-spacing: .04em; }
+
 .toast {
   position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 30px); opacity: 0;
   background: #142720; border: 1px solid #3a8f69; color: #d8ffed;

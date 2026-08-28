@@ -5,6 +5,9 @@
  * внутри проекта: кука aka_auth выставлена с Path=/ и обслуживает и Лилу,
  * и QA Quest. Пока сервис недоступен, страница продолжает работать без входа
  * и хранит прогресс в браузере — ни один урок от этого не ломается.
+ *
+ * Логин — ник и пароль; почта необязательна, потому что почтовой доставки на
+ * сервере нет. Запасной вход — коды восстановления, выданные при регистрации.
  */
 
 import { store, mergeState, attachRemote } from './store.js';
@@ -14,9 +17,24 @@ const PROGRESS_SCOPE = 'qa-quest';
 
 export const auth = {
   status: 'unknown',   // unknown | offline | guest | signed
+  id: null,
+  nickname: null,
   email: null,
   verified: false,
 };
+
+/** Общая часть ответа сервиса о вошедшем: одна форма на все три эндпоинта. */
+function signedIn(payload) {
+  return {
+    status: 'signed',
+    id: payload.id || null,
+    nickname: payload.nickname || null,
+    email: payload.email || null,
+    verified: Boolean(payload.email_verified),
+  };
+}
+
+const GUEST = { status: 'guest', id: null, nickname: null, email: null, verified: false };
 
 const listeners = new Set();
 
@@ -50,42 +68,69 @@ export async function probeAuth() {
     const { ok, payload } = await api('/auth/me');
     if (!ok) throw new Error('нет сервиса аккаунтов');
     if (payload.authenticated) {
-      emit({ status: 'signed', email: payload.email, verified: Boolean(payload.email_verified) });
+      emit(signedIn(payload));
       await pullProgress();
     } else {
-      emit({ status: 'guest', email: null, verified: false });
+      emit({ ...GUEST });
     }
   } catch (_) {
-    emit({ status: 'offline', email: null, verified: false });
+    emit({ ...GUEST, status: 'offline' });
   }
   return auth;
 }
 
-export async function login(email, password) {
+export async function login(nickname, password) {
   const { ok, status, payload } = await api('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ nickname, password }),
   });
   if (!ok) {
-    return { ok: false, error: status === 403 ? 'Почта ещё не подтверждена.' : 'Неверная почта или пароль.' };
+    return { ok: false, error: status === 429 ? 'Слишком много попыток. Подожди немного.' : 'Неверный ник или пароль.' };
   }
-  emit({ status: 'signed', email: payload.email, verified: true });
+  emit(signedIn(payload));
   await pullProgress();
   return { ok: true };
 }
 
-export async function register(email, password) {
+export async function register(nickname, password, email) {
   if (String(password).length < 12) {
     return { ok: false, error: 'Пароль должен быть не короче 12 символов.' };
   }
+  const body = { nickname, password };
+  if (email) body.email = email;
   const { ok, status, payload } = await api('/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify(body),
   });
   if (!ok) {
-    return { ok: false, error: status === 409 ? 'Такая почта уже занята.' : 'Не получилось создать аккаунт.' };
+    const errors = {
+      409: 'Такой ник уже занят.',
+      400: 'Ник должен быть от 3 до 24 символов: буквы, цифры, пробел, дефис.',
+      429: 'Слишком много регистраций. Попробуй позже.',
+    };
+    return { ok: false, error: errors[status] || 'Не получилось создать аккаунт.' };
   }
-  return { ok: true, verificationRequired: Boolean(payload.verification_required) };
+  // Регистрация сразу открывает сессию, подтверждать нечего.
+  emit(signedIn(payload));
+  await pullProgress();
+  return { ok: true, recoveryCodes: payload.recovery_codes || [] };
+}
+
+/** Единственный путь назад в аккаунт: почты для письма со ссылкой нет. */
+export async function recover(nickname, code, newPassword) {
+  if (String(newPassword).length < 12) {
+    return { ok: false, error: 'Новый пароль должен быть не короче 12 символов.' };
+  }
+  const { ok, status, payload } = await api('/auth/recover', {
+    method: 'POST',
+    body: JSON.stringify({ nickname, recovery_code: code, new_password: newPassword }),
+  });
+  if (!ok) {
+    return { ok: false, error: status === 429 ? 'Слишком много попыток. Подожди немного.' : 'Ник или код не подошли.' };
+  }
+  emit(signedIn(payload));
+  await pullProgress();
+  return { ok: true, codesLeft: payload.codes_left };
 }
 
 export async function verify(token) {
@@ -97,7 +142,7 @@ export async function verify(token) {
 
 export async function logout() {
   await api('/auth/logout', { method: 'POST' });
-  emit({ status: 'guest', email: null, verified: false });
+  emit({ ...GUEST });
 }
 
 /* ---------- прогресс на сервере ---------- */
@@ -126,7 +171,7 @@ function pushProgress(state) {
 attachRemote({ push: pushProgress });
 
 export function progressHint() {
-  if (auth.status === 'signed') return `Прогресс сохраняется в аккаунте ${auth.email}`;
+  if (auth.status === 'signed') return `Прогресс сохраняется в аккаунте ${auth.nickname}`;
   if (auth.status === 'guest') return 'Войди, чтобы прогресс не терялся при смене устройства';
   return 'Прогресс сохраняется в этом браузере';
 }

@@ -7,7 +7,7 @@ import {
   loadStore, subscribe, store, setMode, levelInfo, resetProgress, isLessonOpen,
 } from './store.js';
 import { bootRunner, onRunnerChange } from './runner.js';
-import { auth, onAuthChange, probeAuth, login, register, logout, progressHint } from './auth.js';
+import { auth, onAuthChange, probeAuth, login, register, recover, logout, progressHint } from './auth.js';
 import { renderMap } from './ui/map.js';
 import { renderLesson } from './ui/lesson.js';
 import { el, clear, $ } from './ui/dom.js';
@@ -113,18 +113,43 @@ function celebrate(outcome, lesson, task) {
 
 function renderAccount() {
   const button = $('accountButton');
-  button.textContent = auth.status === 'signed' ? auth.email.split('@')[0] : 'Войти';
+  // Почта необязательна, выводить имя из адреса больше нельзя — только ник.
+  button.textContent = auth.status === 'signed' ? auth.nickname : 'Войти';
   button.classList.toggle('signed', auth.status === 'signed');
   $('progressHint').textContent = progressHint();
 }
 
-function accountDialog() {
+/** Коды восстановления показываются один раз — без них дороги назад нет. */
+function showRecoveryCodes(codes) {
+  const body = clear($('accountBody'));
+  body.append(
+    el('p', { text: `Готово, ты вошёл как ${auth.nickname}.` }),
+    el('p', { class: 'dialog-warn', text: 'Сохрани эти коды прямо сейчас. Они показываются один раз и это единственный способ вернуться в аккаунт, если забудешь пароль: письма сайт не отправляет.' }),
+    el('div', { class: 'recovery-codes' }, codes.map((code) => el('code', { text: code }))),
+    el('div', { class: 'dialog-actions' }, [
+      el('button', {
+        class: 'ghost-button',
+        onclick: async (event) => {
+          try {
+            await navigator.clipboard.writeText(codes.join('\n'));
+            event.currentTarget.textContent = 'Скопировано';
+          } catch (_) {
+            event.currentTarget.textContent = 'Выдели и скопируй вручную';
+          }
+        },
+      }, 'Скопировать коды'),
+      el('button', { class: 'run-button', onclick: () => { $('accountDialog').close(); route(); } }, 'Я сохранил'),
+    ]),
+  );
+}
+
+function accountDialog(mode = 'login') {
   const dialog = $('accountDialog');
   const body = clear($('accountBody'));
 
   if (auth.status === 'signed') {
     body.append(
-      el('p', { text: `Вы вошли как ${auth.email}. Прогресс синхронизируется между устройствами.` }),
+      el('p', { text: `Вы вошли как ${auth.nickname}. Прогресс синхронизируется между устройствами.` }),
       el('button', {
         class: 'run-button',
         onclick: async () => { await logout(); accountDialog(); },
@@ -143,35 +168,67 @@ function accountDialog() {
     return;
   }
 
-  const email = el('input', { type: 'email', placeholder: 'почта', autocomplete: 'email' });
-  const password = el('input', { type: 'password', placeholder: 'пароль', autocomplete: 'current-password' });
   const error = el('p', { class: 'dialog-error' });
+  const nickname = el('input', { type: 'text', placeholder: 'ник', autocomplete: 'username' });
+  const password = el('input', {
+    type: 'password',
+    placeholder: mode === 'recover' ? 'новый пароль, от 12 символов' : 'пароль',
+    autocomplete: mode === 'login' ? 'current-password' : 'new-password',
+  });
 
-  const submit = async (action) => {
+  const run = async (action) => {
     error.textContent = '';
-    const result = await action(email.value.trim(), password.value);
+    const result = await action();
     if (!result.ok) {
       error.textContent = result.error;
       return;
     }
-    if (result.verificationRequired) {
-      error.textContent = 'Аккаунт создан. Подтвердите почту по ссылке из письма и войдите.';
+    if (result.recoveryCodes && result.recoveryCodes.length) {
+      showRecoveryCodes(result.recoveryCodes);
       return;
     }
-    $('accountDialog').close();
-    renderAccount();
+    dialog.close();
     route();
   };
 
+  if (mode === 'recover') {
+    const code = el('input', { type: 'text', placeholder: 'код восстановления', autocomplete: 'off' });
+    body.append(
+      el('p', { text: 'Введи ник, один из кодов восстановления и новый пароль. Код сработает один раз, а все прежние сессии погаснут.' }),
+      nickname, code, password, error,
+      el('div', { class: 'dialog-actions' }, [
+        el('button', { class: 'run-button', onclick: () => run(() => recover(nickname.value.trim(), code.value.trim(), password.value)) }, 'Восстановить'),
+        el('button', { class: 'ghost-button', onclick: () => accountDialog('login') }, 'Назад'),
+      ]),
+    );
+    dialog.showModal();
+    return;
+  }
+
+  if (mode === 'register') {
+    const email = el('input', { type: 'email', placeholder: 'почта — необязательно', autocomplete: 'email' });
+    body.append(
+      el('p', { text: 'Одна учётная запись на все проекты aka-gst: и на Лилу, и сюда, и на рекорды в играх.' }),
+      nickname, password, email,
+      el('p', { class: 'dialog-note', text: 'Почта не обязательна и никуда не отправляется — письма сайт пока не шлёт. Вместо них после регистрации выдаются коды восстановления.' }),
+      error,
+      el('div', { class: 'dialog-actions' }, [
+        el('button', { class: 'run-button', onclick: () => run(() => register(nickname.value.trim(), password.value, email.value.trim())) }, 'Создать аккаунт'),
+        el('button', { class: 'ghost-button', onclick: () => accountDialog('login') }, 'У меня есть аккаунт'),
+      ]),
+    );
+    dialog.showModal();
+    return;
+  }
+
   body.append(
     el('p', { text: 'Одна учётная запись на все проекты aka-gst: и на Лилу, и сюда, и на рекорды в играх.' }),
-    email,
-    password,
-    error,
+    nickname, password, error,
     el('div', { class: 'dialog-actions' }, [
-      el('button', { class: 'run-button', onclick: () => submit(login) }, 'Войти'),
-      el('button', { class: 'ghost-button', onclick: () => submit(register) }, 'Создать аккаунт'),
+      el('button', { class: 'run-button', onclick: () => run(() => login(nickname.value.trim(), password.value)) }, 'Войти'),
+      el('button', { class: 'ghost-button', onclick: () => accountDialog('register') }, 'Создать аккаунт'),
     ]),
+    el('button', { class: 'text-button dialog-link', onclick: () => accountDialog('recover') }, 'Забыл пароль'),
   );
   dialog.showModal();
 }
@@ -188,7 +245,7 @@ document.querySelectorAll('.mode-switch button').forEach((button) => {
   });
 });
 
-$('accountButton').addEventListener('click', accountDialog);
+$('accountButton').addEventListener('click', () => accountDialog());
 $('closeDialog').addEventListener('click', () => $('accountDialog').close());
 $('resetProgress').addEventListener('click', () => {
   if (confirm('Сбросить весь прогресс, XP и сохранённый код?')) {
