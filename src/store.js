@@ -22,7 +22,6 @@ function daysBetween(from, to) {
 function blank() {
   return {
     version: 2,
-    mode: 'sprint',
     tasks: {},
     code: {},
     checks: {},
@@ -110,9 +109,14 @@ export function isTaskDone(lessonId, taskId) {
   return Boolean(store.state.tasks[taskKey(lessonId, taskId)]?.done);
 }
 
-/** В режиме «пробежать» урок закрывает первая задача, в «разобрать» — все. */
-export function requiredTasks(lesson, mode = store.state.mode) {
-  return mode === 'deep' ? lesson.tasks : lesson.tasks.slice(0, 1);
+/*
+ * Урок закрывают все его задачи. Раньше было два режима подачи, и «пробежать»
+ * закрывал урок первой задачей. От режимов отказались: переключатель ничего
+ * внятного не обещал, а половина курса оставалась невидимой для того, кто его
+ * не трогал. Курс один и он полный.
+ */
+export function requiredTasks(lesson) {
+  return lesson.tasks;
 }
 
 export function lessonState(lesson) {
@@ -122,9 +126,8 @@ export function lessonState(lesson) {
   return {
     doneCount: done.length,
     total: lesson.tasks.length,
-    // Сколько нужно именно в текущем режиме: в «пробежать» это одна задача,
-    // в «разобрать» — все. Интерфейс показывает это число, поэтому
-    // переключатель режима сразу видно на карте, а не только внутри урока.
+    // Сколько задач закрывает урок. Число видно на карте: человек должен
+    // понимать объём до того, как откроет шаг.
     requiredDone: doneRequired.length,
     requiredTotal: required.length,
     complete: doneRequired.length === required.length,
@@ -181,13 +184,6 @@ export function nextLesson() {
 }
 
 /* ---------- изменение прогресса ---------- */
-
-export function setMode(mode) {
-  if (store.state.mode === mode) return;
-  store.state.mode = mode;
-  refreshUnlocks();
-  persist();
-}
 
 export function saveCode(lessonId, taskId, code) {
   store.state.code[taskKey(lessonId, taskId)] = code;
