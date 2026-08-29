@@ -545,6 +545,17 @@ code, .task-card code, .brief code {
 }
 .term-tip:hover::after, .term-tip:focus::after { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
 
+.finale-dialog {
+  border: 1px solid #2c5768; border-radius: 16px; background: var(--panel); color: var(--text);
+  padding: 0; width: min(620px, 94vw); overflow: hidden; box-shadow: var(--shadow);
+}
+.finale-dialog::backdrop { background: rgba(4, 9, 13, .8); }
+.finale-dialog img { display: block; width: 100%; height: auto; }
+.finale-body { padding: 18px 22px 22px; display: grid; gap: 8px; }
+.finale-body strong { font-size: 26px; }
+.finale-body p { margin: 0; color: #c5d2d8; font-size: 14px; line-height: 1.55; }
+.finale-body .dialog-actions { margin-top: 8px; }
+
 .account-dialog {
   border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--text);
   padding: 0; width: min(400px, 92vw); box-shadow: var(--shadow);

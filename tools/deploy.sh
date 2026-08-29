@@ -59,6 +59,7 @@ mkdir -p "$SITE"
 rsync --archive --delete \
   --include 'index.html' --include 'styles.css' --include 'favicon.svg' \
   --include 'og.png' --include 'apple-touch-icon.png' --include 'bg-grid.svg' \
+  --include 'finale.jpg' \
   --include 'src/' --include 'src/**' \
   --exclude '*' \
   "$HERE/" "$SITE/"
