@@ -124,25 +124,58 @@ done
 # Python. Сверять один pyodide.mjs было бы самообманом: это 18 КБ из 13 МБ, и
 # если не доедет wasm на 9,6 МБ — ради которого всё и затевалось, — проверка
 # осталась бы зелёной, а Python в браузере не запустился бы. Поэтому все пять.
-sha256_of_stdin() {
+sha256_of_file() {
   if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum | cut -d' ' -f1
+    sha256sum "$1" | cut -d' ' -f1
   else
-    shasum -a 256 | cut -d' ' -f1
+    shasum -a 256 "$1" | cut -d' ' -f1
   fi
 }
 
+# Скачиваем в файл и смотрим на код возврата curl. Раньше здесь был конвейер
+# curl | sha256, и он молча съедал две вещи сразу: код возврата терялся, а
+# оборванная закачка досчитывалась до хеша как ни в чём не бывало. Один
+# зависший запрос из-за связи — и выкладка кричала «на бою не та сборка
+# Python», хотя на бою лежал ровно тот файл. Мы этот урок уже проходили на
+# проверке кодов ответа: одиночный обрыв не поломка, а помеха.
+fetch_to_file() {
+  attempt=1
+  while [ "$attempt" -le 3 ]; do
+    if curl -sS --fail --max-time 300 -o "$2" "$1" 2>/dev/null; then
+      return 0
+    fi
+    attempt=$((attempt + 1))
+    sleep 3
+  done
+  return 1
+}
+
+sums="$(mktemp)"
+body="$(mktemp)"
+trap 'rm -f "$sums" "$body"' EXIT
 awk 'NF == 2 { gsub(/"/, "", $2); if ($2 ~ /^[0-9a-f]{64}$/) print $1, $2 }' \
-  "$HERE/tools/fetch-pyodide.sh" | while read -r file expected; do
-  live=$(curl -s --retry 2 --retry-delay 2 --max-time 300 \
-    "https://aka-gst.ru/qa-quest/vendor/pyodide/$file" | sha256_of_stdin)
+  "$HERE/tools/fetch-pyodide.sh" > "$sums"
+
+# Без конвейера: цикл читает из файла, поэтому переменная переживает цикл и
+# скрипт умеет упасть по-настоящему, а не только напечатать про ошибку.
+bad=0
+while read -r file expected; do
+  if ! fetch_to_file "https://aka-gst.ru/qa-quest/vendor/pyodide/$file" "$body"; then
+    echo "ОШИБКА: $file не скачался с боя за три попытки — это связь, а не подмена" >&2
+    echo "        сборку проверить не удалось; повторите выкладку" >&2
+    bad=1
+    continue
+  fi
+  live="$(sha256_of_file "$body")"
   if [ "$live" != "$expected" ]; then
     echo "ОШИБКА: на бою не та сборка Pyodide — $file" >&2
     echo "        ожидали $expected" >&2
     echo "        получили $live" >&2
     echo "        сайт будет молча грузить Python с чужого CDN. Проверьте vendor/ и повторите выкладку." >&2
-    exit 1
+    bad=1
+    continue
   fi
   printf "  %-20s сборка та самая\n" "$file"
-done
+done < "$sums"
+[ "$bad" = 0 ] || exit 1
 echo "  Python целиком отдаётся со своего домена"
