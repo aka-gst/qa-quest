@@ -109,16 +109,6 @@ export function scene() {
  * Кнопки-подсказки подставляют именно вызов, а не слово: пусть первое, что
  * человек увидит в терминале, будет кодом, а не игрой в слова.
  */
-export const SNIPPETS = {
-  ping: 'send({"cmd": "ping"})',
-  lights: 'send({"cmd": "enable", "what": "lights"})',
-  doors: 'send({"cmd": "unlock", "what": "doors"})',
-  trunk: 'send({"cmd": "open", "what": "trunk"})',
-  link: 'send({"cmd": "enable", "what": "link"})',
-  ports: 'send({"cmd": "unlock", "what": "ports"})',
-  shield: 'send({"cmd": "open", "what": "shield"})',
-};
-
 /*
  * Слова у историй разные, механика одна. Классы на сцене общие (lights, doors,
  * trunk), поэтому вторая история не потребовала ни строчки новой логики — она
@@ -139,11 +129,39 @@ const VOICE = {
     placeholder: 'ping node',
     words: { lights: ['связь поднята', 'связь опущена'], doors: ['порты открыты', 'порты закрыты'], trunk: ['щит снят', 'щит поставлен'] },
     pong: 'PONG · узел отвечает, 9 мс',
-    hints: [['пинг', 'ping'], ['связь', 'lights'], ['порты', 'doors'], ['щит', 'trunk']],
+    hints: [['пинг', 'ping'], ['связь', 'link'], ['порты', 'ports'], ['щит', 'shield']],
   },
 };
 
 const voice = () => VOICE[activeTheme().id] || VOICE.garage;
+
+export const SNIPPETS = {
+  ping: 'send({"cmd": "ping"})',
+  lights: 'send({"cmd": "enable", "what": "lights"})',
+  doors: 'send({"cmd": "unlock", "what": "doors"})',
+  trunk: 'send({"cmd": "open", "what": "trunk"})',
+  link: 'send({"cmd": "enable", "what": "link"})',
+  ports: 'send({"cmd": "unlock", "what": "ports"})',
+  shield: 'send({"cmd": "open", "what": "shield"})',
+};
+
+/*
+ * Обратные команды. Кнопка всегда подставляла включение, и второе нажатие
+ * отвечало тем же «фары включены» — выглядело так, будто отклика нет. Теперь
+ * кнопка смотрит на текущее состояние и подставляет противоположный вызов:
+ * человек видит в консоли обе формы, enable и disable, а не одну.
+ */
+export const SNIPPETS_OFF = {
+  lights: 'send({"cmd": "disable", "what": "lights"})',
+  doors: 'send({"cmd": "lock", "what": "doors"})',
+  trunk: 'send({"cmd": "close", "what": "trunk"})',
+  link: 'send({"cmd": "disable", "what": "link"})',
+  ports: 'send({"cmd": "lock", "what": "ports"})',
+  shield: 'send({"cmd": "close", "what": "shield"})',
+};
+
+/** Какой класс на сцене отвечает за кнопку: у связи и фар он один и тот же. */
+const CLASS_OF = { lights: 'lights', link: 'lights', doors: 'doors', ports: 'doors', trunk: 'trunk', shield: 'trunk' };
 
 const TARGET = [
   ['ping', /\bping\b|\bпинг\b/i],
@@ -188,11 +206,17 @@ export function carConsole() {
     el('p', { text: v.greet }),
   ]);
 
-  const say = (text, ok) => {
-    const line = el('p', { class: ok ? 'ok' : 'bad', text: `> ${text}` });
-    log.append(line);
-    while (log.children.length > 4) log.firstChild.remove();
+  /*
+   * В журнале видно и команду, и ответ — как в настоящем терминале. Раньше
+   * писался только ответ, и нажатие кнопки выглядело так, будто отклик берётся
+   * ниоткуда: человек не видел, какой код ушёл. А ради этого всё и затевалось.
+   */
+  const push = (text, cls) => {
+    log.append(el('p', { class: cls, text }));
+    while (log.children.length > 5) log.firstChild.remove();
   };
+  const echo = (cmd) => push(`> ${cmd}`, 'cmd');
+  const say = (text, ok) => push(`  ${text}`, ok ? 'ok' : 'bad');
 
   const input = el('input', {
     type: 'text', class: 'pc-input', placeholder: v.placeholder,
@@ -204,6 +228,7 @@ export function carConsole() {
     const text = input.value.trim();
     if (!text) return;
     input.value = '';
+    echo(text);
     const answer = parse(text, car);
     say(answer || `не понял. Попробуй ${SNIPPETS.ping}`, Boolean(answer));
   };
@@ -221,9 +246,17 @@ export function carConsole() {
       input,
       el('button', { type: 'button', class: 'pc-send', onclick: send }, 'Отправить'),
     ]),
-    el('div', { class: 'pc-hints' }, v.hints.map(([label, key]) => [label, SNIPPETS[key]]).map(([label, code]) => el('button', {
-      type: 'button', class: 'pc-hint', title: code,
-      onclick: () => { stopIdle(); input.value = code; send(); input.focus(); },
+    el('div', { class: 'pc-hints' }, v.hints.map(([label, key]) => el('button', {
+      type: 'button', class: 'pc-hint', title: SNIPPETS[key],
+      onclick: () => {
+        stopIdle();
+        // Смотрим, в каком состоянии сейчас железо, и шлём обратную команду.
+        const cls = CLASS_OF[key];
+        const on = cls && car.classList.contains(cls);
+        input.value = on ? SNIPPETS_OFF[key] : SNIPPETS[key];
+        send();
+        input.focus();
+      },
     }, label))),
   ]);
 
@@ -234,7 +267,9 @@ export function carConsole() {
    * набрать. Как только человек тронул поле — самовольство прекращается: он
    * пришёл сам, мешать ему нечего.
    */
-  const DEMO = v.hints.map(([, key]) => SNIPPETS[key]);
+  const DEMO = v.hints.flatMap(([, key]) => (
+    SNIPPETS_OFF[key] ? [SNIPPETS[key], SNIPPETS_OFF[key]] : [SNIPPETS[key]]
+  ));
   let demoStep = 0;
   let idleTimer = null;
   let typing = null;

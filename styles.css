@@ -946,6 +946,7 @@ svg.lights .pc-beam path { opacity: .13; }
 
 .pc-log { font: 12px/1.6 "Roboto Mono", monospace; color: var(--muted); min-height: 58px; }
 .pc-log p { margin: 0; }
+.pc-log p.cmd { color: var(--accent); }
 .pc-log p.ok { color: var(--mint); }
 .pc-log p.bad { color: #ffb4b4; }
 
