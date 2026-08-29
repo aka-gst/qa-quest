@@ -19,7 +19,7 @@
 
 import { el } from './dom.js';
 import { activeTheme } from './../content/themes.js';
-import { CAR } from './pingcar.js';
+import { scene } from './pingcar.js';
 
 /*
  * Русские числительные. Тернарник «одно или много» здесь не работает: выходит
@@ -49,11 +49,40 @@ function clearTimers() {
 
 const at = (ms, fn) => timers.push(setTimeout(fn, ms));
 
-/** Панель стенда. У истории без машины её пока нет — вернём null и не сломаем. */
+/*
+ * Слова стенда у историй разные, приборы одни и те же. В боксе моргает
+ * поворотник и натягивается лебёдка, в сети уходят пакеты и идёт подбор —
+ * но считает это одно и то же место в коде.
+ */
+const CAPS = {
+  garage: {
+    one: 'на стекло вышла строка',
+    many: (n, p) => `поворотник моргнул ${n} ${p(n, 'раз', 'раза', 'раз')}`,
+    list: (n) => `список · ${n}`,
+    dash: 'приборная панель',
+    winch: (n, p) => `лебёдка · ${n} ${p(n, 'рывок', 'рывка', 'рывков')}`,
+    calls: 'вошло → вернулось',
+    silent: 'тишина — программа ничего не вывела',
+    fault: 'блок отказал',
+  },
+  ice: {
+    one: 'ушёл один пакет',
+    many: (n, p) => `по линии ушло ${n} ${p(n, 'пакет', 'пакета', 'пакетов')}`,
+    list: (n) => `узлов в ответе · ${n}`,
+    dash: 'журнал узла',
+    winch: (n, p) => `подбор · ${n} ${p(n, 'попытка', 'попытки', 'попыток')}`,
+    calls: 'запрос → ответ',
+    silent: 'тишина — узел ничего не прислал',
+    fault: 'связь оборвалась',
+  },
+};
+
+const caps = () => CAPS[activeTheme().id] || CAPS.garage;
+
+/** Панель стенда. Сцена берётся у истории: в боксе машина, в сети узел. */
 export function standPanel() {
-  if (activeTheme().id !== 'garage') return null;
   const box = el('div', { class: 'stand' });
-  box.innerHTML = CAR;
+  box.innerHTML = scene();
   return el('div', { class: 'stand-wrap' }, [
     el('div', { class: 'stand-head' }, [
       el('span', { text: 'СТЕНД' }),
@@ -91,7 +120,7 @@ function splitTop(text) {
 
 function lamps(count) {
   return el('div', { class: 'st-lamps' }, [
-    el('span', { class: 'st-cap', text: `список · ${count}` }),
+    el('span', { class: 'st-cap', text: caps().list(count) }),
     el('div', { class: 'st-lamp-row' }, Array.from({ length: Math.min(count, 12) },
       () => el('i', { class: 'on' }))),
   ]);
@@ -99,7 +128,7 @@ function lamps(count) {
 
 function dashboard(pairs) {
   return el('div', { class: 'st-dash' }, [
-    el('span', { class: 'st-cap', text: 'приборная панель' }),
+    el('span', { class: 'st-cap', text: caps().dash }),
     ...pairs.slice(0, 4).map(([key, value]) => el('div', { class: 'st-row' }, [
       el('b', { text: key }), el('u', { text: value }),
     ])),
@@ -108,14 +137,14 @@ function dashboard(pairs) {
 
 function winch(steps) {
   return el('div', { class: 'st-winch' }, [
-    el('span', { class: 'st-cap', text: `лебёдка · ${steps} ${plural(steps, 'рывок', 'рывка', 'рывков')}` }),
+    el('span', { class: 'st-cap', text: caps().winch(steps, plural) }),
     el('div', { class: 'st-rope' }, el('i', { style: `width:${Math.min(100, steps * 14)}%` })),
   ]);
 }
 
 function calls(rows) {
   return el('div', { class: 'st-calls' }, [
-    el('span', { class: 'st-cap', text: 'вошло → вернулось' }),
+    el('span', { class: 'st-cap', text: caps().calls }),
     ...rows.slice(0, 3).map(([input, output]) => el('div', { class: 'st-row' }, [
       el('b', { text: input }), el('u', { text: `→ ${output}` }),
     ])),
@@ -174,20 +203,18 @@ export function standPlay(result, source = '', quiet = false) {
   if (result.error) {
     svg.classList.add('fault');
     hud(svg, result.error.type || 'ошибка');
-    note.textContent = 'блок отказал';
+    note.textContent = caps().fault;
     return;
   }
 
   const lines = (result.stdout || '').split('\n').filter((line) => line.trim() !== '');
   if (!lines.length) {
-    hud(svg, 'тишина — программа ничего не вывела');
+    hud(svg, caps().silent);
     note.textContent = 'ничего не пришло';
     return;
   }
 
-  note.textContent = lines.length === 1
-    ? 'на стекло вышла строка'
-    : `поворотник моргнул ${lines.length} ${plural(lines.length, 'раз', 'раза', 'раз')}`;
+  note.textContent = lines.length === 1 ? caps().one : caps().many(lines.length, plural);
 
   lines.forEach((line, index) => {
     const start = quiet ? 0 : index * 520;

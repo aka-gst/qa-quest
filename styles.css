@@ -1127,3 +1127,16 @@ html, body { overflow-x: hidden; max-width: 100%; }
   .welcome-about { order: 6; }
   .theme-choice { order: 7; }
 }
+
+/* Сцена сети. Классы общие со сценой машины, поэтому здесь только то, чего у
+   машины нет: сердцевина узла, нити связи и щит. */
+.pc-core { fill: rgba(103, 232, 249, .05); stroke: var(--accent-line); stroke-width: 1.4; }
+.pc-thread { stroke: var(--accent-line); stroke-width: .9; opacity: .7; fill: none; }
+body:not(.theme-garage) .pc-glass { fill: #16303d; stroke: var(--accent); stroke-width: 1.2; }
+body:not(.theme-garage) .pc-beam path { fill: var(--accent); opacity: .12; }
+body:not(.theme-garage) svg.lights .pc-beam path { opacity: .5; }
+body:not(.theme-garage) .pc-door path { fill: rgba(103, 232, 249, .12); }
+body:not(.theme-garage) .pc-trunk { transform-origin: 236px 85px; }
+body:not(.theme-garage) svg.trunk .pc-trunk { transform: translateX(34px) rotate(-8deg); opacity: .35; }
+body:not(.theme-garage) svg.doors .pc-door-front { transform: translateX(-16px); }
+body:not(.theme-garage) svg.doors .pc-door-rear { transform: translateX(16px); }

@@ -55,6 +55,53 @@ export const CAR = `
   </g>
 </svg>`;
 
+
+/*
+ * Сцена истории про сеть. Классы намеренно те же, что у машины: вся логика
+ * консоли и стенда написана против них, и вторая история получает всё
+ * сделанное для первой бесплатно. Меняется то, чем управляешь, — не механизм.
+ *
+ * Робота в комнате здесь быть не может: в сети нет предметов. Поэтому «бот» —
+ * это узел с отростками связи, существо из линий и света, а щит перед ним —
+ * та самая программа-лёд, которую человек в финале напишет сам.
+ */
+export const NET = `
+<svg viewBox="0 0 340 150" role="img" aria-label="Узел сети: связь, порты и щит откликаются на команды">
+  <g class="pc-shadow"><ellipse cx="170" cy="132" rx="120" ry="7"/></g>
+
+  <!-- Линия связи, по которой уходят пакеты -->
+  <g class="pc-beam"><path d="M6 84 L120 84 L120 90 L6 90 Z"/></g>
+  <g class="pc-body">
+    <path d="M118 60 L170 34 L222 60 L222 106 L170 132 L118 106 Z" class="pc-core"/>
+    <path d="M170 34 L170 132" class="pc-thread"/>
+    <path d="M118 60 L222 106 M222 60 L118 106" class="pc-thread"/>
+    <circle cx="170" cy="83" r="13" class="pc-glass"/>
+  </g>
+
+  <!-- Отростки связи: расходятся, когда узел открыт -->
+  <g class="pc-door pc-door-front"><path d="M112 66 L64 52 L64 60 L112 74 Z"/><circle cx="64" cy="56" r="3"/></g>
+  <g class="pc-door pc-door-rear"><path d="M228 66 L276 52 L276 60 L228 74 Z"/><circle cx="276" cy="56" r="3"/></g>
+
+  <!-- Щит: та самая программа-лёд перед узлом -->
+  <g class="pc-trunk"><path d="M236 48 L300 66 L300 104 L236 122 Z"/></g>
+
+  <g class="pc-lamp pc-lamp-front"><ellipse cx="128" cy="118" rx="7" ry="5"/></g>
+  <g class="pc-lamp pc-lamp-rear"><ellipse cx="212" cy="118" rx="6" ry="4"/></g>
+
+  <g class="pc-signal"><circle cx="102" cy="87" r="4.5"/></g>
+
+  <g class="pc-hud">
+    <path d="M170 32 L170 24" class="pc-hud-ray"/>
+    <rect x="24" y="4" width="292" height="19" rx="5"/>
+    <text x="34" y="17">—</text>
+  </g>
+</svg>`;
+
+/** Сцена выбранной истории. */
+export function scene() {
+  return activeTheme().id === 'garage' ? CAR : NET;
+}
+
 /*
  * Разбор команды. Принимаем и человеческое слово, и настоящий питоновский
  * вызов — тот самый, который человек напишет в финале ночи:
@@ -67,13 +114,42 @@ export const SNIPPETS = {
   lights: 'send({"cmd": "enable", "what": "lights"})',
   doors: 'send({"cmd": "unlock", "what": "doors"})',
   trunk: 'send({"cmd": "open", "what": "trunk"})',
+  link: 'send({"cmd": "enable", "what": "link"})',
+  ports: 'send({"cmd": "unlock", "what": "ports"})',
+  shield: 'send({"cmd": "open", "what": "shield"})',
 };
+
+/*
+ * Слова у историй разные, механика одна. Классы на сцене общие (lights, doors,
+ * trunk), поэтому вторая история не потребовала ни строчки новой логики — она
+ * потребовала словаря.
+ */
+const VOICE = {
+  garage: {
+    head: 'ШИНА · ЖИВОЙ ОТКЛИК',
+    greet: '> шина слушает. напиши ping car',
+    placeholder: 'ping car',
+    words: { lights: ['фары включены', 'фары выключены'], doors: ['двери открыты', 'двери закрыты'], trunk: ['багажник открыт', 'багажник закрыт'] },
+    pong: 'PONG · блок отвечает, 14 мс',
+    hints: [['пинг', 'ping'], ['фары', 'lights'], ['двери', 'doors'], ['багажник', 'trunk']],
+  },
+  ice: {
+    head: 'УЗЕЛ · ЖИВОЙ ОТКЛИК',
+    greet: '> узел слушает. напиши ping node',
+    placeholder: 'ping node',
+    words: { lights: ['связь поднята', 'связь опущена'], doors: ['порты открыты', 'порты закрыты'], trunk: ['щит снят', 'щит поставлен'] },
+    pong: 'PONG · узел отвечает, 9 мс',
+    hints: [['пинг', 'ping'], ['связь', 'lights'], ['порты', 'doors'], ['щит', 'trunk']],
+  },
+};
+
+const voice = () => VOICE[activeTheme().id] || VOICE.garage;
 
 const TARGET = [
   ['ping', /\bping\b|\bпинг\b/i],
-  ['lights', /\blights?\b|\bфар/i],
-  ['doors', /\bdoors?\b|\bunlock\b|\block\b|\bдвер/i],
-  ['trunk', /\btrunk\b|\bboot\b|\bбагажник/i],
+  ['lights', /\blights?\b|\blink\b|\bфар|\bсвяз/i],
+  ['doors', /\bdoors?\b|\bports?\b|\bunlock\b|\bдвер|\bпорт/i],
+  ['trunk', /\btrunk\b|\bboot\b|\bshield\b|\bбагажник|\bщит/i],
 ];
 const OFF = /\boff\b|\bdisable\b|\bclose\b|\block\b|\bвыкл|\bзакр/i;
 
@@ -83,15 +159,11 @@ function parse(text, car) {
   const [what] = found;
   if (what === 'ping') {
     blink(car);
-    return 'PONG · блок отвечает, 14 мс';
+    return voice().pong;
   }
   const off = OFF.test(text);
   car.classList.toggle(what, !off);
-  const words = {
-    lights: ['фары включены', 'фары выключены'],
-    doors: ['двери открыты', 'двери закрыты'],
-    trunk: ['багажник открыт', 'багажник закрыт'],
-  }[what];
+  const words = voice().words[what];
   return off ? words[1] : words[0];
 }
 
@@ -107,14 +179,13 @@ function blink(car) {
  * ломает: экран собран так, что null просто не добавляется.
  */
 export function carConsole() {
-  if (activeTheme().id !== 'garage') return null;
-
+  const v = voice();
   const stage = el('div', { class: 'pc-stage' });
-  stage.innerHTML = CAR;
+  stage.innerHTML = scene();
   const car = stage.querySelector('svg');
 
   const log = el('div', { class: 'pc-log' }, [
-    el('p', { text: '> шина слушает. напиши ping car' }),
+    el('p', { text: v.greet }),
   ]);
 
   const say = (text, ok) => {
@@ -124,7 +195,7 @@ export function carConsole() {
   };
 
   const input = el('input', {
-    type: 'text', class: 'pc-input', placeholder: 'ping car',
+    type: 'text', class: 'pc-input', placeholder: v.placeholder,
     autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false',
     'aria-label': 'Команда машине',
   });
@@ -134,14 +205,14 @@ export function carConsole() {
     if (!text) return;
     input.value = '';
     const answer = parse(text, car);
-    say(answer || `блок не понял. Попробуй ${SNIPPETS.ping}`, Boolean(answer));
+    say(answer || `не понял. Попробуй ${SNIPPETS.ping}`, Boolean(answer));
   };
 
   input.addEventListener('keydown', (event) => { if (event.key === 'Enter') send(); });
 
   const wrap = el('div', { class: 'pc-wrap panel' }, [
     el('div', { class: 'pc-head' }, [
-      el('span', { text: 'ШИНА · ЖИВОЙ ОТКЛИК' }),
+      el('span', { text: v.head }),
       el('small', { text: 'настоящая, не видео' }),
     ]),
     stage,
@@ -150,12 +221,7 @@ export function carConsole() {
       input,
       el('button', { type: 'button', class: 'pc-send', onclick: send }, 'Отправить'),
     ]),
-    el('div', { class: 'pc-hints' }, [
-      ['пинг', SNIPPETS.ping],
-      ['фары', SNIPPETS.lights],
-      ['двери', SNIPPETS.doors],
-      ['багажник', SNIPPETS.trunk],
-    ].map(([label, code]) => el('button', {
+    el('div', { class: 'pc-hints' }, v.hints.map(([label, key]) => [label, SNIPPETS[key]]).map(([label, code]) => el('button', {
       type: 'button', class: 'pc-hint', title: code,
       onclick: () => { stopIdle(); input.value = code; send(); input.focus(); },
     }, label))),
@@ -168,7 +234,7 @@ export function carConsole() {
    * набрать. Как только человек тронул поле — самовольство прекращается: он
    * пришёл сам, мешать ему нечего.
    */
-  const DEMO = [SNIPPETS.lights, SNIPPETS.doors, SNIPPETS.ping, SNIPPETS.trunk];
+  const DEMO = v.hints.map(([, key]) => SNIPPETS[key]);
   let demoStep = 0;
   let idleTimer = null;
   let typing = null;
