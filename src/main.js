@@ -3,6 +3,7 @@
  */
 
 import { lessonById, loadPracticums } from './content/index.js';
+import { activeTheme, THEMES, setTheme } from './content/themes.js';
 import {
   loadStore, subscribe, store, setMode, levelInfo, resetProgress, isLessonOpen,
 } from './store.js';
@@ -300,6 +301,21 @@ document.querySelectorAll('.mode-switch button').forEach((button) => {
 $('accountButton').addEventListener('click', () => accountDialog());
 $('closeDialog').addEventListener('click', () => $('accountDialog').close());
 $('finaleClose').addEventListener('click', () => $('finaleDialog').close());
+// Переключатель истории живёт в шапке, а не только на первом экране: человек
+// решает сменить мир обычно после первого урока, а не до него.
+{
+  const current = activeTheme();
+  const other = THEMES.find((theme) => theme.id !== current.id);
+  const button = $('themeSwitch');
+  if (other) {
+    button.textContent = `История: ${current.name}`;
+    button.title = `Переключиться на «${other.name}» — прогресс этой истории сохранится`;
+    button.addEventListener('click', () => setTheme(other.id));
+  } else {
+    button.hidden = true;
+  }
+}
+
 $('resetProgress').addEventListener('click', () => {
   if (confirm('Сбросить весь прогресс, XP и сохранённый код?')) {
     resetProgress();

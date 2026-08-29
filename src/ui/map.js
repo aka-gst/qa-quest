@@ -4,6 +4,7 @@
 
 import { TIERS } from '../content/index.js';
 import { stepIcon } from '../content/icons.js';
+import { activeTheme, THEMES, setTheme } from '../content/themes.js';
 import { store, tierState, lessonState, isLessonOpen, nextLesson, unlockTier } from '../store.js';
 import { decorateGlossary } from '../glossary.js';
 import { el, clear } from './dom.js';
@@ -119,12 +120,33 @@ function tierSection(tier, { onOpen }) {
  * показывается, а новичку карта уровней и XP сама по себе ничего не объясняет:
  * ему нужно знать, что это, сколько займёт и что ставить ничего не надо.
  */
+/*
+ * Выбор истории на первом экране. Навыки у них одни, мир разный, и человеку
+ * важно увидеть выбор до того, как он начнёт: тот, кто возится с машинами,
+ * узнаёт своё в «блоке управления», а не в «чужом терминале». Прогресс у
+ * историй раздельный, поэтому переключение ничего не стоит.
+ */
+function themeChoice() {
+  const current = activeTheme();
+  const other = THEMES.find((theme) => theme.id !== current.id);
+  if (!other) return null;
+  return el('button', {
+    class: 'theme-choice',
+    onclick: () => setTheme(other.id),
+  }, [
+    el('span', { class: 'theme-choice-label', text: other.invite }),
+    el('span', { class: 'theme-choice-name', text: other.name }),
+    el('span', { class: 'theme-choice-hook', text: other.hook }),
+  ]);
+}
+
 function welcome(upNext, onOpen) {
+  const theme = activeTheme();
   return el('section', { class: 'welcome' }, [
     el('div', { class: 'welcome-text' }, [
-      el('span', { class: 'continue-label', text: '02:14 · доступ получен' }),
-      el('h2', { text: 'Шестнадцать шагов одной ночи' }),
-      el('p', { class: 'welcome-story', text: 'Ты внутри чужой сети, и экран пуст. К утру ты научишься разговаривать с системой, читать чужие записи, собрать свой инструмент — и на последнем шаге построишь защиту собственного сервера, а потом сам её сломаешь.' }),
+      el('span', { class: 'continue-label', text: theme.welcome.label }),
+      el('h2', { text: theme.welcome.title }),
+      el('p', { class: 'welcome-story', text: theme.welcome.story }),
       el('p', { text: 'Это курс питона с нуля. Код запускается прямо на этой странице — настоящий Python, а не имитация. Ни на компьютер, ни на телефон ставить ничего не нужно.' }),
       upNext ? el('button', {
         class: 'welcome-start',
@@ -140,6 +162,7 @@ function welcome(upNext, onOpen) {
       el('li', { text: 'Прогресс сохранится сам, вход нужен только для переноса на другой телефон' }),
       el('li', { text: 'Первый запуск скачает около 13 МБ — на мобильном лучше дождаться Wi-Fi' }),
     ]),
+    themeChoice(),
   ]);
 }
 

@@ -8,18 +8,20 @@
  * настоящую работу.
  */
 
-import { pythonLessons } from './python.js';
+import { activeTheme } from './themes.js';
 import { testingLessons } from './testing.js';
 import { llmLessons } from './llm.js';
 import { loadAllPracticums } from './practicum.js';
+
+/* Первая ступень берёт название и описание у выбранной истории: навыки те же,
+   мир разный. Остальные ступени от истории не зависят. */
+const theme = activeTheme();
 
 export const TIERS = [
   {
     id: 'python',
     number: 1,
-    title: 'Ночь первая: питон с нуля',
-    tagline: 'От пустого экрана до собственной защиты',
-    about: 'Одна ночь в шестнадцать шагов: от первого отклика чужого терминала до финала, где ты строишь защиту своего сервера и сам её ломаешь. Код запускается прямо здесь, устанавливать ничего не надо.',
+    ...theme.tier,
     accent: 'cyan',
   },
   {
@@ -40,7 +42,7 @@ export const TIERS = [
   },
 ];
 
-const drills = [...pythonLessons, ...testingLessons, ...llmLessons].map((lesson) => ({ ...lesson, kind: 'drill' }));
+const drills = [...theme.lessons, ...testingLessons, ...llmLessons].map((lesson) => ({ ...lesson, kind: 'drill' }));
 const labs = [];
 
 /** Порядок внутри ступени: сперва тренажёр, затем практикум. */

@@ -65,6 +65,15 @@ function briefing() {
       el('div', {}, [el('span', { text: isLab() ? 'ГДЕ ВЫПОЛНЯТЬ' : 'ГДЕ ПРИМЕНЯЕТСЯ' }), el('div', { html: lesson.deep.where })]),
       el('div', {}, [el('span', { text: 'ТИПИЧНАЯ ОШИБКА' }), el('div', { html: lesson.deep.pitfall })]),
     ]));
+    // Публично разобранный случай из новостей. Он не учит приёму — он
+    // объясняет, зачем приём нужен, и это единственное место в уроке, где
+    // говорится про настоящий мир, а не про придуманный.
+    if (lesson.deep.real) {
+      body.append(el('div', { class: 'brief-real' }, [
+        el('span', { text: 'БЫЛО НА САМОМ ДЕЛЕ' }),
+        el('div', { html: lesson.deep.real }),
+      ]));
+    }
     if (lesson.deep.examples.length) {
       body.append(el('details', { class: 'brief-examples' }, [
         el('summary', { text: isLab() ? 'Фрагменты из практикума' : 'Примеры' }),

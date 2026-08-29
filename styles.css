@@ -647,3 +647,35 @@ code, .task-card code, .brief code {
   .term-tip::after { left: 0; width: min(240px, 74vw); transform: translate(0, 4px); }
   .term-tip:hover::after, .term-tip:focus::after { transform: translate(0, 0); }
 }
+
+/* Выбор истории на первом экране. Это крупная карточка, а не ссылка: для
+   новичка выбор мира — решение того же веса, что «начать», и спрятанная
+   строчка его не донесёт. Проверено на первой версии переключателя режимов:
+   пока он ничего не менял на вид, им никто не пользовался. */
+.theme-choice {
+  grid-column: 1 / -1;
+  display: grid; gap: 2px; text-align: left;
+  margin-top: 14px; padding: 14px 16px;
+  background: rgba(103, 232, 249, .05);
+  border: 1px dashed #27414f; border-radius: 14px;
+  color: var(--text); font: inherit; cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.theme-choice:hover, .theme-choice:focus-visible { border-color: var(--cyan); background: rgba(103, 232, 249, .09); }
+.theme-choice-label { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.theme-choice-name { font-size: 17px; font-weight: 700; color: var(--cyan); }
+.theme-choice-hook { font-size: 14px; color: #c5d2d8; }
+
+/* Реальный случай из новостей. Отделён от теории намеренно: это единственное
+   место урока, где говорится про настоящий мир, и смешивать его с объяснением
+   приёма не стоит — человек должен видеть, что это не выдумка автора. */
+.brief-real {
+  margin-top: 12px; padding: 12px 14px;
+  background: rgba(255, 209, 102, .06);
+  border-left: 2px solid var(--amber, #ffd166); border-radius: 0 10px 10px 0;
+}
+.brief-real > span {
+  display: block; margin-bottom: 4px;
+  font-size: 11px; letter-spacing: .06em; color: #ffd166;
+}
+.brief-real > div { font-size: 14px; line-height: 1.55; color: #c5d2d8; }
