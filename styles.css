@@ -687,6 +687,10 @@ body.theme-garage {
   background:
     url("bg-grid.svg") repeat,
     radial-gradient(circle at 70% 0%, #2a2113 0, transparent 32%),
+    /* Гасящий слой. Бетон в бликах сам по себе слишком заметен: отблески от
+       переноски всплывают из-под текста. Правило было «сомневаешься — делай
+       незаметно», и проверка рендером показала, что сомневаться есть в чём. */
+    linear-gradient(rgba(6, 10, 14, .62), rgba(6, 10, 14, .62)),
     url("garage-bg.jpg") center / cover no-repeat,
     linear-gradient(145deg, #0d0f12, #12100c 55%, #0a0d11);
 }
