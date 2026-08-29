@@ -713,21 +713,21 @@ code, .task-card code, .brief code {
    останется общий градиент — награда и фон не должны ломаться из-за того,
    что картинку не успели нарисовать. */
 body.theme-garage {
-  --accent: #ffb454;
-  --accent-line: #6d5028;
-  --accent-soft: #33260f;
-  --accent-glow: rgba(255, 180, 84, .10);
+  /* Цвет — единственное, чем истории различаются. Поверхности у них общие:
+     тёплая подложка давала грязно-коричневый, которого не было ни на старте,
+     ни в остальном интерфейсе, и весь экран выглядел выцветшим. */
+  --accent: #ffc247;
+  --accent-line: #6b552a;
+  --accent-soft: #2a2110;
+  --accent-glow: rgba(255, 194, 71, .12);
   background:
     url("bg-grid.svg") repeat,
-    radial-gradient(circle at 70% 0%, #2a2113 0, transparent 32%),
-    /* Гасящий слой. Бетон в бликах сам по себе слишком заметен: отблески от
-       переноски всплывают из-под текста. Правило было «сомневаешься — делай
-       незаметно», и проверка рендером показала, что сомневаться есть в чём. */
+    radial-gradient(circle at 70% 0%, #102638 0, transparent 32%),
     linear-gradient(rgba(6, 10, 14, .62), rgba(6, 10, 14, .62)),
     url("garage-bg.jpg") center / cover no-repeat,
-    linear-gradient(145deg, #0d0f12, #12100c 55%, #0a0d11);
+    linear-gradient(145deg, #071017, #0a1119 55%, #08131b);
 }
-body.theme-garage .ambient-one { background: #ffd166; }
+body.theme-garage .ambient-one { background: var(--accent); }
 
 /* Кадры загрузки Python. Занимают место пустого терминала и уходят, как только
    Python готов. Высота задана заранее, иначе появление картинки дёргало бы
@@ -876,7 +876,7 @@ body:not(.lesson-open) .mode-switch { display: none; }
 /* Фактура принадлежит истории. Файл подменяется, слой остаётся тем же. */
 body.theme-garage .panel {
   background:
-    linear-gradient(150deg, rgba(26, 22, 16, .93), rgba(18, 14, 9, .93)),
+    linear-gradient(150deg, rgba(16, 27, 37, .93), rgba(9, 18, 26, .93)),
     url("garage-panel.jpg") center / 380px repeat;
 }
 
@@ -888,3 +888,83 @@ body.theme-garage .panel {
   display: block; width: 100%; height: 84px; object-fit: cover;
   border-radius: 14px 14px 0 0; margin-bottom: -10px;
 }
+
+/* Неон. Общий язык для обеих историй: акцент не просто цветной, он светится —
+   так выглядит подсветка приборов и так же выглядит строка в терминале. Цвет
+   берётся из истории, свечение одно и то же. */
+.eyebrow, .mode-pick strong, .theme-choice-name, .rig-button-name,
+.brief-real > span, .task-card > span, .welcome-outcome b {
+  text-shadow: 0 0 12px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.story-switch button.active, .mode-switch button.active {
+  box-shadow: inset 0 0 0 1px var(--accent-line), 0 0 18px -4px var(--accent);
+}
+.brand-mark { box-shadow: 0 0 22px -6px var(--accent); }
+.node.next, .continue-card { box-shadow: 0 0 26px -10px var(--accent); }
+
+/* Правая колонка первого экрана. Раньше «чем берём» и факты были отдельными
+   детьми сетки и раскладывались зигзагом, растягивая левую половину: карта со
+   списком шагов уезжала за нижний край, и человек не видел, из чего вообще
+   состоит курс. */
+.welcome-side { display: grid; gap: 12px; align-content: start; }
+
+/* ---------- живая машина на первом экране ---------- */
+
+.pc-wrap { border: 1px solid var(--accent-line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 10px; }
+.pc-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.pc-head span { font: 600 10px "Roboto Mono", monospace; letter-spacing: .14em; color: var(--accent); }
+.pc-head small { font-size: 11px; color: var(--muted); }
+
+.pc-stage { background: #070d13; border: 1px solid var(--line-soft); border-radius: 10px; overflow: hidden; }
+.pc-stage svg { display: block; width: 100%; height: auto; }
+
+.pc-shadow ellipse { fill: rgba(0, 0, 0, .55); }
+.pc-body path:first-child { stroke: var(--accent-line); stroke-width: 1.5; }
+.pc-glass { fill: #16303d; }
+.pc-wheel circle { fill: #0b1219; stroke: #26323c; stroke-width: 2; }
+.pc-hub { fill: #16222c; }
+
+/* Всё подвижное поворачивается вокруг своей петли. Плавность здесь не
+   украшение: мгновенный скачок читается как перерисовка, а не как действие. */
+.pc-trunk path { fill: #16232e; stroke: var(--accent-line); stroke-width: 1.2; }
+.pc-trunk { transform-origin: 232px 58px; transition: transform .45s cubic-bezier(.2, .9, .3, 1); }
+svg.trunk .pc-trunk { transform: rotate(-38deg); }
+
+.pc-door path { fill: rgba(30, 46, 60, .55); stroke: var(--accent-line); stroke-width: 1.2; }
+.pc-door circle { fill: var(--accent); opacity: .5; }
+.pc-door { transition: transform .45s cubic-bezier(.2, .9, .3, 1); }
+.pc-door-front { transform-origin: 112px 80px; }
+.pc-door-rear { transform-origin: 226px 80px; }
+svg.doors .pc-door-front { transform: rotate(-26deg); }
+svg.doors .pc-door-rear { transform: rotate(26deg); }
+
+.pc-lamp ellipse { fill: #2a3540; transition: fill .18s, filter .18s; }
+.pc-beam path { fill: var(--accent); opacity: 0; transition: opacity .18s; }
+svg.lights .pc-lamp-front ellipse { fill: #fff3d0; filter: drop-shadow(0 0 14px var(--accent)); }
+svg.lights .pc-lamp-rear ellipse { fill: #ff6b6b; filter: drop-shadow(0 0 12px #ff6b6b); }
+svg.lights .pc-beam path { opacity: .13; }
+
+.pc-log { font: 12px/1.6 "Roboto Mono", monospace; color: var(--muted); min-height: 58px; }
+.pc-log p { margin: 0; }
+.pc-log p.ok { color: var(--mint); }
+.pc-log p.bad { color: #ffb4b4; }
+
+.pc-row { display: flex; gap: 8px; }
+/* 16 пикселей — не вкусовщина: при меньшем iOS сам приближает страницу, когда
+   фокус попадает в поле, и человеку приходится отодвигать её руками. */
+.pc-input {
+  flex: 1; min-width: 0; padding: 9px 11px; font: 16px "Roboto Mono", monospace;
+  background: #070d13; color: var(--text); border: 1px solid var(--line); border-radius: 9px;
+}
+.pc-input:focus { outline: none; border-color: var(--accent); }
+.pc-send {
+  padding: 9px 14px; border: 0; border-radius: 9px; cursor: pointer;
+  background: var(--accent-soft); color: var(--accent); font: 600 13px Manrope;
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+}
+.pc-hints { display: flex; flex-wrap: wrap; gap: 6px; }
+.pc-hint {
+  padding: 5px 9px; border: 1px solid var(--line); border-radius: 999px; cursor: pointer;
+  background: transparent; color: var(--muted); font: 12px "Roboto Mono", monospace;
+}
+.pc-hint:hover { border-color: var(--accent); color: var(--accent); }

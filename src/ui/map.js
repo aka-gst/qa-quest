@@ -9,6 +9,7 @@ import { store, tierState, lessonState, isLessonOpen, nextLesson, unlockTier } f
 import { decorateGlossary } from '../glossary.js';
 import { el, clear } from './dom.js';
 import { rigButton } from './rig.js';
+import { carConsole } from './pingcar.js';
 
 function lessonNode(lesson, index, onOpen) {
   const progress = lessonState(lesson);
@@ -165,12 +166,17 @@ function welcome(upNext, onOpen) {
     // Правило то же у GOV.UK («do not use a full stop at the end») и у
     // Microsoft («unless they're complete sentences»). Раньше здесь стояло по
     // два предложения на пункт — от этого список и выглядел тяжёлым.
-    theme.welcome.selling ? el('ul', { class: 'welcome-selling' },
-      theme.welcome.selling.map((line) => el('li', { text: line }))) : null,
-    el('ul', { class: 'welcome-facts' }, [
+    el('div', { class: 'welcome-side' }, [
+      // Живая машина стоит первой в правой колонке: обещание «код работает
+      // прямо здесь» лучше показать, чем написать.
+      carConsole(),
+      theme.welcome.selling ? el('ul', { class: 'welcome-selling' },
+        theme.welcome.selling.map((line) => el('li', { text: line }))) : null,
+      el('ul', { class: 'welcome-facts' }, [
       el('li', { text: 'Первый урок — три минуты, знать заранее ничего не надо' }),
       el('li', { text: 'Прогресс сохранится сам, вход нужен только для переноса на другой телефон' }),
-      el('li', { text: 'Первый запуск скачает около 13 МБ — на мобильном лучше дождаться Wi-Fi' }),
+        el('li', { text: 'Первый запуск скачает около 13 МБ — на мобильном лучше дождаться Wi-Fi' }),
+      ]),
     ]),
     themeChoice(),
   ]);
