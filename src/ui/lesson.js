@@ -323,6 +323,9 @@ function hintButton(task) {
 
 function consolePanel() {
   const task = currentTask();
+  // Место под кадры загрузки Python. Показывается только пока идёт закачка и
+  // ровно там, где иначе пустой терминал: см. paintBoot в main.js.
+  const bootVisual = el('div', { class: 'boot-visual', hidden: true }, [el('img', { alt: '' })]);
   const consoleOutput = el('pre', { class: 'console-output' });
   const checkList = el('div', { class: 'check-list' });
   view.nodes.console = consoleOutput;
@@ -332,6 +335,7 @@ function consolePanel() {
 
   const panel = el('aside', { class: 'lab-panel panel' }, [
     el('div', { class: 'panel-heading' }, [el('span', { text: 'ТЕРМИНАЛ' }), view.nodes.runState]),
+    bootVisual,
     consoleOutput,
     el('div', { class: 'checks' }, [el('h2', { text: 'ПРОВЕРКИ' }), checkList]),
     button,

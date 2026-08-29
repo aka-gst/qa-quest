@@ -130,8 +130,7 @@ const QUEST_LINK = 'https://aka-gst.ru/qa-quest/';
 
 function showFinale() {
   const dialog = $('finaleDialog');
-  $('finaleText').textContent = 'Ты написал защиту, нашёл в чужой дыру и доказал, '
-    + 'что у себя её нет. Это и есть работа тестировщика — с той разницей, что за неё платят.';
+  $('finaleText').textContent = activeTheme().finaleText;
   const share = $('finaleShare');
   share.textContent = 'Позвать друга';
   share.onclick = async () => {
@@ -157,7 +156,10 @@ function celebrate(outcome, lesson, task) {
   toast(parts.join(' · '), 'ok');
   route();
 
-  if (lesson.id === 'py-ice') showFinale();
+  // Финальный урок у каждой истории свой. Пока здесь стоял 'py-ice', вторая
+  // история доходила до конца и не получала ничего — а это единственный
+  // момент курса, ради которого её проходят.
+  if (lesson.id === activeTheme().finalLesson) showFinale();
 }
 
 /* ---------- вход ---------- */
@@ -340,7 +342,44 @@ $('resetProgress').addEventListener('click', () => {
   }
 });
 
+/*
+ * Кадры загрузки. Тринадцать мегабайт Python качаются один раз, и это самое
+ * опасное место курса: человек ждёт на пустом экране, ещё не увидев ни строчки
+ * кода. Кадры превращают ожидание в начало истории — приборная панель
+ * просыпается, лампа за лампой. Место выбрано так, чтобы ничего не заслонять:
+ * терминал в это время всё равно пуст, а текст задачи читается рядом.
+ */
+let bootTimer = null;
+let bootStep = 0;
+
+function paintBoot(status) {
+  const frames = activeTheme().art?.boot || [];
+  const holder = document.querySelector('.boot-visual');
+  if (!holder) return;
+  const image = holder.querySelector('img');
+  if (!frames.length || status !== 'loading') {
+    holder.hidden = true;
+    clearInterval(bootTimer);
+    bootTimer = null;
+    return;
+  }
+  if (holder.hidden) {
+    bootStep = 0;
+    image.alt = activeTheme().art.bootAlt || '';
+    image.src = frames[0];
+    holder.hidden = false;
+    clearInterval(bootTimer);
+    // Кадры сменяются по времени, а не по доле скачанного: доля приходит
+    // рывками и на быстрой сети проскочила бы всю последовательность разом.
+    bootTimer = setInterval(() => {
+      bootStep = Math.min(bootStep + 1, frames.length - 1);
+      image.src = frames[bootStep];
+    }, 1400);
+  }
+}
+
 onRunnerChange((state) => {
+  paintBoot(state.status);
   const chip = $('pythonChip');
   chip.dataset.status = state.status;
   chip.textContent = {

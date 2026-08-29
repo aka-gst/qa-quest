@@ -20,7 +20,13 @@ export const THEMES = [
     name: 'Взлом сети',
     hook: 'Ты внутри чужой системы. К утру она твоя',
     invite: 'Больше по душе сети и терминалы?',
-    art: { finale: 'finale.jpg', finaleAlt: 'Пролом в ледяной стене, за ним город из каркасов и света' },
+    finalLesson: 'py-ice',
+    finaleText: 'Ты написал защиту, нашёл в чужой дыру и доказал, что у себя её нет. Это и есть работа тестировщика — с той разницей, что за неё платят.',
+    art: {
+      finale: 'finale.jpg',
+      finaleAlt: 'Пролом в ледяной стене, за ним город из каркасов и света',
+      boot: [],
+    },
     lessons: pythonLessons,
     tier: {
       title: 'Ночь первая: питон с нуля',
@@ -38,7 +44,14 @@ export const THEMES = [
     name: 'Ночь в боксе',
     hook: 'Машина твоя, а ключ от неё — у завода',
     invite: 'Больше по душе машины?',
-    art: { finale: 'garage-finale.jpg', finaleAlt: 'Гружёный тягач вышел из грязи на рассвете' },
+    finalLesson: 'gar-lock',
+    finaleText: 'Ты поставил свой замок, показал, что заводской пускает кого угодно, и доказал, что твой не пускает. Это и есть работа по безопасности — с той разницей, что за неё платят.',
+    art: {
+      finale: 'garage-finale.jpg',
+      finaleAlt: 'Гружёный тягач вышел из грязи на рассвете',
+      bootAlt: 'Приборная панель просыпается',
+      boot: ['garage-boot-1.jpg', 'garage-boot-2.jpg', 'garage-boot-3.jpg', 'garage-boot-4.jpg'],
+    },
     lessons: garageLessons,
     tier: {
       title: 'Ночь первая: питон с нуля',
