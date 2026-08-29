@@ -127,9 +127,7 @@ function renderHeader() {
   // Переключатель без объяснения выглядит бесполезным: человек видит две
   // кнопки и не понимает, что изменится. Говорим прямо, что он делает.
   // Без названия режима: оно и так написано на нажатой кнопке прямо над строкой.
-  $('modeHint').textContent = store.state.mode === 'sprint'
-    ? 'в уроке суть и одна задача'
-    : 'в уроке объяснение, примеры и три задачи';
+
 }
 
 /* ---------- события прогресса ---------- */
@@ -320,6 +318,11 @@ document.querySelectorAll('.mode-switch button').forEach((button) => {
   button.addEventListener('click', () => {
     setMode(button.dataset.mode);
     route();
+    // Раньше это висело строкой в служебном ряду постоянно. Объяснение нужно в
+    // момент выбора, а не всё время: что выбрано, и так написано на кнопке.
+    toast(store.state.mode === 'sprint'
+      ? 'в уроке суть и одна задача'
+      : 'в уроке объяснение, примеры и три задачи');
   });
 });
 
@@ -396,7 +399,11 @@ function paintBoot(status) {
   const holder = document.querySelector('.boot-visual');
   if (!holder) return;
   const image = holder.querySelector('img');
-  if (!frames.length || status !== 'loading') {
+  // Показываем, пока Python не готов, а не только в состоянии «загружается».
+  // Прежнее условие было точнее, чем нужно: любое промежуточное состояние
+  // прятало кадры до конца закачки — картинка появлялась и пропадала, хотя
+  // качать оставалось ещё десяток мегабайт.
+  if (!frames.length || status === 'ready' || status === 'failed') {
     holder.hidden = true;
     clearInterval(bootTimer);
     bootTimer = null;
@@ -408,10 +415,17 @@ function paintBoot(status) {
   if (bootTimer) return;
   // Кадры сменяются по времени, а не по доле скачанного: доля приходит
   // рывками и на быстрой сети проскочила бы всю последовательность разом.
+  // Тик не только меняет кадр, но и возвращает место на экран. Экран урока
+  // перерисовывают четыре разных события, и каждое создаёт место пустым и
+  // скрытым; вместо того чтобы ловить их поимённо, чиним состояние раз в
+  // полторы секунды. Дешевле и надёжнее, чем помнить все точки перерисовки.
   bootTimer = setInterval(() => {
     bootStep = Math.min(bootStep + 1, frames.length - 1);
-    const live = document.querySelector('.boot-visual img');
-    if (live) live.src = frames[bootStep];
+    const live = document.querySelector('.boot-visual');
+    if (!live) return;
+    live.hidden = false;
+    const img = live.querySelector('img');
+    if (img) img.src = frames[bootStep];
   }, 1400);
 }
 

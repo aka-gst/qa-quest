@@ -15,6 +15,7 @@ import {
 import { runPython, runner, onRunnerChange } from '../runner.js';
 import { decorateGlossary } from '../glossary.js';
 import { activeTheme } from '../content/themes.js';
+import { standPanel, standPlay } from './stand.js';
 import { track } from '../analytics.js';
 import { el, clear } from './dom.js';
 
@@ -337,6 +338,9 @@ function consolePanel() {
   const panel = el('aside', { class: 'lab-panel panel' }, [
     el('div', { class: 'panel-heading' }, [el('span', { text: activeTheme().termTitle || 'ТЕРМИНАЛ' }), view.nodes.runState]),
     bootVisual,
+    // Стенд стоит над терминалом: сперва видно, что код сделал с машиной,
+    // и только потом — что он написал буквами.
+    standPanel(),
     consoleOutput,
     el('div', { class: 'checks' }, [el('h2', { text: 'ПРОВЕРКИ' }), checkList]),
     button,
@@ -395,6 +399,7 @@ function checklistPanel(rerender) {
 
 /** Показывает результат прогона: терминал, проверки и переход к следующему шагу. */
 function showResult(result) {
+  standPlay(result);
   renderChecks(result.checks);
   if (result.error) {
     const parts = [result.error.text];

@@ -917,6 +917,7 @@ body.theme-garage .panel {
 
 .pc-stage { background: #070d13; border: 1px solid var(--line-soft); border-radius: 10px; overflow: hidden; }
 .pc-stage svg { display: block; width: 100%; height: auto; }
+.pc-stage { display: grid; place-items: center; }
 
 .pc-shadow ellipse { fill: rgba(0, 0, 0, .55); }
 .pc-body path:first-child { stroke: var(--accent-line); stroke-width: 1.5; }
@@ -968,3 +969,89 @@ svg.lights .pc-beam path { opacity: .13; }
   background: transparent; color: var(--muted); font: 12px "Roboto Mono", monospace;
 }
 .pc-hint:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Разбор уезжал вбок от тачпада, и появлялась горизонтальная полоса. Причина
+   не в содержимом, а в правиле: overflow-y: auto включает и горизонтальную
+   прокрутку, если что-то внутри шире контейнера. Ширину режем явно, а длинные
+   листинги пусть прокручиваются внутри себя, а не тащат за собой всю колонку. */
+.brief { overflow-x: hidden; }
+.brief-notes, .brief-real, .brief-theory { min-width: 0; overflow-wrap: anywhere; }
+.brief pre { max-width: 100%; overflow-x: auto; }
+
+/* Первый экран обязан помещаться в один экран: до сих пор он занимал полтора,
+   и человек не видел ни кнопки, ни карты, пока не прокрутит. Главный едок —
+   холст машины: он тянулся по ширине колонки и на большом мониторе занимал
+   треть высоты. */
+.pc-stage svg { height: 172px; }
+.pc-wrap { gap: 8px; padding: 10px 12px; }
+.pc-log { min-height: 44px; font-size: 11.5px; line-height: 1.5; }
+.welcome-side { gap: 10px; }
+.welcome-selling { gap: 6px; margin-bottom: 0; }
+.welcome-selling li { font-size: 13.5px; }
+.welcome-facts li { font-size: 13.5px; }
+.welcome-outcome { margin: 0 0 12px !important; padding: 10px 12px; font-size: 14.5px; }
+
+/* Строка, которую шина набирает сама. Курсор и цвет говорят, что это не ты. */
+.pc-input.auto { color: var(--accent); border-color: var(--accent-line); }
+
+@media (min-width: 1100px) {
+  /* Ужимаем только там, где экран широкий и высота становится узким местом. */
+  .welcome { align-items: start; }
+  .welcome-story { margin-bottom: 10px !important; }
+}
+
+/* Служебная строка на всю ширину: слева выход на сайт, по центру — что сейчас
+   в уроке, справа сброс. Раньше всё лежало в один ряд слева, и две кнопки не
+   читались кнопками: выход выглядел серым текстом, сброс — просто текстом. */
+.status-strip { justify-content: space-between; width: 100%; }
+.strip-left, .strip-right { display: flex; align-items: center; gap: 14px; }
+.status-strip .mode-hint { text-align: center; }
+
+/* Выход не должен выделяться — но должен читаться ссылкой. Стрелка и
+   подчёркивание по наведению делают это без крика. */
+.site-back {
+  color: var(--muted); text-decoration: none; font: 500 13px Manrope;
+  padding: 4px 0; border-bottom: 1px solid transparent; transition: .15s;
+}
+.site-back:hover { color: var(--accent); border-bottom-color: var(--accent-line); }
+
+/* Сброс — действие необратимое, и выглядеть должен как кнопка, а не как
+   надпись. Но не как главное действие экрана: обводка, не заливка. */
+.reset-button {
+  padding: 5px 12px; border: 1px solid var(--line); border-radius: 999px;
+  background: transparent; color: var(--muted); font: 500 12.5px Manrope;
+  cursor: pointer; transition: .15s; white-space: nowrap;
+}
+.reset-button:hover { border-color: #ff6b6b; color: #ff6b6b; }
+
+@media (max-width: 860px) {
+  .status-strip { flex-wrap: wrap; }
+  .strip-left, .strip-right { width: 100%; justify-content: space-between; }
+  .status-strip .mode-hint { width: 100%; text-align: left; }
+}
+
+/* ---------- стенд урока ---------- */
+
+.stand-wrap { border-bottom: 1px solid var(--line-soft); padding: 8px 12px 10px; display: grid; gap: 6px; }
+.stand-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.stand-head span { font: 600 10px "Roboto Mono", monospace; letter-spacing: .14em; color: var(--accent); }
+.stand-note { font-size: 11px; color: var(--muted); }
+.stand { background: #070d13; border: 1px solid var(--line-soft); border-radius: 10px; overflow: hidden; }
+.stand svg { display: block; width: 100%; height: 128px; }
+
+/* Проекция на лобовое. Моноширинный шрифт не прихоть: сюда попадает вывод
+   программы, и он должен выглядеть выводом программы. */
+.pc-hud rect { fill: rgba(103, 232, 249, .07); stroke: var(--accent-line); stroke-width: .8; }
+.pc-hud text { font: 11px "Roboto Mono", monospace; fill: var(--accent); }
+.pc-hud-ray { stroke: var(--accent); stroke-width: .8; opacity: .35; }
+
+.pc-signal circle { fill: #2a3540; transition: fill .12s, filter .12s; }
+svg.blink .pc-signal circle { fill: #ffb454; filter: drop-shadow(0 0 9px #ffb454); }
+
+/* Допуск и отказ читаются цветом стекла, а не подписью: подпись пришлось бы
+   переводить на язык каждой задачи, а цвет понятен без слов. */
+svg.ok .pc-glass { fill: #1b3a2c; }
+svg.no .pc-glass { fill: #3a1f1f; }
+svg.fault .pc-hud rect { stroke: #ff6b6b; fill: rgba(255, 107, 107, .09); }
+svg.fault .pc-hud text { fill: #ff6b6b; }
+svg.fault .pc-lamp-rear ellipse { fill: #ff6b6b; filter: drop-shadow(0 0 10px #ff6b6b); }

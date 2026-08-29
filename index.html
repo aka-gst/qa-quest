@@ -60,11 +60,14 @@
       <!-- Возврат на сайт. Общесайтовая кнопка .game-home-menu прибита к
            правому верхнему углу и накрыла бы «Войти» и полосу опыта, поэтому
            здесь свой вариант — как у практикумов и photodata. -->
-      <a class="site-back" href="https://aka-gst.ru/">← aka-gst.ru</a>
-      <span id="pythonChip" class="python-chip" data-status="idle">Python: не загружен</span>
-      <span id="modeHint" class="mode-hint"></span>
-      <span id="progressHint" class="progress-hint">Прогресс сохраняется в этом браузере</span>
-      <button type="button" id="resetProgress" class="text-button">Сбросить прогресс</button>
+      <div class="strip-left">
+        <a class="site-back" href="https://aka-gst.ru/">← Все проекты aka-gst</a>
+        <span id="pythonChip" class="python-chip" data-status="idle">Python: не загружен</span>
+      </div>
+      <div class="strip-right">
+        <span id="progressHint" class="progress-hint">Прогресс сохраняется в этом браузере</span>
+        <button type="button" id="resetProgress" class="reset-button">Сбросить прогресс</button>
+      </div>
     </div>
 
     <main>

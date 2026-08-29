@@ -13,7 +13,7 @@
 import { el } from './dom.js';
 import { activeTheme } from '../content/themes.js';
 
-const CAR = `
+export const CAR = `
 <svg viewBox="0 0 340 150" role="img" aria-label="Машина сбоку: фары, двери и багажник откликаются на команды">
   <defs>
     <linearGradient id="pc-body" x1="0" y1="0" x2="0" y2="1">
@@ -43,19 +43,57 @@ const CAR = `
 
   <g class="pc-wheel"><circle cx="92" cy="106" r="21"/><circle cx="92" cy="106" r="9" class="pc-hub"/></g>
   <g class="pc-wheel"><circle cx="256" cy="106" r="21"/><circle cx="256" cy="106" r="9" class="pc-hub"/></g>
+
+  <!-- Поворотник: моргает по одному разу на каждую напечатанную строку -->
+  <g class="pc-signal"><circle cx="62" cy="92" r="4.5"/></g>
+
+  <!-- Проекция на лобовое: сюда выводится то, что напечатала программа -->
+  <g class="pc-hud">
+    <path d="M150 33 L150 24" class="pc-hud-ray"/>
+    <rect x="24" y="4" width="292" height="19" rx="5"/>
+    <text x="34" y="17">—</text>
+  </g>
 </svg>`;
 
-/* Одна команда — одно действие. Синонимы не роскошь: человек напишет то, что
-   пришло в голову, и «не понял команду» на первом же экране читается как
-   «сайт сломан». */
-const COMMANDS = [
-  { test: /^(ping|пинг)(\s+car|\s+машин\w*)?$/i, run: (car) => { blink(car); return 'PONG · блок отвечает, 14 мс'; } },
-  { test: /^(lights?|фары)(\s+(on|вкл\w*))?$/i, run: (car) => { car.classList.add('lights'); return 'фары включены'; } },
-  { test: /^(lights?|фары)\s+(off|выкл\w*)$/i, run: (car) => { car.classList.remove('lights'); return 'фары выключены'; } },
-  { test: /^(doors?|unlock|двери|открой двери)(\s+\w+)?$/i, run: (car) => { car.classList.toggle('doors'); return car.classList.contains('doors') ? 'двери открыты' : 'двери закрыты'; } },
-  { test: /^(trunk|boot|багажник)(\s+\w+)?$/i, run: (car) => { car.classList.toggle('trunk'); return car.classList.contains('trunk') ? 'багажник открыт' : 'багажник закрыт'; } },
-  { test: /^(help|\?|помощь|команды)$/i, run: () => 'ping car · фары · двери · багажник' },
+/*
+ * Разбор команды. Принимаем и человеческое слово, и настоящий питоновский
+ * вызов — тот самый, который человек напишет в финале ночи:
+ *   send({"cmd": "enable", "what": "lights"})
+ * Кнопки-подсказки подставляют именно вызов, а не слово: пусть первое, что
+ * человек увидит в терминале, будет кодом, а не игрой в слова.
+ */
+export const SNIPPETS = {
+  ping: 'send({"cmd": "ping"})',
+  lights: 'send({"cmd": "enable", "what": "lights"})',
+  doors: 'send({"cmd": "unlock", "what": "doors"})',
+  trunk: 'send({"cmd": "open", "what": "trunk"})',
+};
+
+const TARGET = [
+  ['ping', /\bping\b|\bпинг\b/i],
+  ['lights', /\blights?\b|\bфар/i],
+  ['doors', /\bdoors?\b|\bunlock\b|\block\b|\bдвер/i],
+  ['trunk', /\btrunk\b|\bboot\b|\bбагажник/i],
 ];
+const OFF = /\boff\b|\bdisable\b|\bclose\b|\block\b|\bвыкл|\bзакр/i;
+
+function parse(text, car) {
+  const found = TARGET.find(([, re]) => re.test(text));
+  if (!found) return null;
+  const [what] = found;
+  if (what === 'ping') {
+    blink(car);
+    return 'PONG · блок отвечает, 14 мс';
+  }
+  const off = OFF.test(text);
+  car.classList.toggle(what, !off);
+  const words = {
+    lights: ['фары включены', 'фары выключены'],
+    doors: ['двери открыты', 'двери закрыты'],
+    trunk: ['багажник открыт', 'багажник закрыт'],
+  }[what];
+  return off ? words[1] : words[0];
+}
 
 function blink(car) {
   car.classList.add('lights');
@@ -95,13 +133,13 @@ export function carConsole() {
     const text = input.value.trim();
     if (!text) return;
     input.value = '';
-    const hit = COMMANDS.find((item) => item.test.test(text));
-    say(hit ? hit.run(car) : `«${text}» блок не понял. Попробуй ping car`, Boolean(hit));
+    const answer = parse(text, car);
+    say(answer || `блок не понял. Попробуй ${SNIPPETS.ping}`, Boolean(answer));
   };
 
   input.addEventListener('keydown', (event) => { if (event.key === 'Enter') send(); });
 
-  return el('div', { class: 'pc-wrap panel' }, [
+  const wrap = el('div', { class: 'pc-wrap panel' }, [
     el('div', { class: 'pc-head' }, [
       el('span', { text: 'ШИНА · ЖИВОЙ ОТКЛИК' }),
       el('small', { text: 'настоящая, не видео' }),
@@ -112,11 +150,63 @@ export function carConsole() {
       input,
       el('button', { type: 'button', class: 'pc-send', onclick: send }, 'Отправить'),
     ]),
-    el('div', { class: 'pc-hints' }, ['ping car', 'фары', 'двери', 'багажник'].map(
-      (cmd) => el('button', {
-        type: 'button', class: 'pc-hint',
-        onclick: () => { input.value = cmd; send(); input.focus(); },
-      }, cmd),
-    )),
+    el('div', { class: 'pc-hints' }, [
+      ['пинг', SNIPPETS.ping],
+      ['фары', SNIPPETS.lights],
+      ['двери', SNIPPETS.doors],
+      ['багажник', SNIPPETS.trunk],
+    ].map(([label, code]) => el('button', {
+      type: 'button', class: 'pc-hint', title: code,
+      onclick: () => { stopIdle(); input.value = code; send(); input.focus(); },
+    }, label))),
   ]);
+
+  /*
+   * Пока человек ничего не трогает, шина живёт сама: раз в несколько секунд в
+   * строку набирается команда и машина откликается. Иначе первый экран стоит
+   * мёртвым, и большинство просто не догадается, что здесь можно что-то
+   * набрать. Как только человек тронул поле — самовольство прекращается: он
+   * пришёл сам, мешать ему нечего.
+   */
+  const DEMO = [SNIPPETS.lights, SNIPPETS.doors, SNIPPETS.ping, SNIPPETS.trunk];
+  let demoStep = 0;
+  let idleTimer = null;
+  let typing = null;
+
+  function stopIdle() {
+    clearTimeout(idleTimer);
+    clearInterval(typing);
+    idleTimer = null;
+    typing = null;
+    input.classList.remove('auto');
+  }
+
+  function typeOut(code, done) {
+    input.classList.add('auto');
+    input.value = '';
+    let i = 0;
+    typing = setInterval(() => {
+      input.value = code.slice(0, i += 2);
+      if (i < code.length) return;
+      clearInterval(typing);
+      typing = null;
+      setTimeout(() => { input.classList.remove('auto'); done(); }, 320);
+    }, 26);
+  }
+
+  function idleTick() {
+    if (document.hidden || !wrap.isConnected) {
+      idleTimer = setTimeout(idleTick, 4000);
+      return;
+    }
+    typeOut(DEMO[demoStep++ % DEMO.length], () => {
+      send();
+      idleTimer = setTimeout(idleTick, 5200);
+    });
+  }
+
+  ['focus', 'keydown', 'pointerdown'].forEach((event) => input.addEventListener(event, stopIdle));
+  idleTimer = setTimeout(idleTick, 2600);
+
+  return wrap;
 }
