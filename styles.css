@@ -668,31 +668,8 @@ code, .task-card code, .brief code {
   .term-tip:hover::after, .term-tip:focus::after { transform: translate(0, 0); }
 }
 
-/* Выбор истории на первом экране. Это крупная карточка, а не ссылка: для
-   новичка выбор мира — решение того же веса, что «начать», и спрятанная
-   строчка его не донесёт. Проверено на первой версии переключателя режимов:
-   пока он ничего не менял на вид, им никто не пользовался. */
-.theme-choice {
-  display: grid; gap: 3px; text-align: left;
-  margin-top: 14px; padding: 16px 18px;
-  background: linear-gradient(140deg, rgba(255, 180, 84, .10), rgba(255, 180, 84, .03));
-  border: 1px solid #6d5028; border-radius: 14px;
-  color: var(--text); font: inherit; cursor: pointer;
-  transition: border-color .15s, background .15s, transform .15s;
-}
 /* Карточка второй истории красится в её цвет, а не в цвет текущей: человек
    должен видеть, куда попадёт, ещё не нажав. */
-.theme-choice-ice {
-  background: linear-gradient(140deg, rgba(103, 232, 249, .10), rgba(103, 232, 249, .03));
-  border-color: #2c5768;
-}
-.theme-choice:hover, .theme-choice:focus-visible { transform: translateY(-1px); }
-.theme-choice-go { margin-top: 6px; font-size: 13px; font-weight: 600; color: #ffb454; }
-.theme-choice-ice .theme-choice-go { color: #67e8f9; }
-.theme-choice-ice .theme-choice-name { color: #67e8f9; }
-.theme-choice-label { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
-.theme-choice-name { font-size: 17px; font-weight: 700; color: #ffb454; }
-.theme-choice-hook { font-size: 14px; color: #c5d2d8; }
 
 /* Реальный случай из новостей. Отделён от теории намеренно: это единственное
    место урока, где говорится про настоящий мир, и смешивать его с объяснением
@@ -1125,9 +1102,9 @@ html, body { overflow-x: hidden; max-width: 100%; }
   .welcome-story { order: 3; }
   .welcome-start { order: 4; margin-bottom: 16px; }
   .welcome-outcome { order: 5; }
+  .welcome-facts { order: 7; }
   .welcome-about { order: 6; }
-  .theme-choice { order: 7; }
-}
+  }
 
 /* Сцена сети. Классы общие со сценой машины, поэтому здесь только то, чего у
    машины нет: сердцевина узла, нити связи и щит. */
@@ -1141,3 +1118,12 @@ body:not(.theme-garage) .pc-trunk { transform-origin: 236px 85px; }
 body:not(.theme-garage) svg.trunk .pc-trunk { transform: translateX(34px) rotate(-8deg); opacity: .35; }
 body:not(.theme-garage) svg.doors .pc-door-front { transform: translateX(-16px); }
 body:not(.theme-garage) svg.doors .pc-door-rear { transform: translateX(16px); }
+
+/* Кнопка и список фактов под ней — одна колонка, одна ширина. Разной длины
+   элементы в узкой колонке читаются как недоделанная вёрстка. */
+.welcome-text .welcome-facts { margin: 4px 0 0; }
+
+/* В виджете на первом экране проекции показывать нечего: программу там ещё не
+   запускали, и полоса висела пустой. Она нужна в стенде урока, где на неё
+   выходит вывод кода, — там и остаётся. */
+.pc-stage .pc-hud { display: none; }

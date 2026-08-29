@@ -116,7 +116,8 @@ export function scene() {
  */
 const VOICE = {
   garage: {
-    head: 'ШИНА · ЖИВОЙ ОТКЛИК',
+    head: 'ПОПРОБУЙ ПРЯМО СЕЙЧАС',
+    sub: 'машина настоящая, не видео',
     greet: '> шина слушает. напиши ping car',
     placeholder: 'ping car',
     words: { lights: ['фары включены', 'фары выключены'], doors: ['двери открыты', 'двери закрыты'], trunk: ['багажник открыт', 'багажник закрыт'] },
@@ -124,7 +125,8 @@ const VOICE = {
     hints: [['пинг', 'ping'], ['фары', 'lights'], ['двери', 'doors'], ['багажник', 'trunk']],
   },
   ice: {
-    head: 'УЗЕЛ · ЖИВОЙ ОТКЛИК',
+    head: 'ПОПРОБУЙ ПРЯМО СЕЙЧАС',
+    sub: 'узел настоящий, не видео',
     greet: '> узел слушает. напиши ping node',
     placeholder: 'ping node',
     words: { lights: ['связь поднята', 'связь опущена'], doors: ['порты открыты', 'порты закрыты'], trunk: ['щит снят', 'щит поставлен'] },
@@ -211,9 +213,35 @@ export function carConsole() {
    * писался только ответ, и нажатие кнопки выглядело так, будто отклик берётся
    * ниоткуда: человек не видел, какой код ушёл. А ради этого всё и затевалось.
    */
-  const push = (text, cls) => {
-    log.append(el('p', { class: cls, text }));
+  /*
+   * Строки набираются по букве, а не появляются целиком. Это не украшение:
+   * мгновенная строка читается как картинка, набираемая — как ответ живого
+   * устройства, и человек успевает заметить, что команда и отклик разные вещи.
+   * Очередь нужна, потому что команда и ответ приходят подряд: без неё они
+   * набирались бы одновременно и мешали друг другу.
+   */
+  const queue = [];
+  let printing = false;
+
+  const drain = () => {
+    const item = queue.shift();
+    if (!item) { printing = false; return; }
+    printing = true;
+    const line = el('p', { class: item.cls });
+    log.append(line);
     while (log.children.length > 5) log.firstChild.remove();
+    let i = 0;
+    const tick = setInterval(() => {
+      line.textContent = item.text.slice(0, i += 1);
+      if (i < item.text.length) return;
+      clearInterval(tick);
+      setTimeout(drain, 140);
+    }, 16);
+  };
+
+  const push = (text, cls) => {
+    queue.push({ text, cls });
+    if (!printing) drain();
   };
   const echo = (cmd) => push(`> ${cmd}`, 'cmd');
   const say = (text, ok) => push(`  ${text}`, ok ? 'ok' : 'bad');
@@ -238,7 +266,7 @@ export function carConsole() {
   const wrap = el('div', { class: 'pc-wrap panel' }, [
     el('div', { class: 'pc-head' }, [
       el('span', { text: v.head }),
-      el('small', { text: 'настоящая, не видео' }),
+      el('small', { text: v.sub }),
     ]),
     stage,
     log,
