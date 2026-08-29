@@ -20,6 +20,7 @@ export const THEMES = [
     name: 'Взлом сети',
     hook: 'Ты внутри чужой системы. К утру она твоя',
     invite: 'Больше по душе сети и терминалы?',
+    art: { finale: 'finale.jpg', finaleAlt: 'Пролом в ледяной стене, за ним город из каркасов и света' },
     lessons: pythonLessons,
     tier: {
       title: 'Ночь первая: питон с нуля',
@@ -37,6 +38,7 @@ export const THEMES = [
     name: 'Ночь в боксе',
     hook: 'Машина твоя, а ключ от неё — у завода',
     invite: 'Больше по душе машины?',
+    art: { finale: 'garage-finale.jpg', finaleAlt: 'Гружёный тягач вышел из грязи на рассвете' },
     lessons: garageLessons,
     tier: {
       title: 'Ночь первая: питон с нуля',

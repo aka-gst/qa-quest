@@ -301,6 +301,22 @@ document.querySelectorAll('.mode-switch button').forEach((button) => {
 $('accountButton').addEventListener('click', () => accountDialog());
 $('closeDialog').addEventListener('click', () => $('accountDialog').close());
 $('finaleClose').addEventListener('click', () => $('finaleDialog').close());
+// Тело помечается историей: фон и мелочи оформления у них разные, а держать
+// это в CSS дешевле, чем подменять картинки из кода.
+document.body.classList.add(`theme-${activeTheme().id}`);
+
+// Экран победы принадлежит истории, а не сайту. Пока картинки для второй
+// истории нет, остаётся общая — это лучше, чем битая ссылка на месте награды.
+{
+  const art = activeTheme().art;
+  const image = $('finaleImage');
+  if (art && art.finale) {
+    image.addEventListener('error', () => { image.src = 'finale.jpg'; }, { once: true });
+    image.src = art.finale;
+    image.alt = art.finaleAlt || '';
+  }
+}
+
 // Переключатель истории живёт в шапке, а не только на первом экране: человек
 // решает сменить мир обычно после первого урока, а не до него.
 {

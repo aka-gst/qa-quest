@@ -70,6 +70,7 @@ rsync --archive --delete --delete-excluded \
   --include 'og.jpg' --include 'apple-touch-icon.png' --include 'bg-grid.svg' \
   --include 'bg-night.jpg' \
   --include 'finale.jpg' \
+  --include 'garage-finale.jpg' --include 'garage-bg.jpg' \
   --include 'src/' --include 'src/**' \
   --exclude '*' \
   "$HERE/" "$SITE/"

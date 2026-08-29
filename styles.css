@@ -679,3 +679,15 @@ code, .task-card code, .brief code {
   font-size: 11px; letter-spacing: .06em; color: #ffd166;
 }
 .brief-real > div { font-size: 14px; line-height: 1.55; color: #c5d2d8; }
+
+/* Фон истории про машины. Если файла ещё нет, слой просто не отрисуется и
+   останется общий градиент — награда и фон не должны ломаться из-за того,
+   что картинку не успели нарисовать. */
+body.theme-garage {
+  background:
+    url("bg-grid.svg") repeat,
+    radial-gradient(circle at 70% 0%, #2a2113 0, transparent 32%),
+    url("garage-bg.jpg") center / cover no-repeat,
+    linear-gradient(145deg, #0d0f12, #12100c 55%, #0a0d11);
+}
+body.theme-garage .ambient-one { background: #ffd166; }
