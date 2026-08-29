@@ -36,6 +36,11 @@ function plural(n, one, few, many) {
 }
 
 let timers = [];
+/* Последний проигранный запуск. Успешное решение перерисовывает урок целиком,
+   и стенд создавался заново пустым — награда пропадала ровно в тот момент,
+   ради которого она и сделана. Помним результат и возвращаем его на место
+   после отрисовки, без повторной анимации: второй раз моргать нечему. */
+let last = null;
 
 function clearTimers() {
   timers.forEach(clearTimeout);
@@ -150,7 +155,11 @@ function hud(svg, text) {
  * Проигрывает результат запуска на машине.
  * Берёт обычный вывод программы — тот же, что показан в терминале.
  */
-export function standPlay(result, source = '') {
+export function standRestore() {
+  if (last) standPlay(last.result, last.source, true);
+}
+
+export function standPlay(result, source = '', quiet = false) {
   const wrap = document.querySelector('.stand-wrap');
   if (!wrap) return;
   const svg = wrap.querySelector('svg');
@@ -159,6 +168,7 @@ export function standPlay(result, source = '') {
   clearTimers();
   extra.hidden = true;
   extra.replaceChildren();
+  last = { result, source };
   svg.classList.remove('fault', 'ok', 'no', 'lights');
 
   if (result.error) {
@@ -180,7 +190,7 @@ export function standPlay(result, source = '') {
     : `поворотник моргнул ${lines.length} ${plural(lines.length, 'раз', 'раза', 'раз')}`;
 
   lines.forEach((line, index) => {
-    const start = index * 520;
+    const start = quiet ? 0 : index * 520;
     at(start, () => {
       hud(svg, line);
       svg.classList.add('blink');
@@ -199,7 +209,7 @@ export function standPlay(result, source = '') {
 
   // Прибор показываем после того, как строки отыграли: иначе он появляется
   // раньше причины и читается как что-то отдельное от кода.
-  at(lines.length * 520, () => {
+  at(quiet ? 0 : lines.length * 520, () => {
     const node = instrument(lines, result, source);
     if (!node) return;
     extra.replaceChildren(node);

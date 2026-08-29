@@ -673,7 +673,6 @@ code, .task-card code, .brief code {
    строчка его не донесёт. Проверено на первой версии переключателя режимов:
    пока он ничего не менял на вид, им никто не пользовался. */
 .theme-choice {
-  grid-column: 1 / -1;
   display: grid; gap: 3px; text-align: left;
   margin-top: 14px; padding: 16px 18px;
   background: linear-gradient(140deg, rgba(255, 180, 84, .10), rgba(255, 180, 84, .03));
@@ -1091,4 +1090,40 @@ svg.fault .pc-lamp-rear ellipse { fill: #ff6b6b; filter: drop-shadow(0 0 10px #f
   display: block; height: 100%; border-radius: 999px;
   background: linear-gradient(90deg, #6d5028, var(--accent));
   transition: width .4s cubic-bezier(.2, .9, .3, 1);
+}
+
+/* Колонки первого экрана начинаются сверху и не растягиваются друг под друга:
+   иначе более короткая тянется до высоты соседней пустотой. */
+@media (min-width: 900px) { .welcome { align-items: start; } }
+
+/* Элемент сетки по умолчанию не сжимается ниже своей «минимальной» ширины, и
+   на телефоне колонка первого экрана вышла 354 пикселя при доступных 299:
+   страница поехала вбок, а текст обрезался справа. min-width: 0 снимает этот
+   негласный минимум — это и есть штатное лечение, а не подпорка. */
+.welcome > *, .welcome-side > *, .welcome-text > * { min-width: 0; }
+.pc-wrap, .pc-row, .pc-hints { min-width: 0; }
+
+@media (max-width: 860px) {
+  /* 26 пикселей полей с каждой стороны на узком экране съедают седьмую часть
+     ширины — на телефоне это строка текста. */
+  .welcome { padding: 18px 14px; }
+}
+
+/* Страховка от бокового увода: даже если что-то однажды снова окажется шире
+   экрана, страница не поедет. Причину это не лечит, поэтому стоит после
+   настоящей починки, а не вместо неё. */
+html, body { overflow-x: hidden; max-width: 100%; }
+
+@media (max-width: 860px) {
+  /* На телефоне кнопка «Начать» оказывалась на 902-м пикселе — ниже экрана, и
+     первое, что делал человек, это листал мимо текста. Поднимаем её сразу под
+     сюжет: сначала зачем, потом как начать, и только потом подробности. */
+  .welcome-text { display: flex; flex-direction: column; }
+  .continue-label { order: 1; }
+  .welcome-text h2 { order: 2; }
+  .welcome-story { order: 3; }
+  .welcome-start { order: 4; margin-bottom: 16px; }
+  .welcome-outcome { order: 5; }
+  .welcome-about { order: 6; }
+  .theme-choice { order: 7; }
 }

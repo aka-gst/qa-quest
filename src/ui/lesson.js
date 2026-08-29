@@ -15,7 +15,7 @@ import {
 import { runPython, runner, onRunnerChange } from '../runner.js';
 import { decorateGlossary } from '../glossary.js';
 import { activeTheme } from '../content/themes.js';
-import { standPanel, standPlay } from './stand.js';
+import { standPanel, standPlay, standRestore } from './stand.js';
 import { track } from '../analytics.js';
 import { el, clear } from './dom.js';
 
@@ -603,6 +603,9 @@ export function renderLesson(root, lesson, context) {
   } else {
     view.detachRunner = null;
   }
+
+  // Возвращаем стенд в то состояние, в котором он был до перерисовки.
+  standRestore();
 }
 
 export function activeLesson() {

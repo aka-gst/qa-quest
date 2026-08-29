@@ -150,7 +150,7 @@ function welcome(upNext, onOpen) {
       el('span', { class: 'continue-label', text: theme.welcome.label }),
       el('h2', { text: theme.welcome.title }),
       el('p', { class: 'welcome-story', text: theme.welcome.story }),
-      el('p', { text: 'Это курс питона с нуля. Код запускается прямо на этой странице — настоящий Python, а не имитация. Ни на компьютер, ни на телефон ставить ничего не нужно.' }),
+      el('p', { class: 'welcome-about', text: 'Это курс питона с нуля. Код запускается прямо на этой странице — настоящий Python, а не имитация. Ни на компьютер, ни на телефон ставить ничего не нужно.' }),
       // Итог стоит прямо над кнопкой: человек должен видеть, ради чего нажимает,
       // а не узнавать это на шестнадцатом шаге.
       theme.welcome.outcome ? el('p', { class: 'welcome-outcome' }, [
@@ -161,6 +161,10 @@ function welcome(upNext, onOpen) {
         class: 'welcome-start',
         onclick: () => onOpen(upNext),
       }, 'Начать с первого урока →') : null,
+      // Карточка второй истории стоит здесь, а не отдельной полосой внизу:
+      // правая колонка с машиной выше левой, и под кнопкой оставалась
+      // пустая треть карточки.
+      themeChoice(),
     ]),
     // Пункты списка — обрывки, а не предложения, и точка в конце им не нужна.
     // Правило то же у GOV.UK («do not use a full stop at the end») и у
@@ -178,7 +182,6 @@ function welcome(upNext, onOpen) {
         el('li', { text: 'Первый запуск скачает около 13 МБ — на мобильном лучше дождаться Wi-Fi' }),
       ]),
     ]),
-    themeChoice(),
   ]);
 }
 
