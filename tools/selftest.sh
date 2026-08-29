@@ -47,10 +47,16 @@ expect_failure "расхождение версий ловится" env PYODIDE_
 # 3. Движок проверок обязан говорить «не сошлось» на неверном решении.
 expect_success "движок отличает верное решение от неверного" python3 "$HERE/tools/selftest_engine.py"
 
-# 4. Посторонний файл в корне не должен уезжать на публичный сервер.
+# 4 и 5. Список разрешённого обязан работать в обе стороны, и это две разные
+# способности. Не пустить новое на сайт — одна. Убрать с сайта то, что из
+# списка вычеркнули, — другая, и её у нас не было: rsync по умолчанию не
+# удаляет отсеянное фильтром, поэтому снятый с публикации og.png месяц лежал
+# бы на публичном сервере при зелёной выкладке. Обе проверяются одним прогоном.
 probe="$HERE/СЕКРЕТ-НЕ-ДЛЯ-САЙТА.txt"
 echo "этот файл не должен оказаться на сайте" > "$probe"
 rm -rf /tmp/qa-quest-selftest-site
+mkdir -p /tmp/qa-quest-selftest-site/qa-quest
+echo "выложен вчера, из списка вычеркнут" > /tmp/qa-quest-selftest-site/qa-quest/СНЯТО-С-ПУБЛИКАЦИИ.png
 SITE_DIR=/tmp/qa-quest-selftest-site sh "$HERE/tools/deploy.sh" >/dev/null 2>&1 || true
 rm -f "$probe"
 if [ -e "/tmp/qa-quest-selftest-site/qa-quest/СЕКРЕТ-НЕ-ДЛЯ-САЙТА.txt" ]; then
@@ -58,6 +64,21 @@ if [ -e "/tmp/qa-quest-selftest-site/qa-quest/СЕКРЕТ-НЕ-ДЛЯ-САЙТ�
   failed=$((failed + 1))
 else
   echo "ok      посторонний файл в выкладку не попадает"
+fi
+if [ -e "/tmp/qa-quest-selftest-site/qa-quest/СНЯТО-С-ПУБЛИКАЦИИ.png" ]; then
+  echo "ПРОВАЛ  снятый с публикации файл остался лежать на сайте"
+  failed=$((failed + 1))
+else
+  echo "ok      снятый с публикации файл исчезает с сайта"
+fi
+# vendor/ в список не входит, но обязан пережить выкладку: иначе 13 МБ Python
+# сносились и качались бы заново каждый раз, а на сайте между двумя шагами
+# висела бы страница без среды исполнения.
+if [ -e "/tmp/qa-quest-selftest-site/qa-quest/vendor/pyodide/pyodide.mjs" ]; then
+  echo "ok      vendor переживает выкладку"
+else
+  echo "ПРОВАЛ  vendor снесён выкладкой"
+  failed=$((failed + 1))
 fi
 rm -rf /tmp/qa-quest-selftest-site
 
