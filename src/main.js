@@ -1,11 +1,11 @@
 /*
- * Сборка приложения: шапка, маршруты, истории и вход.
+ * Сборка приложения: шапка, маршруты, режимы подачи и вход.
  */
 
 import { lessonById, loadPracticums } from './content/index.js';
 import { activeTheme, THEMES, setTheme } from './content/themes.js';
 import {
-  loadStore, subscribe, store, levelInfo, resetProgress, isLessonOpen,
+  loadStore, subscribe, store, setMode, levelInfo, resetProgress, isLessonOpen,
 } from './store.js';
 import { bootRunner, onRunnerChange } from './runner.js';
 import { auth, onAuthChange, probeAuth, login, register, recover, logout, progressHint } from './auth.js';
@@ -63,7 +63,7 @@ function route() {
     screens.map.hidden = true;
     screens.lesson.hidden = false;
     // Урок занимает ровно экран и прокручивается внутри своих панелей. Карта
-    // длинная и прокручивается страницей. Разные экраны — разный класс.
+    // длинная и прокручивается страницей. Разные режимы — разный класс.
     document.body.classList.add('lesson-open');
     // Практикуму Python не нужен: там работа идёт на своей машине.
     if (lesson.kind !== 'lab') runnerConfig.then(bootRunner);
@@ -96,6 +96,17 @@ function renderHeader() {
     ? `Серия: ${streak.current} дн. подряд, рекорд ${streak.best}`
     : 'Реши задачу сегодня, чтобы начать серию';
 
+  document.querySelectorAll('.mode-switch button').forEach((button) => {
+    button.classList.toggle('active', button.dataset.mode === store.state.mode);
+    button.setAttribute('aria-pressed', String(button.dataset.mode === store.state.mode));
+  });
+
+  // Переключатель без объяснения выглядит бесполезным: человек видит две
+  // кнопки и не понимает, что изменится. Говорим прямо, что он делает.
+  // Без названия режима: оно и так написано на нажатой кнопке прямо над строкой.
+  $('modeHint').textContent = store.state.mode === 'sprint'
+    ? 'в уроке суть и одна задача'
+    : 'в уроке объяснение, примеры и три задачи';
 }
 
 /* ---------- события прогресса ---------- */
@@ -282,6 +293,12 @@ function accountDialog(mode = 'login') {
 loadStore();
 subscribe(renderHeader);
 
+document.querySelectorAll('.mode-switch button').forEach((button) => {
+  button.addEventListener('click', () => {
+    setMode(button.dataset.mode);
+    route();
+  });
+});
 
 $('accountButton').addEventListener('click', () => accountDialog());
 $('closeDialog').addEventListener('click', () => $('accountDialog').close());
