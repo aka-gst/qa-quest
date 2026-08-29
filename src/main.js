@@ -5,7 +5,7 @@
 import { lessonById, loadPracticums } from './content/index.js';
 import { activeTheme, THEMES, setTheme } from './content/themes.js';
 import {
-  loadStore, subscribe, store, setMode, levelInfo, resetProgress, isLessonOpen,
+  loadStore, subscribe, store, setMode, pickMode, levelInfo, resetProgress, isLessonOpen,
 } from './store.js';
 import { bootRunner, onRunnerChange } from './runner.js';
 import { auth, onAuthChange, probeAuth, login, register, recover, logout, progressHint } from './auth.js';
@@ -72,12 +72,35 @@ function route() {
       onOpen: openLesson,
       onProgress: celebrate,
     });
+    // Отрисовка создаёт место под кадры пустым — возвращаем в него текущее
+    // состояние, иначе перерисовка посреди загрузки стирает картинку.
+    paintBoot(runnerStatus);
+    askMode();
   } else {
     screens.lesson.hidden = true;
     screens.map.hidden = false;
     document.body.classList.remove('lesson-open');
     renderMap(screens.map, { onOpen: openLesson });
   }
+}
+
+/*
+ * Вопрос про объём — один раз, при первом входе в урок. Переключатель наверху
+ * остаётся, но теперь он не единственное объяснение: две кнопки без подписи
+ * человек просто не трогал и проходил короткий курс, не зная об этом.
+ */
+function askMode() {
+  if (store.state.modePicked) return;
+  const dialog = $('modeDialog');
+  if (dialog.open) return;
+  dialog.querySelectorAll('.mode-pick').forEach((button) => {
+    button.onclick = () => {
+      pickMode(button.dataset.pick);
+      dialog.close();
+      route();
+    };
+  });
+  dialog.showModal();
 }
 
 /* ---------- шапка ---------- */
@@ -360,6 +383,13 @@ $('resetProgress').addEventListener('click', () => {
  */
 let bootTimer = null;
 let bootStep = 0;
+/* Последнее состояние движка держим у себя. Экран урока перерисовывается не
+   только при открытии: практикумы и проверка входа приходят с опозданием в
+   секунду и вызывают route() заново. Кадры при этом создавались пустыми и
+   больше не появлялись — картинка моргала и исчезала посреди загрузки, хотя
+   Python ещё качался. Теперь после каждой отрисовки состояние применяется
+   заново, а номер кадра переживает перерисовку. */
+let runnerStatus = 'idle';
 
 function paintBoot(status) {
   const frames = activeTheme().art?.boot || [];
@@ -372,23 +402,22 @@ function paintBoot(status) {
     bootTimer = null;
     return;
   }
-  if (holder.hidden) {
-    bootStep = 0;
-    image.alt = activeTheme().art.bootAlt || '';
-    image.src = frames[0];
-    holder.hidden = false;
-    clearInterval(bootTimer);
-    // Кадры сменяются по времени, а не по доле скачанного: доля приходит
-    // рывками и на быстрой сети проскочила бы всю последовательность разом.
-    bootTimer = setInterval(() => {
-      bootStep = Math.min(bootStep + 1, frames.length - 1);
-      image.src = frames[bootStep];
-    }, 1400);
-  }
+  image.alt = activeTheme().art.bootAlt || '';
+  image.src = frames[Math.min(bootStep, frames.length - 1)];
+  holder.hidden = false;
+  if (bootTimer) return;
+  // Кадры сменяются по времени, а не по доле скачанного: доля приходит
+  // рывками и на быстрой сети проскочила бы всю последовательность разом.
+  bootTimer = setInterval(() => {
+    bootStep = Math.min(bootStep + 1, frames.length - 1);
+    const live = document.querySelector('.boot-visual img');
+    if (live) live.src = frames[bootStep];
+  }, 1400);
 }
 
 onRunnerChange((state) => {
-  paintBoot(state.status);
+  runnerStatus = state.status;
+  paintBoot(runnerStatus);
   const chip = $('pythonChip');
   chip.dataset.status = state.status;
   chip.textContent = {

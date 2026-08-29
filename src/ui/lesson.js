@@ -56,7 +56,7 @@ function briefing() {
     if (lesson.tasks.length > 1) {
       body.append(el('p', {
         class: 'brief-more',
-        text: `В режиме «разобрать» здесь ещё ${lesson.tasks.length - 1} задачи и подробное объяснение.`,
+        text: `В режиме «Подробно» здесь ещё ${lesson.tasks.length - 1} задачи и подробное объяснение.`,
       }));
     }
   } else {
@@ -559,8 +559,17 @@ export function renderLesson(root, lesson, context) {
         ]),
         briefing(),
       ])),
-      // Задача живёт вне прокручиваемого разбора: в режиме «разобрать»
-      // теория длинная, и условие не должно уезжать за край экрана.
+      lab ? commandsPanel() : editorPanel(),
+    ]),
+
+    /*
+     * Правая колонка — рабочее место целиком: что сделать, что вышло, что
+     * сошлось. Задача раньше стояла в средней колонке между разбором и
+     * редактором и отъедала у текста две трети высоты, а сама при этом
+     * повторяла соседа по смыслу: условие и его проверки жили в разных
+     * столбцах. Теперь они рядом, а середина осталась тексту.
+     */
+    el('div', { class: 'lesson-side' }, [
       el('div', { class: 'task-block panel' }, [
         taskTabs(rerender),
         el('div', { class: 'task-card' }, [
@@ -568,10 +577,8 @@ export function renderLesson(root, lesson, context) {
           el('div', { html: currentTask().brief }),
         ]),
       ]),
-      lab ? commandsPanel() : editorPanel(),
+      lab ? checklistPanel(rerender) : consolePanel(),
     ]),
-
-    lab ? checklistPanel(rerender) : consolePanel(),
   );
 
   // Разбор прокручивается, но на macOS полоса прокрутки скрыта, и текст

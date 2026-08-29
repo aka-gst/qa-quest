@@ -150,6 +150,12 @@ function welcome(upNext, onOpen) {
       el('h2', { text: theme.welcome.title }),
       el('p', { class: 'welcome-story', text: theme.welcome.story }),
       el('p', { text: 'Это курс питона с нуля. Код запускается прямо на этой странице — настоящий Python, а не имитация. Ни на компьютер, ни на телефон ставить ничего не нужно.' }),
+      // Итог стоит прямо над кнопкой: человек должен видеть, ради чего нажимает,
+      // а не узнавать это на шестнадцатом шаге.
+      theme.welcome.outcome ? el('p', { class: 'welcome-outcome' }, [
+        el('b', { text: 'К утру ' }),
+        theme.welcome.outcome,
+      ]) : null,
       upNext ? el('button', {
         class: 'welcome-start',
         onclick: () => onOpen(upNext),
@@ -159,6 +165,8 @@ function welcome(upNext, onOpen) {
     // Правило то же у GOV.UK («do not use a full stop at the end») и у
     // Microsoft («unless they're complete sentences»). Раньше здесь стояло по
     // два предложения на пункт — от этого список и выглядел тяжёлым.
+    theme.welcome.selling ? el('ul', { class: 'welcome-selling' },
+      theme.welcome.selling.map((line) => el('li', { text: line }))) : null,
     el('ul', { class: 'welcome-facts' }, [
       el('li', { text: 'Первый урок — три минуты, знать заранее ничего не надо' }),
       el('li', { text: 'Прогресс сохранится сам, вход нужен только для переноса на другой телефон' }),
@@ -190,7 +198,7 @@ export function renderMap(root, { onOpen }) {
     root.append(el('div', { class: 'continue-card done' }, [
       el('span', { class: 'continue-label', text: 'Курс пройден' }),
       el('strong', { text: 'Все открытые уроки закрыты' }),
-      el('small', { text: 'Переключись в режим «разобрать», чтобы добить оставшиеся задачи уроков.' }),
+      el('small', { text: 'Переключись в режим «Подробно», чтобы добить оставшиеся задачи уроков.' }),
     ]));
   }
 
