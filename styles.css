@@ -14,6 +14,14 @@
   --yellow: #ffd166;
   --red: #ff6b6b;
   --violet: #a78bfa;
+  /* Акцент — единственный цвет, который меняется вместе с историей. Сеть
+     светится холодным, бокс — тёплым, и это должно быть видно с первого
+     взгляда, а не только по названию в шапке. Остальная палитра общая:
+     мятный всегда значит «сошлось», красный всегда «не сошлось». */
+  --accent: #67e8f9;
+  --accent-line: var(--accent-line);
+  --accent-soft: var(--accent-soft);
+  --accent-glow: var(--accent-glow);
   --shadow: 0 18px 60px rgba(0, 0, 0, .35);
   --radius: 16px;
 }
@@ -42,7 +50,7 @@ body {
 }
 
 .ambient { position: fixed; border-radius: 50%; filter: blur(100px); opacity: .12; pointer-events: none; }
-.ambient-one { width: 380px; height: 380px; background: var(--cyan); right: -80px; top: 15%; }
+.ambient-one { width: 380px; height: 380px; background: var(--accent); right: -80px; top: 15%; }
 .ambient-two { width: 300px; height: 300px; background: var(--violet); left: 12%; bottom: -100px; }
 
 .app-shell {
@@ -91,8 +99,8 @@ button:disabled { cursor: not-allowed; }
 .brand { display: flex; align-items: center; gap: 13px; color: inherit; text-decoration: none; }
 .brand-mark {
   display: grid; place-items: center; width: 42px; height: 42px;
-  border: 1px solid var(--cyan); border-radius: 12px; background: #0b1d28;
-  font: 800 20px "Roboto Mono", monospace; color: var(--cyan); box-shadow: 0 0 30px #67e8f924;
+  border: 1px solid var(--accent); border-radius: 12px; background: #0b1d28;
+  font: 800 20px "Roboto Mono", monospace; color: var(--accent); box-shadow: 0 0 30px #67e8f924;
 }
 .brand-mark span { color: var(--mint); }
 .brand strong, .brand small { display: block; }
@@ -108,7 +116,7 @@ button:disabled { cursor: not-allowed; }
   padding: 8px 16px; border-radius: 8px; font: 600 13px Manrope; transition: .18s;
 }
 .mode-switch button:hover { color: var(--text); }
-.mode-switch button.active { background: #16303d; color: var(--cyan); box-shadow: inset 0 0 0 1px #2c5768; }
+.mode-switch button.active { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent-line); }
 
 .profile-strip { display: flex; align-items: center; gap: 16px; }
 
@@ -124,15 +132,15 @@ button:disabled { cursor: not-allowed; }
 .level-chip strong { color: var(--yellow); font: 700 20px "Roboto Mono", monospace; }
 .xp-block { width: 190px; }
 .xp-block > div:first-child { display: flex; justify-content: space-between; }
-.xp-block b { font: 500 11px "Roboto Mono", monospace; color: var(--cyan); }
+.xp-block b { font: 500 11px "Roboto Mono", monospace; color: var(--accent); }
 .xp-track { height: 5px; background: #1a2a36; border-radius: 10px; margin-top: 7px; overflow: hidden; }
-.xp-track i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--cyan), var(--mint)); transition: width .5s; }
+.xp-track i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--mint)); transition: width .5s; }
 
 .account-button {
   border: 1px solid var(--line); background: transparent; color: var(--text);
   border-radius: 10px; padding: 9px 15px; font: 600 13px Manrope; transition: .18s;
 }
-.account-button:hover { border-color: var(--cyan); color: var(--cyan); }
+.account-button:hover { border-color: var(--accent); color: var(--accent); }
 .account-button.signed { border-color: #2d9269; color: var(--mint); }
 
 .status-strip {
@@ -143,7 +151,7 @@ button:disabled { cursor: not-allowed; }
   color: var(--muted); text-decoration: none; white-space: nowrap;
   border: 1px solid transparent; border-radius: 7px; padding: 3px 8px; transition: .18s;
 }
-.site-back:hover, .site-back:focus-visible { color: var(--cyan); border-color: var(--line); }
+.site-back:hover, .site-back:focus-visible { color: var(--accent); border-color: var(--line); }
 
 .python-chip { display: inline-flex; align-items: center; gap: 7px; }
 .python-chip::before {
@@ -164,19 +172,19 @@ button:disabled { cursor: not-allowed; }
 .continue-card {
   display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
   text-align: left; width: 100%;
-  border: 1px solid #2c5768; border-radius: var(--radius); padding: 13px 18px;
+  border: 1px solid var(--accent-line); border-radius: var(--radius); padding: 13px 18px;
   background: linear-gradient(120deg, #102b38, #0b1a24 70%);
   color: var(--text); position: relative; transition: .2s;
 }
-.continue-card:hover { border-color: var(--cyan); transform: translateY(-1px); }
+.continue-card:hover { border-color: var(--accent); transform: translateY(-1px); }
 .continue-card.done { cursor: default; }
-.continue-label { font: 600 10px "Roboto Mono", monospace; letter-spacing: .14em; color: var(--cyan); }
+.continue-label { font: 600 10px "Roboto Mono", monospace; letter-spacing: .14em; color: var(--accent); }
 .continue-card strong { font-size: 18px; }
 .continue-card small { color: var(--muted); font-size: 13px; flex: 1; }
 .continue-go { color: var(--mint); font: 600 17px Manrope; margin-left: auto; }
 
 .welcome {
-  border: 1px solid #2c5768; border-radius: var(--radius); padding: 22px 26px;
+  border: 1px solid var(--accent-line); border-radius: var(--radius); padding: 22px 26px;
   background: linear-gradient(120deg, #102b38, #0b1a24 70%);
   display: grid; gap: 20px 40px; align-items: center;
 }
@@ -192,7 +200,7 @@ button:disabled { cursor: not-allowed; }
 }
 .welcome-facts li { position: relative; padding: 5px 0; }
 .welcome-facts li::before {
-  content: "→"; position: absolute; left: -20px; color: var(--cyan); font-size: 12px;
+  content: "→"; position: absolute; left: -20px; color: var(--accent); font-size: 12px;
 }
 .welcome-start {
   border: 0; background: var(--mint); color: #052116;
@@ -200,7 +208,7 @@ button:disabled { cursor: not-allowed; }
 }
 .welcome-start:hover { filter: brightness(1.06); }
 
-.mode-hint { color: var(--cyan); white-space: nowrap; }
+.mode-hint { color: var(--accent); white-space: nowrap; }
 
 .stuck-button { display: block; width: calc(100% - 32px); margin: 0 16px 14px; text-align: center; text-decoration: none; }
 .stuck-button:disabled { color: var(--mint); }
@@ -214,7 +222,7 @@ button:disabled { cursor: not-allowed; }
 .tier-mark {
   width: 34px; height: 34px; display: grid; place-items: center; flex: 0 0 34px;
   border-radius: 10px; border: 1px solid var(--line); background: #0b1620;
-  font: 700 15px "Roboto Mono", monospace; color: var(--cyan);
+  font: 700 15px "Roboto Mono", monospace; color: var(--accent);
 }
 .accent-mint .tier-mark { color: var(--mint); }
 .accent-violet .tier-mark { color: var(--violet); }
@@ -223,8 +231,8 @@ button:disabled { cursor: not-allowed; }
 .tier-title p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
 .tier-count { font: 600 13px "Roboto Mono", monospace; color: var(--muted); }
 .tier-bar { height: 4px; border-radius: 6px; background: #16242f; margin: 14px 0 12px; overflow: hidden; }
-.tier-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--cyan), var(--mint)); transition: width .5s; }
-.accent-violet .tier-bar i { background: linear-gradient(90deg, var(--violet), var(--cyan)); }
+.tier-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--mint)); transition: width .5s; }
+.accent-violet .tier-bar i { background: linear-gradient(90deg, var(--violet), var(--accent)); }
 .tier-about { margin: 0 0 14px; color: var(--muted); font-size: 13px; line-height: 1.55; max-width: 74ch; }
 
 .tier-gate {
@@ -243,7 +251,7 @@ button:disabled { cursor: not-allowed; }
   width: 30px; height: 30px; display: grid; place-items: center; position: relative;
   border: 1px solid #335064; border-radius: 9px; font: 600 11px "Roboto Mono", monospace; color: var(--muted);
 }
-.node-badge svg { width: 18px; height: 18px; display: block; color: var(--cyan); }
+.node-badge svg { width: 18px; height: 18px; display: block; color: var(--accent); }
 /* Состояние читается цветом и рамкой, а не подменой знака: пунктир — ещё
    закрыт, мятный — пройден, жёлтый — пройден целиком. */
 .node.locked .node-badge { border-style: dashed; }
@@ -261,8 +269,8 @@ button:disabled { cursor: not-allowed; }
   font-size: 10px; letter-spacing: .06em; margin-bottom: 2px;
 }
 .welcome-story {
-  color: #c3bce0 !important; font-style: italic;
-  border-left: 3px solid var(--violet); padding-left: 13px; margin-bottom: 14px !important;
+  color: #c7d0d6 !important; font-style: italic;
+  border-left: 3px solid var(--accent); padding-left: 13px; margin-bottom: 14px !important;
 }
 
 .node-progress { font: 500 11px "Roboto Mono", monospace; color: var(--muted); }
@@ -270,7 +278,7 @@ button:disabled { cursor: not-allowed; }
 .node.done .node-badge svg { color: var(--mint); }
 .node.mastered .node-badge { border-color: var(--yellow); }
 .node.mastered .node-badge svg { color: var(--yellow); }
-.node.next { border-color: var(--cyan); box-shadow: 0 0 0 1px #67e8f925; }
+.node.next { border-color: var(--accent); box-shadow: 0 0 0 1px #67e8f925; }
 .node.locked { opacity: .4; }
 
 .next-courses { border-top: 1px solid var(--line); padding-top: 22px; margin-top: 6px; }
@@ -289,7 +297,7 @@ button:disabled { cursor: not-allowed; }
 .next-course.accent-violet .next-course-go { color: var(--violet); }
 
 .map-footnote { color: var(--muted); font-size: 12px; text-align: center; margin: 2px 0 0; }
-.map-footnote b { color: var(--cyan); }
+.map-footnote b { color: var(--accent); }
 
 /* ---------- рабочая область урока ---------- */
 
@@ -307,7 +315,7 @@ button:disabled { cursor: not-allowed; }
   border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--muted);
   padding: 14px 16px; text-align: left; font: 600 12px Manrope;
 }
-.back-button:hover { color: var(--cyan); }
+.back-button:hover { color: var(--accent); }
 .aside-list { overflow-y: auto; padding: 8px 7px; flex: 1; }
 .aside-item {
   width: 100%; display: grid; grid-template-columns: 26px 1fr; gap: 9px; align-items: center; text-align: left;
@@ -338,7 +346,7 @@ button:disabled { cursor: not-allowed; }
   position: absolute; left: 0; right: 0; bottom: 0; height: 46px;
   border: 0; cursor: pointer; padding: 0 0 6px;
   background: linear-gradient(to bottom, rgba(13, 22, 30, 0), rgba(13, 22, 30, .97) 60%);
-  color: var(--cyan); font-size: 17px; line-height: 1;
+  color: var(--accent); font-size: 17px; line-height: 1;
   /* Гасится прозрачностью, а не display: иначе на последних пикселях
      прокрутки блок дёргался бы от перестройки вёрстки. */
   opacity: 0; pointer-events: none; transition: opacity .2s;
@@ -346,7 +354,7 @@ button:disabled { cursor: not-allowed; }
 .brief-wrap.has-more .scroll-hint { opacity: 1; pointer-events: auto; }
 .scroll-hint:hover { color: var(--mint); }
 .brief-head { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; }
-.eyebrow { font: 600 10px "Roboto Mono", monospace; color: var(--cyan); letter-spacing: .14em; }
+.eyebrow { font: 600 10px "Roboto Mono", monospace; color: var(--accent); letter-spacing: .14em; }
 .brief-head h1 { font-size: 24px; margin: 7px 0 3px; line-height: 1.15; }
 .brief-subtitle { margin: 0; color: var(--muted); font-size: 13px; }
 .reward {
@@ -395,16 +403,16 @@ button:disabled { cursor: not-allowed; }
   border: 1px solid var(--line); background: #0b1620; color: var(--muted);
   border-radius: 9px; padding: 7px 12px; font: 600 12px Manrope;
 }
-.task-tab.active { border-color: var(--cyan); color: var(--cyan); background: #10222d; }
+.task-tab.active { border-color: var(--accent); color: var(--accent); background: #10222d; }
 .task-tab.done i { color: var(--mint); font-style: normal; }
 
-.task-card { border-left: 3px solid var(--cyan); background: #0a1922; padding: 11px 14px; border-radius: 0 9px 9px 0; }
-.task-card span { font: 600 10px "Roboto Mono", monospace; color: var(--cyan); letter-spacing: .12em; }
+.task-card { border-left: 3px solid var(--accent); background: #0a1922; padding: 11px 14px; border-radius: 0 9px 9px 0; }
+.task-card span { font: 600 10px "Roboto Mono", monospace; color: var(--accent); letter-spacing: .12em; }
 .task-card p { font-size: 14px; line-height: 1.5; margin: 5px 0 0; }
 .task-card div > p:first-child { margin-top: 5px; }
 
 code, .task-card code, .brief code {
-  font-family: "Roboto Mono", monospace; color: var(--cyan);
+  font-family: "Roboto Mono", monospace; color: var(--accent);
   background: #08131b; padding: 2px 5px; border-radius: 4px; font-size: .92em;
 }
 
@@ -544,10 +552,10 @@ code, .task-card code, .brief code {
 
 /* ---------- словарь, диалог, тост ---------- */
 
-.term-tip { position: relative; color: var(--cyan); border-bottom: 1px dotted currentColor; cursor: help; outline: none; }
+.term-tip { position: relative; color: var(--accent); border-bottom: 1px dotted currentColor; cursor: help; outline: none; }
 .term-tip::after {
   content: attr(data-tip); position: absolute; z-index: 30; left: 50%; bottom: calc(100% + 8px);
-  width: 250px; padding: 9px 11px; border: 1px solid var(--cyan); border-radius: 8px;
+  width: 250px; padding: 9px 11px; border: 1px solid var(--accent); border-radius: 8px;
   background: #101a29; color: #e8f2ff; box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
   font: 12px/1.4 Manrope; opacity: 0; visibility: hidden; transform: translate(-50%, 4px);
   transition: .15s ease; pointer-events: none;
@@ -555,7 +563,7 @@ code, .task-card code, .brief code {
 .term-tip:hover::after, .term-tip:focus::after { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
 
 .finale-dialog {
-  border: 1px solid #2c5768; border-radius: 16px; background: var(--panel); color: var(--text);
+  border: 1px solid var(--accent-line); border-radius: 16px; background: var(--panel); color: var(--text);
   padding: 0; width: min(620px, 94vw); overflow: hidden; box-shadow: var(--shadow);
 }
 .finale-dialog::backdrop { background: rgba(4, 9, 13, .8); }
@@ -580,7 +588,7 @@ code, .task-card code, .brief code {
   border: 1px solid var(--line); background: #0a151e; color: var(--text);
   border-radius: 9px; padding: 11px 12px; font: 400 14px Manrope; outline: none;
 }
-.dialog-body input:focus { border-color: var(--cyan); }
+.dialog-body input:focus { border-color: var(--accent); }
 .dialog-actions { display: flex; gap: 8px; }
 .dialog-actions button { flex: 1; }
 .dialog-error { color: var(--yellow) !important; min-height: 1em; font-size: 12px; }
@@ -654,16 +662,25 @@ code, .task-card code, .brief code {
    пока он ничего не менял на вид, им никто не пользовался. */
 .theme-choice {
   grid-column: 1 / -1;
-  display: grid; gap: 2px; text-align: left;
-  margin-top: 14px; padding: 14px 16px;
-  background: rgba(103, 232, 249, .05);
-  border: 1px dashed #27414f; border-radius: 14px;
+  display: grid; gap: 3px; text-align: left;
+  margin-top: 14px; padding: 16px 18px;
+  background: linear-gradient(140deg, rgba(255, 180, 84, .10), rgba(255, 180, 84, .03));
+  border: 1px solid #6d5028; border-radius: 14px;
   color: var(--text); font: inherit; cursor: pointer;
-  transition: border-color .15s, background .15s;
+  transition: border-color .15s, background .15s, transform .15s;
 }
-.theme-choice:hover, .theme-choice:focus-visible { border-color: var(--cyan); background: rgba(103, 232, 249, .09); }
+/* Карточка второй истории красится в её цвет, а не в цвет текущей: человек
+   должен видеть, куда попадёт, ещё не нажав. */
+.theme-choice-ice {
+  background: linear-gradient(140deg, rgba(103, 232, 249, .10), rgba(103, 232, 249, .03));
+  border-color: #2c5768;
+}
+.theme-choice:hover, .theme-choice:focus-visible { transform: translateY(-1px); }
+.theme-choice-go { margin-top: 6px; font-size: 13px; font-weight: 600; color: #ffb454; }
+.theme-choice-ice .theme-choice-go { color: #67e8f9; }
+.theme-choice-ice .theme-choice-name { color: #67e8f9; }
 .theme-choice-label { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
-.theme-choice-name { font-size: 17px; font-weight: 700; color: var(--cyan); }
+.theme-choice-name { font-size: 17px; font-weight: 700; color: #ffb454; }
 .theme-choice-hook { font-size: 14px; color: #c5d2d8; }
 
 /* Реальный случай из новостей. Отделён от теории намеренно: это единственное
@@ -684,6 +701,10 @@ code, .task-card code, .brief code {
    останется общий градиент — награда и фон не должны ломаться из-за того,
    что картинку не успели нарисовать. */
 body.theme-garage {
+  --accent: #ffb454;
+  --accent-line: #6d5028;
+  --accent-soft: #33260f;
+  --accent-glow: rgba(255, 180, 84, .10);
   background:
     url("bg-grid.svg") repeat,
     radial-gradient(circle at 70% 0%, #2a2113 0, transparent 32%),
@@ -755,3 +776,31 @@ body.theme-garage .ambient-one { background: #ffd166; }
    брак вёрстки. Приглушение должно читаться как «пока закрыто», а не как «не
    загрузилось». */
 .next-course.locked .next-course-cover { opacity: .62; filter: grayscale(.25); }
+
+/* Переключатель истории. Выглядит как переключатель режима намеренно: человек
+   уже знает эту форму, и она читается как выбор, а не как настройка. Активная
+   сторона подсвечена акцентом истории — то есть при переключении меняется и
+   цвет самой кнопки, и цвет всего сайта. */
+.story-switch {
+  display: flex; gap: 3px; padding: 3px;
+  border: 1px solid var(--accent-line); border-radius: 11px; background: #0b161f;
+}
+.story-switch button {
+  border: 0; background: transparent; color: var(--muted);
+  padding: 8px 14px; border-radius: 8px; font: 600 13px Manrope; transition: .18s;
+  white-space: nowrap; cursor: pointer;
+}
+.story-switch button:hover { color: var(--text); }
+.story-switch button.active {
+  background: var(--accent-soft); color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+}
+@media (max-width: 860px) {
+  .story-switch { order: 2; width: 100%; }
+  .story-switch button { flex: 1; }
+}
+
+/* На экране урока переключатель истории не нужен: истории меняют на карте, а
+   не посреди задачи. Экран урока и так был самым тесным местом — там мы уже
+   один раз потеряли под нижним краем поле для кода. */
+body.lesson-open .story-switch { display: none; }

@@ -35,8 +35,10 @@
     <header class="topbar">
       <a class="brand" href="#/" aria-label="QA Quest — к карте курса">
         <span class="brand-mark">Q<span>_</span></span>
-        <span><strong>QA QUEST</strong><small>ПИТОН · ТЕСТЫ · LLM</small></span>
+        <span><strong>QA QUEST</strong><small id="brandStory">ПИТОН · ТЕСТЫ · LLM</small></span>
       </a>
+
+      <div class="story-switch" id="storySwitch" role="group" aria-label="История"></div>
 
       <div class="mode-switch" role="group" aria-label="Режим подачи">
         <button type="button" data-mode="sprint" aria-pressed="true">Пробежать</button>
@@ -62,7 +64,6 @@
       <span id="pythonChip" class="python-chip" data-status="idle">Python: не загружен</span>
       <span id="modeHint" class="mode-hint"></span>
       <span id="progressHint" class="progress-hint">Прогресс сохраняется в этом браузере</span>
-      <button type="button" id="themeSwitch" class="text-button"></button>
       <button type="button" id="resetProgress" class="text-button">Сбросить прогресс</button>
     </div>
 

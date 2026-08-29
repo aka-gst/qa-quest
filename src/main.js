@@ -320,19 +320,27 @@ document.body.classList.add(`theme-${activeTheme().id}`);
   }
 }
 
-// Переключатель истории живёт в шапке, а не только на первом экране: человек
-// решает сменить мир обычно после первого урока, а не до него.
+/*
+ * Переключатель истории стоит рядом с переключателем режима и выглядит так же.
+ * Раньше это была строчка в служебном ряду, и она читалась как настройка —
+ * человек не понимал, что за ней стоит другой мир целиком. Выбор мира по весу
+ * не меньше выбора режима, значит и на вид должен быть таким же.
+ */
 {
   const current = activeTheme();
-  const other = THEMES.find((theme) => theme.id !== current.id);
-  const button = $('themeSwitch');
-  if (other) {
-    button.textContent = `История: ${current.name}`;
-    button.title = `Переключиться на «${other.name}» — прогресс этой истории сохранится`;
-    button.addEventListener('click', () => setTheme(other.id));
-  } else {
-    button.hidden = true;
-  }
+  const group = $('storySwitch');
+  THEMES.forEach((theme) => {
+    const active = theme.id === current.id;
+    const button = el('button', {
+      type: 'button',
+      class: active ? 'active' : '',
+      'aria-pressed': String(active),
+      title: active ? 'Сейчас ты здесь' : `${theme.hook}. Прогресс этой истории сохранится`,
+      onclick: () => { if (!active) setTheme(theme.id); },
+    }, theme.name);
+    group.append(button);
+  });
+  $('brandStory').textContent = current.brandLine;
 }
 
 $('resetProgress').addEventListener('click', () => {

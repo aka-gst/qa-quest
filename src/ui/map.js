@@ -132,12 +132,13 @@ function themeChoice() {
   const other = THEMES.find((theme) => theme.id !== current.id);
   if (!other) return null;
   return el('button', {
-    class: 'theme-choice',
+    class: `theme-choice theme-choice-${other.id}`,
     onclick: () => setTheme(other.id),
   }, [
     el('span', { class: 'theme-choice-label', text: other.invite }),
     el('span', { class: 'theme-choice-name', text: other.name }),
     el('span', { class: 'theme-choice-hook', text: other.hook }),
+    el('span', { class: 'theme-choice-go', text: 'перейти в эту историю →' }),
   ]);
 }
 
