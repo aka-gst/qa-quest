@@ -224,6 +224,12 @@ function nextCourses(onOpen) {
         if (first) onOpen(first);
       },
     }, [
+      // Обложка грузится лениво: она ниже первого экрана, и ради неё не стоит
+      // задерживать то, что человек видит сразу.
+      tier.cover ? el('img', {
+        class: 'next-course-cover', src: tier.cover, alt: tier.coverAlt || '',
+        loading: 'lazy', decoding: 'async', width: 1200, height: 600,
+      }) : null,
       el('strong', { text: tier.title }),
       el('small', { text: tier.about }),
       el('span', { class: 'next-course-go', text: open ? `${state.complete} / ${state.total} · открыть →` : 'открыть ступень →' }),

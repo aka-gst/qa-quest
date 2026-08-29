@@ -743,3 +743,15 @@ body.theme-garage .ambient-one { background: #ffd166; }
   .rig-actions { flex-direction: column; align-items: stretch; }
   .rig-actions .ghost-button { width: 100%; }
 }
+
+/* Обложка ступени. Кадр широкий и низкий, поэтому обрезается по высоте, а не
+   ужимается: сплющенная картинка читается как ошибка вёрстки. */
+.next-course-cover {
+  display: block; width: 100%; height: 96px; object-fit: cover;
+  border-radius: 10px; margin-bottom: 10px; opacity: .85;
+}
+/* У закрытой ступени обложка приглушена, но не обесцвечена: при .4 и половине
+   серого она превращалась в мутное пятно, и было непонятно, картинка это или
+   брак вёрстки. Приглушение должно читаться как «пока закрыто», а не как «не
+   загрузилось». */
+.next-course.locked .next-course-cover { opacity: .62; filter: grayscale(.25); }
