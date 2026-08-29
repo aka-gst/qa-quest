@@ -58,7 +58,8 @@ mkdir -p "$SITE"
 # а не публикуется лишнее.
 rsync --archive --delete \
   --include 'index.html' --include 'styles.css' --include 'favicon.svg' \
-  --include 'og.png' --include 'apple-touch-icon.png' --include 'bg-grid.svg' \
+  --include 'og.jpg' --include 'apple-touch-icon.png' --include 'bg-grid.svg' \
+  --include 'bg-night.jpg' \
   --include 'finale.jpg' \
   --include 'src/' --include 'src/**' \
   --exclude '*' \
