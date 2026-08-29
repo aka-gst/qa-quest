@@ -73,6 +73,8 @@ rsync --archive --delete --delete-excluded \
   --include 'garage-finale.jpg' --include 'garage-bg.jpg' \
   --include 'garage-boot-1.jpg' --include 'garage-boot-2.jpg' \
   --include 'garage-boot-3.jpg' --include 'garage-boot-4.jpg' \
+  --include 'ice-boot-1.jpg' --include 'ice-boot-2.jpg' \
+  --include 'ice-boot-3.jpg' --include 'ice-boot-4.jpg' \
   --include 'src/' --include 'src/**' \
   --exclude '*' \
   "$HERE/" "$SITE/"

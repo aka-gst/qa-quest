@@ -25,7 +25,8 @@ export const THEMES = [
     art: {
       finale: 'finale.jpg',
       finaleAlt: 'Пролом в ледяной стене, за ним город из каркасов и света',
-      boot: [],
+      bootAlt: 'Связь с сетью устанавливается',
+      boot: ['ice-boot-1.jpg', 'ice-boot-2.jpg', 'ice-boot-3.jpg', 'ice-boot-4.jpg'],
     },
     lessons: pythonLessons,
     tier: {
