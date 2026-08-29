@@ -75,7 +75,14 @@ body {
 .app-shell > main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 
 .panel {
-  background: linear-gradient(150deg, rgba(16, 27, 37, .96), rgba(9, 18, 26, .96));
+  /* Фактура мира под панелью: у бокса крашеный металл в работе, у сети —
+     матовый лёд изнутри. Лежит под градиентом, а не поверх содержимого:
+     наложение сверху пришлось бы держать в отдельном слое, и оно вуалью
+     ложилось бы на текст. Прозрачность градиента подобрана так, чтобы фактуру
+     было видно на просвет и не видно под буквами. */
+  background:
+    linear-gradient(150deg, rgba(16, 27, 37, .93), rgba(9, 18, 26, .93)),
+    url("ice-panel.jpg") center / 380px repeat;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -864,4 +871,20 @@ body:not(.lesson-open) .mode-switch { display: none; }
 .lesson-side .task-block { flex: 0 0 auto; }
 @media (max-width: 1240px) {
   .lesson-side { grid-column: 1 / -1; }
+}
+
+/* Фактура принадлежит истории. Файл подменяется, слой остаётся тем же. */
+body.theme-garage .panel {
+  background:
+    linear-gradient(150deg, rgba(26, 22, 16, .93), rgba(18, 14, 9, .93)),
+    url("garage-panel.jpg") center / 380px repeat;
+}
+
+/* Полоса возвращения над карточкой «Продолжить». Тот, кто зашёл во второй раз,
+   вступительного экрана не видит, и до сих пор его встречал голый
+   прямоугольник с текстом — возвращение в историю выглядело как возвращение в
+   таблицу. */
+.continue-strip {
+  display: block; width: 100%; height: 84px; object-fit: cover;
+  border-radius: 14px 14px 0 0; margin-bottom: -10px;
 }

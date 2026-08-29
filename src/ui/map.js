@@ -185,6 +185,12 @@ export function renderMap(root, { onOpen }) {
     root.append(welcome(upNext, onOpen));
   } else if (upNext) {
     const progress = lessonState(upNext);
+    if (activeTheme().art?.strip) {
+      root.append(el('img', {
+        class: 'continue-strip', src: activeTheme().art.strip, alt: '',
+        loading: 'lazy', decoding: 'async', width: 1200, height: 300,
+      }));
+    }
     root.append(el('button', {
       class: 'continue-card',
       onclick: () => onOpen(upNext),

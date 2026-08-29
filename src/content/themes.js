@@ -30,6 +30,7 @@ export const THEMES = [
     finaleText: 'Ты поставил свой замок, показал, что заводской пускает кого угодно, и доказал, что твой не пускает. Это и есть работа по безопасности — с той разницей, что за неё платят.',
     art: {
       finale: 'garage-finale.jpg',
+      strip: 'garage-strip.jpg',
       finaleAlt: 'Гружёный тягач вышел из грязи на рассвете',
       bootAlt: 'Приборная панель просыпается',
       boot: ['garage-boot-1.jpg', 'garage-boot-2.jpg', 'garage-boot-3.jpg', 'garage-boot-4.jpg'],
@@ -64,6 +65,7 @@ export const THEMES = [
     finaleText: 'Ты написал защиту, нашёл в чужой дыру и доказал, что у себя её нет. Это и есть работа тестировщика — с той разницей, что за неё платят.',
     art: {
       finale: 'finale.jpg',
+      strip: 'ice-strip.jpg',
       finaleAlt: 'Пролом в ледяной стене, за ним город из каркасов и света',
       bootAlt: 'Связь с сетью устанавливается',
       boot: ['ice-boot-1.jpg', 'ice-boot-2.jpg', 'ice-boot-3.jpg', 'ice-boot-4.jpg'],
