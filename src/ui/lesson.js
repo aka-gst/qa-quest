@@ -399,7 +399,7 @@ function checklistPanel(rerender) {
 
 /** Показывает результат прогона: терминал, проверки и переход к следующему шагу. */
 function showResult(result) {
-  standPlay(result);
+  standPlay(result, view.nodes.editor ? view.nodes.editor.value : '');
   renderChecks(result.checks);
   if (result.error) {
     const parts = [result.error.text];

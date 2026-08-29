@@ -1055,3 +1055,40 @@ svg.no .pc-glass { fill: #3a1f1f; }
 svg.fault .pc-hud rect { stroke: #ff6b6b; fill: rgba(255, 107, 107, .09); }
 svg.fault .pc-hud text { fill: #ff6b6b; }
 svg.fault .pc-lamp-rear ellipse { fill: #ff6b6b; filter: drop-shadow(0 0 10px #ff6b6b); }
+
+/* Приборы под машиной. Показывается один: два сразу превращают стенд в
+   приборную свалку, а смысл в том, чтобы связать одну строчку кода с одним
+   понятным движением железа. */
+.stand-extra { margin-top: 2px; }
+.st-cap {
+  display: block; margin-bottom: 5px;
+  font: 600 9.5px "Roboto Mono", monospace; letter-spacing: .12em; color: var(--muted);
+}
+
+.st-lamp-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.st-lamp-row i {
+  width: 13px; height: 13px; border-radius: 50%;
+  background: #1a2530; border: 1px solid var(--line);
+}
+.st-lamp-row i.on {
+  background: var(--accent); border-color: var(--accent);
+  box-shadow: 0 0 10px -1px var(--accent);
+}
+
+.st-row {
+  display: flex; justify-content: space-between; gap: 10px;
+  padding: 3px 0; border-bottom: 1px dashed var(--line-soft);
+  font: 12px "Roboto Mono", monospace;
+}
+.st-row:last-child { border-bottom: 0; }
+.st-row b { color: var(--muted); font-weight: 500; }
+.st-row u { color: var(--accent); text-decoration: none; }
+
+/* Трос натягивается на каждом шаге цикла: сколько рывков — столько прошёл
+   while. Ширина, а не число, потому что натяжение видно, а число надо читать. */
+.st-rope { height: 8px; border-radius: 999px; background: #121c25; overflow: hidden; border: 1px solid var(--line); }
+.st-rope i {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, #6d5028, var(--accent));
+  transition: width .4s cubic-bezier(.2, .9, .3, 1);
+}

@@ -21,6 +21,20 @@ import { el } from './dom.js';
 import { activeTheme } from './../content/themes.js';
 import { CAR } from './pingcar.js';
 
+/*
+ * Русские числительные. Тернарник «одно или много» здесь не работает: выходит
+ * «4 рывков» и «1 раза», и это первое, за что цепляется глаз. Правило то же,
+ * что в языке: одиннадцать — двадцать один особые.
+ */
+function plural(n, one, few, many) {
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 14) return many;
+  const mod10 = n % 10;
+  if (mod10 === 1) return one;
+  if (mod10 >= 2 && mod10 <= 4) return few;
+  return many;
+}
+
 let timers = [];
 
 function clearTimers() {
@@ -41,7 +55,87 @@ export function standPanel() {
       el('small', { class: 'stand-note', text: 'что сделал твой код' }),
     ]),
     box,
+    el('div', { class: 'stand-extra', hidden: true }),
   ]);
+}
+
+/*
+ * Приборы под машиной. Какой показать — решает сам вывод, а не настройка в
+ * уроке: словарь выглядит словарём, список списком, а про цикл while честнее
+ * всего говорит исходник. Порядок важен, показываем один прибор: два сразу
+ * превращают стенд в приборную свалку.
+ */
+const PY_PAIR = /['"]([^'"]+)['"]\s*:\s*([^,}]+)/g;
+
+function splitTop(text) {
+  const parts = [];
+  let depth = 0;
+  let start = 0;
+  let quote = null;
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (quote) { if (ch === quote) quote = null; continue; }
+    if (ch === '"' || ch === "'") { quote = ch; continue; }
+    if ('([{'.includes(ch)) depth += 1;
+    else if (')]}'.includes(ch)) depth -= 1;
+    else if (ch === ',' && depth === 0) { parts.push(text.slice(start, i)); start = i + 1; }
+  }
+  parts.push(text.slice(start));
+  return parts.map((part) => part.trim()).filter(Boolean);
+}
+
+function lamps(count) {
+  return el('div', { class: 'st-lamps' }, [
+    el('span', { class: 'st-cap', text: `список · ${count}` }),
+    el('div', { class: 'st-lamp-row' }, Array.from({ length: Math.min(count, 12) },
+      () => el('i', { class: 'on' }))),
+  ]);
+}
+
+function dashboard(pairs) {
+  return el('div', { class: 'st-dash' }, [
+    el('span', { class: 'st-cap', text: 'приборная панель' }),
+    ...pairs.slice(0, 4).map(([key, value]) => el('div', { class: 'st-row' }, [
+      el('b', { text: key }), el('u', { text: value }),
+    ])),
+  ]);
+}
+
+function winch(steps) {
+  return el('div', { class: 'st-winch' }, [
+    el('span', { class: 'st-cap', text: `лебёдка · ${steps} ${plural(steps, 'рывок', 'рывка', 'рывков')}` }),
+    el('div', { class: 'st-rope' }, el('i', { style: `width:${Math.min(100, steps * 14)}%` })),
+  ]);
+}
+
+function calls(rows) {
+  return el('div', { class: 'st-calls' }, [
+    el('span', { class: 'st-cap', text: 'вошло → вернулось' }),
+    ...rows.slice(0, 3).map(([input, output]) => el('div', { class: 'st-row' }, [
+      el('b', { text: input }), el('u', { text: `→ ${output}` }),
+    ])),
+  ]);
+}
+
+function instrument(lines, result, source) {
+  const last = lines[lines.length - 1] || '';
+
+  if (/^\{.*\}$/.test(last)) {
+    const pairs = [...last.matchAll(PY_PAIR)].map((m) => [m[1], m[2].trim()]);
+    if (pairs.length) return dashboard(pairs);
+  }
+  if (/^\[.*\]$/.test(last)) {
+    return lamps(splitTop(last.slice(1, -1)).length);
+  }
+  if (/\bwhile\b/.test(source) && lines.length) {
+    return winch(lines.length);
+  }
+  const rows = (result.checks || [])
+    .map((item) => /^(.+?) вернул (.+)$/.exec(item.detail || ''))
+    .filter(Boolean)
+    .map((m) => [m[1], m[2]]);
+  if (rows.length) return calls(rows);
+  return null;
 }
 
 function hud(svg, text) {
@@ -56,12 +150,15 @@ function hud(svg, text) {
  * Проигрывает результат запуска на машине.
  * Берёт обычный вывод программы — тот же, что показан в терминале.
  */
-export function standPlay(result) {
+export function standPlay(result, source = '') {
   const wrap = document.querySelector('.stand-wrap');
   if (!wrap) return;
   const svg = wrap.querySelector('svg');
   const note = wrap.querySelector('.stand-note');
+  const extra = wrap.querySelector('.stand-extra');
   clearTimers();
+  extra.hidden = true;
+  extra.replaceChildren();
   svg.classList.remove('fault', 'ok', 'no', 'lights');
 
   if (result.error) {
@@ -80,7 +177,7 @@ export function standPlay(result) {
 
   note.textContent = lines.length === 1
     ? 'на стекло вышла строка'
-    : `поворотник моргнул ${lines.length} раз${lines.length < 5 ? 'а' : ''}`;
+    : `поворотник моргнул ${lines.length} ${plural(lines.length, 'раз', 'раза', 'раз')}`;
 
   lines.forEach((line, index) => {
     const start = index * 520;
@@ -98,5 +195,14 @@ export function standPlay(result) {
       svg.classList.toggle('no', flag === 'False');
     });
     at(start + 240, () => svg.classList.remove('blink'));
+  });
+
+  // Прибор показываем после того, как строки отыграли: иначе он появляется
+  // раньше причины и читается как что-то отдельное от кода.
+  at(lines.length * 520, () => {
+    const node = instrument(lines, result, source);
+    if (!node) return;
+    extra.replaceChildren(node);
+    extra.hidden = false;
   });
 }
