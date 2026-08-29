@@ -14,6 +14,7 @@ import {
 } from '../store.js';
 import { runPython, runner, onRunnerChange } from '../runner.js';
 import { decorateGlossary } from '../glossary.js';
+import { activeTheme } from '../content/themes.js';
 import { track } from '../analytics.js';
 import { el, clear } from './dom.js';
 
@@ -334,7 +335,7 @@ function consolePanel() {
   const [button, box] = hintButton(task);
 
   const panel = el('aside', { class: 'lab-panel panel' }, [
-    el('div', { class: 'panel-heading' }, [el('span', { text: 'ТЕРМИНАЛ' }), view.nodes.runState]),
+    el('div', { class: 'panel-heading' }, [el('span', { text: activeTheme().termTitle || 'ТЕРМИНАЛ' }), view.nodes.runState]),
     bootVisual,
     consoleOutput,
     el('div', { class: 'checks' }, [el('h2', { text: 'ПРОВЕРКИ' }), checkList]),

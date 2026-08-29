@@ -330,10 +330,15 @@ button:disabled { cursor: not-allowed; }
 .aside-item small { display: block; font-size: 10px; color: var(--muted); margin-top: 1px; }
 .aside-item.done .aside-index { color: var(--mint); }
 
-.lesson-main { display: grid; grid-template-rows: minmax(0, auto) auto minmax(0, 1fr); gap: 12px; min-height: 0; }
+/* Две строки, а не три: задача уехала в правую колонку, и пустая третья строка
+   оставляла под редактором мёртвую полосу в треть экрана. Разбор занимает всё
+   свободное место, редактор — сколько ему нужно. */
+.lesson-main { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 12px; min-height: 0; }
 
-.brief-wrap { position: relative; overflow: hidden; }
-.brief { padding: 18px 20px; overflow-y: auto; max-height: 40vh; }
+.brief-wrap { position: relative; overflow: hidden; min-height: 0; }
+/* Высоту задаёт строка сетки, а не жёсткие 40vh: с ними разбор упирался в
+   потолок посреди экрана, а ниже оставалась пустота. */
+.brief { padding: 18px 20px; overflow-y: auto; height: 100%; }
 /* Полосу прокрутки видно всегда: системная на macOS прячется, и о том, что
    блок вообще прокручивается, узнать неоткуда. */
 .brief { scrollbar-width: thin; scrollbar-color: #2a4050 transparent; }
