@@ -85,6 +85,21 @@
     </div>
   </dialog>
 
+  <!-- Пробная поездка. Награда за пройденные шаги в истории про машины:
+       тяга и сцепление берутся из числа собранных шагов прошивки. -->
+  <dialog id="rigDialog" class="rig-dialog">
+    <div class="rig-top">
+      <span id="rigTuning" class="rig-tuning"></span>
+      <span id="rigHud" class="rig-hud"></span>
+    </div>
+    <canvas id="rigCanvas" class="rig-canvas"></canvas>
+    <p id="rigVerdict" class="rig-verdict" hidden></p>
+    <div class="rig-actions">
+      <span class="rig-help">Держи палец на левой или правой половине экрана. На компьютере — стрелки.</span>
+      <button type="button" id="rigClose" class="ghost-button">Закрыть</button>
+    </div>
+  </dialog>
+
   <dialog id="accountDialog" class="account-dialog">
     <div class="dialog-head">
       <strong>Общий вход aka-gst</strong>

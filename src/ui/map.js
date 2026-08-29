@@ -8,6 +8,7 @@ import { activeTheme, THEMES, setTheme } from '../content/themes.js';
 import { store, tierState, lessonState, isLessonOpen, nextLesson, unlockTier } from '../store.js';
 import { decorateGlossary } from '../glossary.js';
 import { el, clear } from './dom.js';
+import { rigButton } from './rig.js';
 
 function lessonNode(lesson, index, onOpen) {
   const progress = lessonState(lesson);
@@ -196,6 +197,11 @@ export function renderMap(root, { onOpen }) {
   // Ступени 2 и 3 обращены к другому человеку: он уже пишет код и ищет
   // профессиональный материал. Раньше обе аудитории встречались на одном
   // экране, и ни одной он не говорил ничего внятного.
+  // Поездка стоит перед списком шагов, а не после: награда, до которой надо
+  // домотать страницу, наградой не работает.
+  const rig = rigButton();
+  if (rig) root.append(rig);
+
   root.append(tierSection(TIERS[0], { onOpen }));
 
   root.append(nextCourses(onOpen));

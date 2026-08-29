@@ -303,6 +303,7 @@ document.querySelectorAll('.mode-switch button').forEach((button) => {
 $('accountButton').addEventListener('click', () => accountDialog());
 $('closeDialog').addEventListener('click', () => $('accountDialog').close());
 $('finaleClose').addEventListener('click', () => $('finaleDialog').close());
+$('rigClose').addEventListener('click', () => $('rigDialog').close());
 // Тело помечается историей: фон и мелочи оформления у них разные, а держать
 // это в CSS дешевле, чем подменять картинки из кода.
 document.body.classList.add(`theme-${activeTheme().id}`);
