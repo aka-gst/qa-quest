@@ -220,6 +220,32 @@ button:disabled { cursor: not-allowed; }
 }
 .welcome-start:hover { filter: brightness(1.06); }
 
+/* На тесте один человек выбрал машины, второй — серверы. Оба входа стоят
+   рядом и одинакового веса: маленький переключатель в шапке не объяснял, что
+   за ним меняется весь сюжет курса. */
+.story-choice { grid-column: 1 / -1; display: grid; gap: 9px; }
+.story-choice-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.story-choice-head span {
+  color: var(--accent); font: 700 10px "Roboto Mono", monospace; letter-spacing: .14em;
+}
+.story-choice-head small { color: var(--muted); font-size: 12px; }
+.story-choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.story-card {
+  display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; text-align: left;
+  padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px;
+  background: #0b1620; color: var(--text); font: inherit; cursor: pointer; transition: .18s;
+}
+.story-card strong { font-size: 16px; }
+.story-card > span { grid-column: 1 / -1; color: #b9c7ce; font-size: 13px; line-height: 1.45; }
+.story-card small { grid-column: 2; grid-row: 1; color: var(--muted); font: 600 11px "Roboto Mono", monospace; }
+.story-card:hover, .story-card:focus-visible { transform: translateY(-1px); }
+.story-card-garage { border-color: #6d5028; background: linear-gradient(140deg, rgba(255, 180, 84, .10), rgba(255, 180, 84, .03)); }
+.story-card-garage strong, .story-card-garage.active small { color: #ffb454; }
+.story-card-ice { border-color: #2c5768; background: linear-gradient(140deg, rgba(103, 232, 249, .10), rgba(103, 232, 249, .03)); }
+.story-card-ice strong, .story-card-ice.active small { color: #67e8f9; }
+.story-card.active { box-shadow: inset 0 0 0 1px currentColor, 0 0 20px -10px currentColor; }
+.story-card:not(.active) small { color: #b7c5cc; }
+
 .mode-hint { color: var(--accent); white-space: nowrap; }
 
 .stuck-button { display: block; width: calc(100% - 32px); margin: 0 16px 14px; text-align: center; text-decoration: none; }
@@ -520,6 +546,8 @@ code, .task-card code, .brief code {
 }
 .hint-box p { margin: 0 0 6px; }
 .hint-box .hint-note { color: #9a93c9; font-size: 11px; }
+.hint-box.automatic { border-color: #6a5828; background: #211d11; }
+.hint-box .hint-auto { color: var(--yellow); font-size: 11px; font-weight: 700; }
 .hint-box pre {
   margin: 0; padding: 9px 11px; background: #0d1018; border-radius: 7px; overflow-x: auto;
   color: #dff6f2; font: 12px/1.55 "Roboto Mono", monospace;
@@ -1094,6 +1122,8 @@ svg.fault .pc-lamp-rear ellipse { fill: #ff6b6b; filter: drop-shadow(0 0 10px #f
   /* 26 пикселей полей с каждой стороны на узком экране съедают седьмую часть
      ширины — на телефоне это строка текста. */
   .welcome { padding: 18px 14px; }
+  .story-choice-head { display: grid; gap: 2px; }
+  .story-choice-grid { grid-template-columns: 1fr; }
 }
 
 /* Страховка от бокового увода: даже если что-то однажды снова окажется шире

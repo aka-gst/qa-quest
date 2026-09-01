@@ -18,12 +18,14 @@ import { activeTheme } from '../content/themes.js';
 import { standPanel, standPlay, standRestore } from './stand.js';
 import { track } from '../analytics.js';
 import { el, clear } from './dom.js';
+import { autoHintLevel } from './hint-policy.js';
 
 const view = {
   lesson: null,
   taskIndex: 0,
   attempted: false,
   hintLevel: 0,
+  failures: new Map(),
   nodes: {},
   detachRunner: null,
   // Последний прогон каждой задачи: после перерисовки экрана
@@ -302,24 +304,47 @@ function stuckButton(task) {
 
 function hintButton(task) {
   const box = el('div', { class: 'hint-box', hidden: true });
+  const rememberedFailures = view.failures.get(resultKey()) || 0;
+  view.hintLevel = autoHintLevel({
+    failedAttempts: rememberedFailures,
+    currentLevel: view.hintLevel,
+    hasSolution: Boolean(task.solution),
+  });
+
+  const reveal = (level, { automatic = false } = {}) => {
+    view.hintLevel = level;
+    box.hidden = false;
+    box.classList.toggle('automatic', automatic);
+    if (level === 1) {
+      const children = [el('p', { text: task.hint })];
+      if (automatic) children.unshift(el('p', { class: 'hint-auto', text: 'Третья попытка — вот ориентир:' }));
+      box.replaceChildren(...children);
+      if (task.solution) button.textContent = 'Показать решение';
+      else button.disabled = true;
+      return;
+    }
+
+    box.replaceChildren(
+      el('p', {
+        class: automatic ? 'hint-auto' : 'hint-note',
+        text: automatic
+          ? 'Пятая попытка — показываю решение целиком. Перепиши его руками и запусти.'
+          : 'Решение целиком. Лучше сначала перепиши его руками, а не вставляй.',
+      }),
+      el('pre', { text: task.solution }),
+    );
+    button.disabled = true;
+  };
+
   const button = el('button', {
     class: 'hint-button',
     onclick: () => {
-      view.hintLevel += 1;
-      if (view.hintLevel === 1) {
-        box.hidden = false;
-        box.replaceChildren(el('p', { text: task.hint }));
-        if (task.solution) button.textContent = 'Показать решение';
-        else button.disabled = true;
-      } else {
-        box.replaceChildren(
-          el('p', { class: 'hint-note', text: 'Решение целиком. Лучше сначала перепиши его руками, а не вставляй.' }),
-          el('pre', { text: task.solution }),
-        );
-        button.disabled = true;
-      }
+      const nextLevel = task.solution ? Math.min(view.hintLevel + 1, 2) : 1;
+      reveal(nextLevel);
     },
   }, 'Подсказка');
+  view.nodes.revealHint = reveal;
+  if (view.hintLevel > 0) reveal(view.hintLevel);
   return [button, box];
 }
 
@@ -469,12 +494,24 @@ async function run() {
   if (!passed) {
     track.taskFailed(lesson, task, result);
     view.attempted = true;
+    const key = resultKey();
+    const failedAttempts = (view.failures.get(key) || 0) + 1;
+    view.failures.set(key, failedAttempts);
+    const nextHintLevel = autoHintLevel({
+      failedAttempts,
+      currentLevel: view.hintLevel,
+      hasSolution: Boolean(task.solution),
+    });
+    if (nextHintLevel > view.hintLevel && view.nodes.revealHint) {
+      view.nodes.revealHint(nextHintLevel, { automatic: true });
+    }
     return;
   }
 
   const firstTry = !view.attempted && view.hintLevel === 0;
   track.taskSolved(lesson, task, { firstTry });
   const outcome = completeTask(lesson, task, { firstTry });
+  view.failures.delete(resultKey());
   view.attempted = false;
   if (!outcome.already) view.onProgress(outcome, lesson, task);
 }

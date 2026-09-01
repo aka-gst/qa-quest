@@ -10,6 +10,7 @@ import { decorateGlossary } from '../glossary.js';
 import { el, clear } from './dom.js';
 import { rigButton } from './rig.js';
 import { carConsole } from './pingcar.js';
+import { buildStoryChoices } from './onboarding-model.js';
 
 function lessonNode(lesson, index, onOpen) {
   const progress = lessonState(lesson);
@@ -125,6 +126,7 @@ function tierSection(tier, { onOpen }) {
 function welcome(upNext, onOpen) {
   const theme = activeTheme();
   return el('section', { class: 'welcome' }, [
+    storyChoice(),
     el('div', { class: 'welcome-text' }, [
       el('span', { class: 'continue-label', text: theme.welcome.label }),
       el('h2', { text: theme.welcome.title }),
@@ -165,6 +167,34 @@ function welcome(upNext, onOpen) {
       theme.welcome.selling ? el('ul', { class: 'welcome-selling' },
         theme.welcome.selling.map((line) => el('li', { text: line }))) : null,
     ]),
+  ]);
+}
+
+/**
+ * Две истории — два равноправных входа. В пользовательских проверках одному
+ * человеку были ближе автомобили, другому серверы; маленький переключатель в
+ * шапке второй человек не заметил. Поэтому выбор стоит до сюжетного текста и
+ * показывает обе дороги одновременно.
+ */
+function storyChoice() {
+  const current = activeTheme();
+  const choices = buildStoryChoices(THEMES, current.id);
+  return el('div', { class: 'story-choice' }, [
+    el('div', { class: 'story-choice-head' }, [
+      el('span', { text: 'ВЫБЕРИ СВОЮ ИСТОРИЮ' }),
+      el('small', { text: 'Python один и тот же — меняется мир задач' }),
+    ]),
+    el('div', { class: 'story-choice-grid', role: 'group', 'aria-label': 'Выбор истории курса' },
+      choices.map((choice) => el('button', {
+        type: 'button',
+        class: `story-card story-card-${choice.id} ${choice.active ? 'active' : ''}`,
+        'aria-pressed': String(choice.active),
+        onclick: () => { if (!choice.active) setTheme(choice.id); },
+      }, [
+        el('strong', { text: choice.name }),
+        el('span', { text: choice.hook }),
+        el('small', { text: choice.active ? 'выбрано' : 'перейти →' }),
+      ]))),
   ]);
 }
 
