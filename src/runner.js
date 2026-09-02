@@ -131,7 +131,7 @@ export async function runPython({ source, preamble = '', checks = [], stdin = []
         ms: HARD_LIMIT,
       });
     }, HARD_LIMIT);
-    pending.set(id, { resolve, reject, timer, checks });
+    pending.set(id, { resolve, timer, checks });
     worker.postMessage({ type: 'run', id, source, preamble, checks, stdin, timeLimit: SOFT_LIMIT });
   });
 }
