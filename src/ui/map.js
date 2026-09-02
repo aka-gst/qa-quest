@@ -226,7 +226,7 @@ export function renderMap(root, { onOpen }) {
     root.append(el('div', { class: 'continue-card done' }, [
       el('span', { class: 'continue-label', text: 'Курс пройден' }),
       el('strong', { text: 'Все открытые уроки закрыты' }),
-      el('small', { text: 'Переключись в режим «Подробно», чтобы добить оставшиеся задачи уроков.' }),
+      el('small', { text: 'Все задания в открытых уроках сделаны.' }),
     ]));
   }
 

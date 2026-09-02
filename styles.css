@@ -119,17 +119,6 @@ button:disabled { cursor: not-allowed; }
 .brand strong { font-size: 16px; letter-spacing: .16em; }
 .brand small { color: var(--muted); font: 500 10px "Roboto Mono", monospace; letter-spacing: .1em; margin-top: 3px; }
 
-.mode-switch {
-  display: flex; gap: 3px; padding: 3px;
-  border: 1px solid var(--line); border-radius: 11px; background: #0b161f;
-}
-.mode-switch button {
-  border: 0; background: transparent; color: var(--muted);
-  padding: 8px 16px; border-radius: 8px; font: 600 13px Manrope; transition: .18s;
-}
-.mode-switch button:hover { color: var(--text); }
-.mode-switch button.active { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent-line); }
-
 .profile-strip { display: flex; align-items: center; gap: 16px; }
 
 .streak-chip {
@@ -668,8 +657,6 @@ code, .task-card code, .brief code {
 @media (max-width: 860px) {
   .app-shell { padding: 0 12px 20px; }
   .topbar { flex-wrap: wrap; gap: 12px; }
-  .mode-switch { order: 3; width: 100%; }
-  .mode-switch button { flex: 1; }
   .profile-strip { gap: 10px; }
   .level-chip { display: none; }
   .xp-block { width: 120px; }
@@ -679,8 +666,6 @@ code, .task-card code, .brief code {
   .lesson-aside { max-height: none; }
   .aside-list { display: none; }
   .back-button { border-bottom: 0; padding: 12px 14px; }
-  /* Подсказка про режим на телефоне нужнее, чем на большом экране: там
-     переключатель занимает всю ширину и без пояснения выглядит загадкой. */
   .progress-hint { display: none; }
 
   /* Кнопка старта во всю ширину: на телефоне узкая кнопка посреди блока
@@ -830,13 +815,6 @@ body.theme-garage .ambient-one { background: var(--accent); }
    один раз потеряли под нижним краем поле для кода. */
 body.lesson-open .story-switch { display: none; }
 
-/* Каждый переключатель показывается там, где виден его эффект. Историю меняют
-   на карте — там выбирают мир. Глубину меняют в уроке — там сразу видно, что
-   изменилось: одна задача или три, выжимка или разбор. Раньше оба висели
-   рядом всегда, и переключатель подачи выглядел настройкой неизвестно чего.
-   Заодно на телефоне это на целый ряд меньше в шапке. */
-body:not(.lesson-open) .mode-switch { display: none; }
-
 /* Итог — единственное место на первом экране, где сказано, что человек унесёт.
    Стоит прямо над кнопкой: узнавать это на шестнадцатом шаге поздно. */
 .welcome-outcome {
@@ -855,27 +833,6 @@ body:not(.lesson-open) .mode-switch { display: none; }
   content: '✓'; position: absolute; left: 0; top: 0;
   color: var(--mint); font-weight: 700;
 }
-
-/* ---------- вопрос про объём ---------- */
-
-.mode-dialog {
-  width: min(520px, 92vw); padding: 22px; border: 1px solid var(--accent-line);
-  border-radius: 16px; background: var(--panel); color: var(--text);
-}
-.mode-dialog::backdrop { background: rgba(4, 9, 13, .82); }
-.mode-dialog h2 { margin: 0 0 6px; font-size: 22px; }
-.mode-dialog-lead { margin: 0 0 16px; color: var(--muted); font-size: 14px; line-height: 1.5; }
-.mode-dialog-note { margin: 14px 0 0; color: var(--muted); font-size: 13px; }
-.mode-picks { display: grid; gap: 10px; }
-.mode-pick {
-  display: grid; gap: 3px; text-align: left; padding: 14px 16px;
-  background: #0d1720; border: 1px solid var(--line); border-radius: 12px;
-  color: var(--text); font: inherit; cursor: pointer; transition: .15s;
-}
-.mode-pick:hover, .mode-pick:focus-visible { border-color: var(--accent); background: var(--accent-glow); }
-.mode-pick strong { font-size: 17px; color: var(--accent); }
-.mode-pick span { font-size: 14px; }
-.mode-pick em { font-style: normal; font-size: 13px; color: var(--muted); }
 
 /* Правая колонка: задача сверху, рабочее место под ней. Обе части живут в
    одном столбце и прокручиваются вместе с ним, а не порознь. */
@@ -905,11 +862,11 @@ body.theme-garage .panel {
 /* Неон. Общий язык для обеих историй: акцент не просто цветной, он светится —
    так выглядит подсветка приборов и так же выглядит строка в терминале. Цвет
    берётся из истории, свечение одно и то же. */
-.eyebrow, .mode-pick strong, .theme-choice-name, .rig-button-name,
+.eyebrow, .theme-choice-name, .rig-button-name,
 .brief-real > span, .task-card > span, .welcome-outcome b {
   text-shadow: 0 0 12px color-mix(in srgb, var(--accent) 55%, transparent);
 }
-.story-switch button.active, .mode-switch button.active {
+.story-switch button.active {
   box-shadow: inset 0 0 0 1px var(--accent-line), 0 0 18px -4px var(--accent);
 }
 .brand-mark { box-shadow: 0 0 22px -6px var(--accent); }

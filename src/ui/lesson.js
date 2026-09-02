@@ -49,45 +49,34 @@ function visibleTasks() {
 
 function briefing() {
   const lesson = view.lesson;
-  const mode = store.state.mode;
   const body = el('div', { class: 'brief-body' });
 
   // Сюжетная рамка идёт отдельным блоком и намеренно не смешивается с
   // объяснением: обстановка помогает дойти до финала, но учит не она.
   if (lesson.story) body.append(el('p', { class: 'brief-story', text: lesson.story }));
 
-  if (mode === 'sprint') {
-    body.append(el('div', { class: 'brief-idea', html: lesson.sprint.idea }));
-    if (lesson.tasks.length > 1) {
-      body.append(el('p', {
-        class: 'brief-more',
-        text: `В режиме «Подробно» здесь ещё ${lesson.tasks.length - 1} задачи и подробное объяснение.`,
-      }));
-    }
-  } else {
-    body.append(el('div', { class: 'brief-theory', html: lesson.deep.theory }));
-    body.append(el('div', { class: 'brief-notes' }, [
-      el('div', {}, [el('span', { text: isLab() ? 'ГДЕ ВЫПОЛНЯТЬ' : 'ГДЕ ПРИМЕНЯЕТСЯ' }), el('div', { html: lesson.deep.where })]),
-      el('div', {}, [el('span', { text: 'ТИПИЧНАЯ ОШИБКА' }), el('div', { html: lesson.deep.pitfall })]),
+  body.append(el('div', { class: 'brief-theory', html: lesson.deep.theory }));
+  body.append(el('div', { class: 'brief-notes' }, [
+    el('div', {}, [el('span', { text: isLab() ? 'ГДЕ ВЫПОЛНЯТЬ' : 'ГДЕ ПРИМЕНЯЕТСЯ' }), el('div', { html: lesson.deep.where })]),
+    el('div', {}, [el('span', { text: 'ТИПИЧНАЯ ОШИБКА' }), el('div', { html: lesson.deep.pitfall })]),
+  ]));
+  // Публично разобранный случай из новостей. Он не учит приёму — он
+  // объясняет, зачем приём нужен, и это единственное место в уроке, где
+  // говорится про настоящий мир, а не про придуманный.
+  if (lesson.deep.real) {
+    body.append(el('div', { class: 'brief-real' }, [
+      el('span', { text: 'БЫЛО НА САМОМ ДЕЛЕ' }),
+      el('div', { html: lesson.deep.real }),
     ]));
-    // Публично разобранный случай из новостей. Он не учит приёму — он
-    // объясняет, зачем приём нужен, и это единственное место в уроке, где
-    // говорится про настоящий мир, а не про придуманный.
-    if (lesson.deep.real) {
-      body.append(el('div', { class: 'brief-real' }, [
-        el('span', { text: 'БЫЛО НА САМОМ ДЕЛЕ' }),
-        el('div', { html: lesson.deep.real }),
-      ]));
-    }
-    if (lesson.deep.examples.length) {
-      body.append(el('details', { class: 'brief-examples' }, [
-        el('summary', { text: isLab() ? 'Фрагменты из практикума' : 'Примеры' }),
-        ...lesson.deep.examples.map((example) => el('div', { class: 'example' }, [
-          el('pre', { text: example.code }),
-          example.note ? el('p', { html: example.note }) : null,
-        ])),
-      ]));
-    }
+  }
+  if (lesson.deep.examples.length) {
+    body.append(el('details', { class: 'brief-examples' }, [
+      el('summary', { text: isLab() ? 'Фрагменты из практикума' : 'Примеры' }),
+      ...lesson.deep.examples.map((example) => el('div', { class: 'example' }, [
+        el('pre', { text: example.code }),
+        example.note ? el('p', { html: example.note }) : null,
+      ])),
+    ]));
   }
 
   // Сеттинг не должен съесть предмет: за сюжетной рамкой человек обязан видеть,
