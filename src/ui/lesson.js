@@ -16,6 +16,7 @@ import { runPython, runner, onRunnerChange } from '../runner.js';
 import { decorateGlossary } from '../glossary.js';
 import { activeTheme } from '../content/themes.js';
 import { standPanel, standPlay, standRestore } from './stand.js';
+import { errorGuidance } from './error-guidance.js';
 import { track } from '../analytics.js';
 import { el, clear } from './dom.js';
 import { autoHintLevel } from './hint-policy.js';
@@ -424,11 +425,17 @@ function checklistPanel(rerender) {
 
 /** Показывает результат прогона: терминал, проверки и переход к следующему шагу. */
 function showResult(result) {
-  standPlay(result, view.nodes.editor ? view.nodes.editor.value : '');
+  const source = view.nodes.editor ? view.nodes.editor.value : '';
+  standPlay(result, source);
   renderChecks(result.checks);
   if (result.error) {
     const parts = [result.error.text];
     if (result.error.hint) parts.push('', `Подсказка: ${result.error.hint}`);
+    const expectedText = currentTask().checks.find((check) => (
+      check.kind === 'stdout' && check.mode === 'equals' && typeof check.value === 'string'
+    ))?.value;
+    const guidance = errorGuidance({ error: result.error, source, expectedText });
+    if (guidance) parts.push('', `Почему так: ${guidance.text}`);
     writeConsole(parts.join('\n'), 'error');
     view.nodes.runState.textContent = 'ошибка';
     return false;

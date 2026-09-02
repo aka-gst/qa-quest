@@ -1074,6 +1074,20 @@ svg.fault .pc-lamp-rear ellipse { fill: #ff6b6b; filter: drop-shadow(0 0 10px #f
    приборную свалку, а смысл в том, чтобы связать одну строчку кода с одним
    понятным движением железа. */
 .stand-extra { margin-top: 2px; }
+.incident-feed {
+  display: grid; gap: 5px; padding: 9px 10px; margin-top: 4px;
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--line));
+  border-radius: 8px; background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+.incident-feed[hidden] { display: none; }
+.incident-feed > b { font-size: 13px; color: var(--text); }
+.incident-feed p { margin: 0; font-size: 12px; line-height: 1.42; color: var(--muted); }
+.incident-feed .incident-lead { color: #d4e7ee; }
+.incident-feed .incident-defense { color: var(--accent); }
+.incident-feed a { width: fit-content; font-size: 11px; color: var(--accent); }
+.incident-eyebrow {
+  font: 600 9.5px "Roboto Mono", monospace; letter-spacing: .12em; color: var(--accent);
+}
 .st-cap {
   display: block; margin-bottom: 5px;
   font: 600 9.5px "Roboto Mono", monospace; letter-spacing: .12em; color: var(--muted);
