@@ -9,7 +9,6 @@ import { store, tierState, lessonState, isLessonOpen, nextLesson, unlockTier } f
 import { decorateGlossary } from '../glossary.js';
 import { el, clear } from './dom.js';
 import { rigButton } from './rig.js';
-import { carConsole } from './pingcar.js';
 import { buildStoryChoices } from './onboarding-model.js';
 
 const NEXT_ROUTES = {
@@ -157,8 +156,8 @@ function welcome(upNext, onOpen) {
         onclick: () => onOpen(upNext),
       }, startLabel) : null,
       /*
-       * Факты стоят в левой колонке под кнопкой. Правая с живой машиной выше,
-       * и без них под кнопкой оставалась пустая треть карточки.
+       * Факты стоят под первым настоящим действием, а не рядом с игровым
+       * терминалом: первая команда человека должна ждать Python в уроке.
        *
        * Карточки второй истории здесь больше нет: тот же выбор стоит
        * переключателем в шапке, и повторять его внизу — значит спрашивать
@@ -175,9 +174,6 @@ function welcome(upNext, onOpen) {
       ]),
     ]),
     el('div', { class: 'welcome-side' }, [
-      // Живая машина стоит первой в правой колонке: обещание «код работает
-      // прямо здесь» лучше показать, чем написать.
-      carConsole(),
       theme.welcome.selling ? el('ul', { class: 'welcome-selling' },
         theme.welcome.selling.map((line) => el('li', { text: line }))) : null,
     ]),
