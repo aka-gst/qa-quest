@@ -2,6 +2,11 @@ import { createInput } from './input.js';
 import { createAudioBus } from './audio.js';
 import { prepareMachinePython, runAutomation, runWake } from './machine.js';
 import {
+  createFakeGateway,
+  createMachineListeningEvent,
+  createOtherMindRuntime,
+} from './other-mind.js';
+import {
   applyGameAction,
   createCheckpointState,
   createGameState,
@@ -31,12 +36,18 @@ const hud = {
   feedback: document.querySelector('#codeFeedback'),
   machineTitle: document.querySelector('#machineTitle'),
   machineBrief: document.querySelector('#machineBrief'),
+  otherMind: document.querySelector('#otherMindStatus'),
+  otherMindPhase: document.querySelector('#otherMindPhase'),
+  otherMindLine: document.querySelector('#otherMindLine'),
 };
 
 const checkpoint = loadCheckpoint();
 const isLocal = ['127.0.0.1', 'localhost'].includes(location.hostname);
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const telemetry = createTelemetry({ enabled: isLocal });
 let state = createCheckpointState(checkpoint.checkpoint);
+let fakeGateway;
+let otherMindRuntime;
 let lastTime = performance.now();
 let firstMovementSeen = false;
 let lastScene = state.scene;
@@ -50,6 +61,26 @@ let firstActionRecorded = false;
 let manualStartedAt = null;
 let automationAcceptedAt = null;
 let lastAutoFinishedAt = null;
+
+function prepareOtherMindRuntime() {
+  const failGateway = isLocal && new URLSearchParams(location.search).get('fakeGateway') === 'fail';
+  fakeGateway = createFakeGateway({ fail: failGateway, chunks: 4, delay: 260 });
+  otherMindRuntime = createOtherMindRuntime({
+    gateway: fakeGateway,
+    onTransition: ({ phase, line }) => {
+      const previous = state.otherMind.phase;
+      const actionType = {
+        waking: 'other-mind-waking',
+        awake: 'other-mind-awake',
+        silent: 'other-mind-silent',
+      }[phase];
+      if (actionType) state = applyGameAction(state, { type: actionType, line });
+      if (phase !== previous) telemetry.mark(`other-mind-${phase}`);
+    },
+  });
+}
+
+prepareOtherMindRuntime();
 
 function recordFirstAction() {
   if (firstActionRecorded) return;
@@ -186,6 +217,15 @@ function updateHud() {
 
   hud.machine.hidden = !machineOpen;
   hud.ending.hidden = state.scene !== 'reward';
+  const mindCopy = {
+    sleeping: ['СПИТ', 'Пока это только пустая оболочка.'],
+    waking: ['СЛЫШИТ', 'Связь собирается…'],
+    awake: ['ПРОСНУЛСЯ', 'Я слышу машину. Теперь научи меня понимать её.'],
+    silent: ['МОЛЧИТ', 'Разум сейчас молчит. Рука всё равно тебя услышала.'],
+  }[state.otherMind.phase];
+  hud.otherMind.dataset.phase = state.otherMind.phase;
+  hud.otherMindPhase.textContent = mindCopy[0];
+  hud.otherMindLine.textContent = state.otherMind.line || mindCopy[1];
 }
 
 function frame(now) {
@@ -220,7 +260,13 @@ function frame(now) {
     lastAutoDelivered = state.warehouse.autoDelivered;
   }
   updateHud();
-  renderGame(ctx, state, { width: canvas.clientWidth, height: canvas.clientHeight }, now);
+  renderGame(
+    ctx,
+    state,
+    { width: canvas.clientWidth, height: canvas.clientHeight },
+    now,
+    { reducedMotion: prefersReducedMotion },
+  );
   requestAnimationFrame(frame);
 }
 
@@ -243,6 +289,7 @@ document.querySelector('#restartGame').addEventListener('click', () => {
   if (progressed && !window.confirm('Начать заново? Текущий прогресс этой игры исчезнет.')) return;
   resetCheckpoint();
   state = createGameState();
+  prepareOtherMindRuntime();
   firstMovementSeen = false;
   lastScene = state.scene;
 });
@@ -278,6 +325,11 @@ hud.run.addEventListener('click', async () => {
     setMachineStage('automation');
     hud.feedback.textContent = `РУКА ОТВЕТИЛА: ${result.stdout.trim()}`;
     hud.feedback.dataset.status = 'success';
+    const mindResult = await otherMindRuntime.unlock(createMachineListeningEvent());
+    if (!mindResult.ok) {
+      hud.feedback.textContent = mindResult.line;
+      hud.feedback.dataset.status = 'error';
+    }
   } else {
     state = applyGameAction(state, { type: 'automation-queued', events: result.events });
     automationAcceptedAt = performance.now();
@@ -291,7 +343,7 @@ hud.run.addEventListener('click', async () => {
 });
 
 document.querySelector('#continueGame').addEventListener('click', () => {
-  document.querySelector('#endingTitle').textContent = 'ДАЛЬШЕ — БОТЫ, АГЕНТЫ И СВОЙ AI';
+  document.querySelector('#endingTitle').textContent = 'ДАЛЬШЕ — БОТЫ, АГЕНТЫ И СВОЙ ИНОЙ РАЗУМ';
   document.querySelector('#continueGame').textContent = 'ПРОДОЛЖЕНИЕ СКОРО';
   document.querySelector('#continueGame').disabled = true;
 });
@@ -332,6 +384,11 @@ if (isLocal) {
         else requestAnimationFrame(count);
       }
       requestAnimationFrame(count);
+    }),
+    otherMind: () => ({
+      ...otherMindRuntime.snapshot(),
+      phase: state.otherMind.phase,
+      line: state.otherMind.line,
     }),
   };
 }

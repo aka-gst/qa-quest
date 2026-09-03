@@ -44,3 +44,17 @@ test('подписи мобильных способностей остаютс�
   assert.ok(Number.isFinite(fontSize), 'не найден размер подписи .power b в мобильном CSS');
   assert.ok(fontSize >= 10, `подпись способности слишком мелкая: ${fontSize}px`);
 });
+
+test('рождение иного разума видно и доступно не только через canvas', () => {
+  assert.match(html, /id=["']otherMindStatus["'][^>]*aria-live=["']polite["']/);
+  assert.match(html, /СЕМЯ ИНОГО РАЗУ/);
+  assert.match(css, /\.other-mind-status\[data-phase=["']waking["']\]/);
+  assert.match(css, /\.other-mind-status\[data-phase=["']awake["']\]/);
+  assert.match(css, /\.other-mind-status\[data-phase=["']silent["']\]/);
+});
+
+test('сниженная анимация сохраняет читаемые состояния семени', () => {
+  const reducedMotion = css.match(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
+  assert.match(reducedMotion, /\.other-mind-status/);
+  assert.match(reducedMotion, /animation:\s*none/);
+});

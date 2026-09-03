@@ -165,3 +165,42 @@ test('контрольная точка красного ящика восста
   assert.equal(restored.warehouse.autoDelivered, 6);
   assert.equal(restored.warehouse.crates.find(({ id }) => id === 'red-01').status, 'blocked');
 });
+
+test('иной разум просыпается только через наблюдаемую промежуточную фазу', () => {
+  const base = createGameState({ scene: 'automation', arm: { awake: true } });
+  assert.deepEqual(base.otherMind, { phase: 'sleeping', line: '' });
+
+  const skipped = applyGameAction(base, {
+    type: 'other-mind-awake',
+    line: 'Я уже здесь.',
+  });
+  assert.deepEqual(skipped.otherMind, { phase: 'sleeping', line: '' });
+
+  const waking = applyGameAction(base, { type: 'other-mind-waking', line: 'Я слышу' });
+  assert.deepEqual(waking.otherMind, { phase: 'waking', line: 'Я слышу' });
+
+  const awake = applyGameAction(waking, {
+    type: 'other-mind-awake',
+    line: 'Я слышу машину.',
+  });
+  assert.deepEqual(awake.otherMind, { phase: 'awake', line: 'Я слышу машину.' });
+});
+
+test('поздняя контрольная точка восстанавливает уже рождённое семя', () => {
+  for (const checkpoint of ['red-crate', 'reward']) {
+    const restored = createCheckpointState(checkpoint);
+    assert.equal(restored.otherMind.phase, 'awake');
+    assert.match(restored.otherMind.line, /слышу машину/i);
+  }
+});
+
+test('молчание Gateway не превращается в ложное пробуждение', () => {
+  const base = createGameState({ scene: 'automation', arm: { awake: true } });
+  const waking = applyGameAction(base, { type: 'other-mind-waking' });
+  const silent = applyGameAction(waking, {
+    type: 'other-mind-silent',
+    line: 'Разум сейчас молчит. Рука всё равно тебя услышала.',
+  });
+  assert.equal(silent.otherMind.phase, 'silent');
+  assert.doesNotMatch(silent.otherMind.line, /token|body|stack|http/i);
+});

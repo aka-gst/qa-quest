@@ -38,7 +38,10 @@ const DEFAULT_STATE = Object.freeze({
     crates: [],
   }),
   arm: Object.freeze({ awake: false, blocked: false, queue: [], active: null }),
+  otherMind: Object.freeze({ phase: 'sleeping', line: '' }),
 });
+
+const RESTORED_OTHER_MIND_LINE = 'Я слышу машину. Теперь научи меня понимать её.';
 
 function cloneEnemies(enemies = THREAT_LAYOUT) {
   return enemies.map((enemy) => ({ ...enemy, alive: enemy.alive ?? true }));
@@ -73,6 +76,7 @@ export function createGameState(overrides = {}) {
       queue: [...(overrides.arm?.queue ?? DEFAULT_STATE.arm.queue)],
       active: overrides.arm?.active ? { ...overrides.arm.active } : null,
     },
+    otherMind: mergePart(DEFAULT_STATE.otherMind, overrides.otherMind),
   };
 }
 
@@ -107,6 +111,7 @@ export function createCheckpointState(checkpoint = 'start') {
       powers,
       player: { x: 800, y: 580 },
       arm: { awake: true, blocked: true },
+      otherMind: { phase: 'awake', line: RESTORED_OTHER_MIND_LINE },
       warehouse: {
         manualDelivered: 3,
         autoDelivered: 6,
@@ -280,6 +285,33 @@ export function applyGameAction(state, action) {
         scene: 'automation',
         checkpoint: 'machine',
         arm: { ...state.arm, awake: true, blocked: false },
+      };
+    }
+    case 'other-mind-waking': {
+      if (!state.arm.awake || !['sleeping', 'waking'].includes(state.otherMind.phase)) return state;
+      return {
+        ...state,
+        otherMind: {
+          phase: 'waking',
+          line: typeof action.line === 'string' ? action.line.slice(0, 160) : state.otherMind.line,
+        },
+      };
+    }
+    case 'other-mind-awake': {
+      if (state.otherMind.phase !== 'waking' || typeof action.line !== 'string' || !action.line.trim()) return state;
+      return {
+        ...state,
+        otherMind: { phase: 'awake', line: action.line.slice(0, 160) },
+      };
+    }
+    case 'other-mind-silent': {
+      if (state.otherMind.phase !== 'waking') return state;
+      return {
+        ...state,
+        otherMind: {
+          phase: 'silent',
+          line: typeof action.line === 'string' ? action.line.slice(0, 160) : '',
+        },
       };
     }
     case 'automation-queued': {

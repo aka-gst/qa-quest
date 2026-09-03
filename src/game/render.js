@@ -157,7 +157,68 @@ function drawArm(ctx, state, now) {
   ctx.restore();
 }
 
-function drawWarehouse(ctx, state, now) {
+function drawOtherMind(ctx, state, now, reducedMotion) {
+  const { phase } = state.otherMind;
+  const waking = phase === 'waking';
+  const awake = phase === 'awake';
+  const silent = phase === 'silent';
+  const pulse = reducedMotion ? 0 : Math.sin(now / 120) * 5;
+  const bob = awake && !reducedMotion ? Math.sin(now / 650) * 4 : 0;
+  const x = MACHINE.x + 145;
+  const y = MACHINE.y + 20 + bob;
+
+  ctx.save();
+  ctx.translate(x, y);
+  if (waking) {
+    ctx.strokeStyle = '#ffc857';
+    ctx.lineWidth = 4;
+    ctx.globalAlpha = .68;
+    for (const radius of [48 + pulse, 72 - pulse]) {
+      ctx.beginPath();
+      ctx.ellipse(0, 0, radius, radius * .62, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.rotate(phase === 'sleeping' ? -.42 : 0);
+  ctx.fillStyle = awake ? '#0a2b33' : '#151b24';
+  ctx.strokeStyle = silent ? '#a98147' : (waking ? '#ffc857' : (awake ? '#64e9ff' : '#4c5868'));
+  ctx.lineWidth = awake ? 5 : 3;
+  if (silent) ctx.setLineDash([8, 7]);
+  ctx.shadowColor = ctx.strokeStyle;
+  ctx.shadowBlur = awake || waking ? 24 : 5;
+  ctx.beginPath();
+  ctx.moveTo(0, -34);
+  ctx.bezierCurveTo(38, -28, 46, 9, 0, 36);
+  ctx.bezierCurveTo(-46, 9, -38, -28, 0, -34);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.shadowBlur = 0;
+  if (awake || waking) {
+    ctx.fillStyle = awake ? '#e9e3d5' : '#ffc857';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, awake ? 22 : 12, awake ? 11 : 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#071017';
+    ctx.beginPath();
+    ctx.arc(awake ? Math.sin(now / 900) * 7 : 0, 0, awake ? 7 : 3, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.strokeStyle = silent ? '#a98147' : '#4c5868';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-18, 0);
+    ctx.quadraticCurveTo(0, 8, 18, 0);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawWarehouse(ctx, state, now, reducedMotion = false) {
   const gradient = ctx.createLinearGradient(0, 0, 0, WORLD.height);
   gradient.addColorStop(0, '#101722');
   gradient.addColorStop(1, '#06090e');
@@ -181,6 +242,7 @@ function drawWarehouse(ctx, state, now) {
   ctx.fillText('PALLET', PALLET.x, PALLET.y + 150);
 
   drawArm(ctx, state, now);
+  drawOtherMind(ctx, state, now, reducedMotion);
 
   for (const crate of state.warehouse.crates) {
     if (['carried', 'hidden', 'arm'].includes(crate.status)) continue;
@@ -251,13 +313,13 @@ function drawCollapse(ctx, state) {
   ctx.restore();
 }
 
-export function renderGame(ctx, state, viewport, now) {
+export function renderGame(ctx, state, viewport, now, { reducedMotion = false } = {}) {
   ctx.save();
   ctx.clearRect(0, 0, viewport.width, viewport.height);
   viewportTransform(ctx, viewport);
   if (state.scene === 'prologue') drawPrologue(ctx, state, now);
   else if (state.scene === 'collapse') drawCollapse(ctx, state);
   else if (state.scene === 'reward') drawReward(ctx, state, now);
-  else drawWarehouse(ctx, state, now);
+  else drawWarehouse(ctx, state, now, reducedMotion);
   ctx.restore();
 }
