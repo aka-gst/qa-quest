@@ -290,7 +290,7 @@ textarea:focus-visible {
   .power-rack { right: max(12px, env(safe-area-inset-right)); bottom: calc(12px + var(--safe-bottom)); gap: 5px; }
   .power { width: 66px; height: 64px; padding: 7px; }
   .power__key { display: none; }
-  .power b { margin-top: 22px; font-size: 8px; }
+  .power b { margin-top: 22px; font-size: 10px; }
   .action-button { left: max(12px, env(safe-area-inset-left)); bottom: calc(12px + var(--safe-bottom)); height: 64px; }
   .machine { top: auto; bottom: 0; width: 100%; height: min(70dvh, 650px); padding: 20px 18px calc(18px + var(--safe-bottom)); border-top: 1px solid #64e9ff52; border-left: 0; }
   .machine__rail { left: 50%; top: -28px; width: 4px; height: 28px; }

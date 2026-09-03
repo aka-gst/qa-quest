@@ -21,9 +21,11 @@ test('the two later practicums are one quest block with two named routes', async
   assert.match(source, /СОБРАТЬ АГЕНТА/);
 });
 
-test('README describes the current full story route, not removed modes', async () => {
+test('README describes the new game route, not the retired course modes', async () => {
   const source = await readmeSource();
 
-  assert.match(source, /Две истории, один полный маршрут/);
-  assert.doesNotMatch(source, /Два режима на одном материале/);
+  assert.match(source, /Игра о человеке/);
+  assert.match(source, /сначала игрок таскает ящики сам/);
+  assert.match(source, /боты, агенты, собственный AI/);
+  assert.doesNotMatch(source, /Две истории, один полный маршрут|Два режима на одном материале/);
 });
