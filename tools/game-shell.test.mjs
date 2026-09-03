@@ -47,10 +47,16 @@ test('подписи мобильных способностей остаютс�
 
 test('рождение иного разума видно и доступно не только через canvas', () => {
   assert.match(html, /id=["']otherMindStatus["'][^>]*aria-live=["']polite["']/);
+  assert.match(html, /class=["']other-mind-glyph["'][^>]*aria-hidden=["']true["']/);
   assert.match(html, /СЕМЯ ИНОГО РАЗУ/);
   assert.match(css, /\.other-mind-status\[data-phase=["']waking["']\]/);
   assert.match(css, /\.other-mind-status\[data-phase=["']awake["']\]/);
   assert.match(css, /\.other-mind-status\[data-phase=["']silent["']\]/);
+  const glyph = css.match(/\.other-mind-glyph\s*\{([^}]*)\}/)?.[1] ?? '';
+  const width = Number(glyph.match(/width:\s*([\d.]+)px/)?.[1]);
+  const height = Number(glyph.match(/height:\s*([\d.]+)px/)?.[1]);
+  assert.ok(width >= 44 && height >= 44, `семя меньше 44px: ${width}×${height}`);
+  assert.doesNotMatch(css, /other-mind[^;}]*animation:[^;}]*infinite/);
 });
 
 test('сниженная анимация сохраняет читаемые состояния семени', () => {

@@ -119,7 +119,7 @@ function drawConveyor(ctx) {
   for (let y = 475; y < 720; y += 46) ctx.fillRect(32, y, 350, 5);
 }
 
-function drawArm(ctx, state, now) {
+function drawArm(ctx, state, now, { machineFocus = false, wakeProgress = 0 } = {}) {
   const awake = state.arm.awake;
   const watch = state.warehouse.manualDelivered * .14;
   const angle = awake ? Math.sin(now / 650) * .08 : watch;
@@ -128,12 +128,16 @@ function drawArm(ctx, state, now) {
     ? state.warehouse.crates.find((crate) => crate.id === active.boxId)
     : null;
   const progress = Math.max(0, Math.min(1, active?.progress ?? 0));
-  const endX = active ? source.x + (PALLET.x - source.x) * progress : MACHINE.x - 70;
-  const endY = active ? source.y + (PALLET.y - source.y) * progress - Math.sin(progress * Math.PI) * 330 : MACHINE.y - 55;
-  const baseX = MACHINE.x;
+  const focusOffset = machineFocus && !active ? -330 : 0;
+  const gesture = state.otherMind.phase === 'awake'
+    ? 1
+    : (state.otherMind.phase === 'waking' ? Math.min(1, wakeProgress * 1.25) : 0);
+  const endX = active ? source.x + (PALLET.x - source.x) * progress : MACHINE.x - 70 + focusOffset - gesture * 95;
+  const endY = active ? source.y + (PALLET.y - source.y) * progress - Math.sin(progress * Math.PI) * 330 : MACHINE.y - 55 - gesture * 40;
+  const baseX = MACHINE.x + focusOffset;
   const baseY = MACHINE.y + 220;
-  const elbowX = active ? (baseX + endX) / 2 : MACHINE.x - 25;
-  const elbowY = active ? Math.min(baseY, endY) - 150 : MACHINE.y - 70;
+  const elbowX = active ? (baseX + endX) / 2 : MACHINE.x - 25 + focusOffset - gesture * 30;
+  const elbowY = active ? Math.min(baseY, endY) - 150 : MACHINE.y - 70 - gesture * 18;
   ctx.save();
   ctx.fillStyle = '#283444';
   ctx.fillRect(baseX - 70, baseY + 30, 140, 72);
@@ -144,6 +148,17 @@ function drawArm(ctx, state, now) {
   ctx.fillStyle = '#263241';
   for (const [x, y] of [[baseX, baseY + 34], [elbowX + angle * 30, elbowY], [endX, endY]]) {
     ctx.beginPath(); ctx.arc(x, y, 29, 0, Math.PI * 2); ctx.fill();
+  }
+  if (state.otherMind.phase === 'waking') {
+    const signal = Math.min(2.99, wakeProgress * 3);
+    const joints = [[baseX, baseY + 34], [elbowX + angle * 30, elbowY], [endX, endY]];
+    joints.forEach(([x, y], index) => {
+      const strength = Math.max(0, 1 - Math.abs(signal - index));
+      ctx.fillStyle = strength > .15 ? '#ffc857' : '#64e9ff';
+      ctx.shadowColor = ctx.fillStyle;
+      ctx.shadowBlur = 10 + strength * 22;
+      ctx.beginPath(); ctx.arc(x, y, 7 + strength * 9, 0, Math.PI * 2); ctx.fill();
+    });
   }
   ctx.fillStyle = awake ? '#64e9ff' : (state.warehouse.manualDelivered ? '#ffc857' : '#4c3032');
   ctx.shadowColor = ctx.fillStyle;
@@ -157,14 +172,14 @@ function drawArm(ctx, state, now) {
   ctx.restore();
 }
 
-function drawOtherMind(ctx, state, now, reducedMotion) {
+function drawOtherMind(ctx, state, now, { reducedMotion = false, machineFocus = false, wakeProgress = 0 } = {}) {
   const { phase } = state.otherMind;
   const waking = phase === 'waking';
   const awake = phase === 'awake';
   const silent = phase === 'silent';
-  const pulse = reducedMotion ? 0 : Math.sin(now / 120) * 5;
+  const pulse = reducedMotion ? 0 : Math.min(1, wakeProgress);
   const bob = awake && !reducedMotion ? Math.sin(now / 650) * 4 : 0;
-  const x = MACHINE.x + 145;
+  const x = MACHINE.x + 145 + (machineFocus ? -330 : 0);
   const y = MACHINE.y + 20 + bob;
 
   ctx.save();
@@ -172,8 +187,8 @@ function drawOtherMind(ctx, state, now, reducedMotion) {
   if (waking) {
     ctx.strokeStyle = '#ffc857';
     ctx.lineWidth = 4;
-    ctx.globalAlpha = .68;
-    for (const radius of [48 + pulse, 72 - pulse]) {
+    ctx.globalAlpha = Math.max(.18, .82 - pulse * .62);
+    for (const radius of [42 + pulse * 38, 58 + pulse * 66]) {
       ctx.beginPath();
       ctx.ellipse(0, 0, radius, radius * .62, 0, 0, Math.PI * 2);
       ctx.stroke();
@@ -218,7 +233,7 @@ function drawOtherMind(ctx, state, now, reducedMotion) {
   ctx.restore();
 }
 
-function drawWarehouse(ctx, state, now, reducedMotion = false) {
+function drawWarehouse(ctx, state, now, options = {}) {
   const gradient = ctx.createLinearGradient(0, 0, 0, WORLD.height);
   gradient.addColorStop(0, '#101722');
   gradient.addColorStop(1, '#06090e');
@@ -241,8 +256,8 @@ function drawWarehouse(ctx, state, now, reducedMotion = false) {
   ctx.font = '700 23px ui-monospace, monospace';
   ctx.fillText('PALLET', PALLET.x, PALLET.y + 150);
 
-  drawArm(ctx, state, now);
-  drawOtherMind(ctx, state, now, reducedMotion);
+  drawArm(ctx, state, now, options);
+  drawOtherMind(ctx, state, now, options);
 
   for (const crate of state.warehouse.crates) {
     if (['carried', 'hidden', 'arm'].includes(crate.status)) continue;
@@ -313,13 +328,13 @@ function drawCollapse(ctx, state) {
   ctx.restore();
 }
 
-export function renderGame(ctx, state, viewport, now, { reducedMotion = false } = {}) {
+export function renderGame(ctx, state, viewport, now, options = {}) {
   ctx.save();
   ctx.clearRect(0, 0, viewport.width, viewport.height);
   viewportTransform(ctx, viewport);
   if (state.scene === 'prologue') drawPrologue(ctx, state, now);
   else if (state.scene === 'collapse') drawCollapse(ctx, state);
   else if (state.scene === 'reward') drawReward(ctx, state, now);
-  else drawWarehouse(ctx, state, now, reducedMotion);
+  else drawWarehouse(ctx, state, now, options);
   ctx.restore();
 }

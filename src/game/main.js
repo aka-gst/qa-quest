@@ -48,6 +48,7 @@ const telemetry = createTelemetry({ enabled: isLocal });
 let state = createCheckpointState(checkpoint.checkpoint);
 let fakeGateway;
 let otherMindRuntime;
+let otherMindWakingAt = null;
 let lastTime = performance.now();
 let firstMovementSeen = false;
 let lastScene = state.scene;
@@ -64,11 +65,12 @@ let lastAutoFinishedAt = null;
 
 function prepareOtherMindRuntime() {
   const failGateway = isLocal && new URLSearchParams(location.search).get('fakeGateway') === 'fail';
-  fakeGateway = createFakeGateway({ fail: failGateway, chunks: 4, delay: 260 });
+  fakeGateway = createFakeGateway({ fail: failGateway, chunks: 4, delay: 330 });
   otherMindRuntime = createOtherMindRuntime({
     gateway: fakeGateway,
     onTransition: ({ phase, line }) => {
       const previous = state.otherMind.phase;
+      if (phase === 'waking' && previous !== 'waking') otherMindWakingAt = performance.now();
       const actionType = {
         waking: 'other-mind-waking',
         awake: 'other-mind-awake',
@@ -260,12 +262,15 @@ function frame(now) {
     lastAutoDelivered = state.warehouse.autoDelivered;
   }
   updateHud();
+  const wakeProgress = state.otherMind.phase === 'waking' && otherMindWakingAt !== null
+    ? Math.min(1, Math.max(0, (now - otherMindWakingAt) / 1200))
+    : (state.otherMind.phase === 'awake' ? 1 : 0);
   renderGame(
     ctx,
     state,
     { width: canvas.clientWidth, height: canvas.clientHeight },
     now,
-    { reducedMotion: prefersReducedMotion },
+    { reducedMotion: prefersReducedMotion, machineFocus: machineOpen, wakeProgress },
   );
   requestAnimationFrame(frame);
 }
@@ -289,6 +294,7 @@ document.querySelector('#restartGame').addEventListener('click', () => {
   if (progressed && !window.confirm('Начать заново? Текущий прогресс этой игры исчезнет.')) return;
   resetCheckpoint();
   state = createGameState();
+  otherMindWakingAt = null;
   prepareOtherMindRuntime();
   firstMovementSeen = false;
   lastScene = state.scene;
