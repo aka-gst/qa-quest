@@ -9,6 +9,7 @@ export const MAX_DT = 0.05;
 export const PLAYER_SPEED = 310;
 export const INTERACTION_RADIUS = 92;
 export const PROLOGUE_TIMEOUT = 30;
+export const ARM_TRANSFER_DURATION = 1.15;
 
 export const PALLET = Object.freeze({ id: 'pallet-a', x: 1300, y: 590, width: 180, height: 120 });
 export const MACHINE = Object.freeze({ x: 1010, y: 350 });

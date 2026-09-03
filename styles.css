@@ -234,6 +234,8 @@ textarea:focus-visible {
   background: #0a1019f4;
   box-shadow: -28px 0 80px #000a;
   user-select: text;
+  overflow-y: auto;
+  touch-action: pan-y;
 }
 
 .machine[hidden], .ending[hidden] { display: none; }
@@ -249,8 +251,12 @@ textarea:focus-visible {
 .code-editor > span { padding-top: 16px; border-right: 1px solid #ffffff12; color: #46505d; text-align: center; font: 12px ui-monospace, monospace; }
 .code-editor textarea { width: 100%; padding: 15px; resize: none; border: 0; outline: 0; background: transparent; color: var(--cyan); font: 14px/1.65 ui-monospace, monospace; }
 .code-feedback { min-height: 40px; padding: 11px 13px; background: #ffffff08; color: var(--muted); font: 11px/1.5 ui-monospace, monospace; }
+.code-feedback[data-status="loading"] { color: var(--sodium); }
+.code-feedback[data-status="success"] { color: var(--cyan); }
+.code-feedback[data-status="error"] { color: #ff8b94; border-left: 2px solid var(--danger); }
 .run-code { width: 100%; margin-top: 12px; padding: 14px 18px; background: var(--sodium); color: var(--coal); font-weight: 900; letter-spacing: .12em; }
 .run-code:hover { background: var(--bone); }
+.run-code:disabled { cursor: wait; opacity: .55; }
 
 .ending {
   position: absolute;
@@ -297,14 +303,22 @@ textarea:focus-visible {
 }
 
 @media (max-height: 520px) and (orientation: landscape) {
+  .game { min-height: 100dvh; }
   .hud { top: 20%; }
   .hud h1 { font-size: 38px; max-width: 430px; }
   #gameMessage { margin-top: 10px; }
   .power { height: 58px; }
   .power b { margin-top: 8px; }
-  .machine h2 { margin-top: 4vh; }
-  .code-label { margin-top: 14px; }
-  .code-editor { min-height: 100px; }
+  .machine { padding: 10px 16px; }
+  .machine__header .icon-button { width: 44px; height: 44px; }
+  .machine h2 { margin: 0 0 4px; font-size: 28px; }
+  .machine p { margin: 0; font-size: 11px; line-height: 1.25; }
+  .code-label { margin: 7px 0 5px; }
+  .code-editor { min-height: 88px; height: 88px; }
+  .code-editor > span { padding-top: 9px; }
+  .code-editor textarea { padding: 8px 12px; line-height: 1.35; }
+  .code-feedback { min-height: 30px; padding: 6px 9px; }
+  .run-code { min-height: 44px; margin-top: 5px; padding: 8px 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

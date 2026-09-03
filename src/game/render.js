@@ -2,6 +2,8 @@ import { MACHINE, PALLET, WORLD } from './config.js';
 
 const prologueImage = new Image();
 prologueImage.src = 'art/night2-hero.jpg';
+const rewardImage = new Image();
+rewardImage.src = 'art/garage-milestone-1.jpg';
 
 function viewportTransform(ctx, viewport) {
   const scale = Math.min(viewport.width / WORLD.width, viewport.height / WORLD.height);
@@ -120,22 +122,38 @@ function drawConveyor(ctx) {
 function drawArm(ctx, state, now) {
   const awake = state.arm.awake;
   const watch = state.warehouse.manualDelivered * .14;
-  const angle = awake ? Math.sin(now / 650) * .2 : watch;
+  const angle = awake ? Math.sin(now / 650) * .08 : watch;
+  const active = state.arm.active;
+  const source = active
+    ? state.warehouse.crates.find((crate) => crate.id === active.boxId)
+    : null;
+  const progress = Math.max(0, Math.min(1, active?.progress ?? 0));
+  const endX = active ? source.x + (PALLET.x - source.x) * progress : MACHINE.x - 70;
+  const endY = active ? source.y + (PALLET.y - source.y) * progress - Math.sin(progress * Math.PI) * 330 : MACHINE.y - 55;
+  const baseX = MACHINE.x;
+  const baseY = MACHINE.y + 220;
+  const elbowX = active ? (baseX + endX) / 2 : MACHINE.x - 25;
+  const elbowY = active ? Math.min(baseY, endY) - 150 : MACHINE.y - 70;
   ctx.save();
-  ctx.translate(MACHINE.x, MACHINE.y + 170);
   ctx.fillStyle = '#283444';
-  ctx.fillRect(-70, 30, 140, 72);
-  ctx.rotate(-1.15 + angle);
-  ctx.fillStyle = '#59687a';
-  ctx.fillRect(-22, -230, 44, 265);
-  ctx.translate(0, -220);
-  ctx.rotate(1.7 - angle * 1.4);
-  ctx.fillStyle = '#718398';
-  ctx.fillRect(-18, -160, 36, 180);
+  ctx.fillRect(baseX - 70, baseY + 30, 140, 72);
+  ctx.strokeStyle = awake ? '#718398' : '#59687a';
+  ctx.lineWidth = 42;
+  ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(baseX, baseY + 34); ctx.lineTo(elbowX + angle * 30, elbowY); ctx.lineTo(endX, endY); ctx.stroke();
+  ctx.fillStyle = '#263241';
+  for (const [x, y] of [[baseX, baseY + 34], [elbowX + angle * 30, elbowY], [endX, endY]]) {
+    ctx.beginPath(); ctx.arc(x, y, 29, 0, Math.PI * 2); ctx.fill();
+  }
   ctx.fillStyle = awake ? '#64e9ff' : (state.warehouse.manualDelivered ? '#ffc857' : '#4c3032');
   ctx.shadowColor = ctx.fillStyle;
   ctx.shadowBlur = 18;
-  ctx.beginPath(); ctx.arc(0, -165, 12, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(endX, endY, 12, 0, Math.PI * 2); ctx.fill();
+  if (active) {
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = '#bb8440';
+    ctx.fillRect(endX - 24, endY + 18, 48, 48);
+  }
   ctx.restore();
 }
 
@@ -165,7 +183,7 @@ function drawWarehouse(ctx, state, now) {
   drawArm(ctx, state, now);
 
   for (const crate of state.warehouse.crates) {
-    if (['carried', 'hidden'].includes(crate.status)) continue;
+    if (['carried', 'hidden', 'arm'].includes(crate.status)) continue;
     const stack = crate.status === 'pallet' ? state.warehouse.crates.filter((item) => item.status === 'pallet').findIndex((item) => item.id === crate.id) : 0;
     const x = crate.status === 'pallet' ? PALLET.x + 8 + (stack % 3) * 52 : crate.x;
     const y = crate.status === 'pallet' ? PALLET.y + 52 - Math.floor(stack / 3) * 54 : crate.y;
@@ -182,6 +200,41 @@ function drawWarehouse(ctx, state, now) {
   ctx.fillStyle = '#8993a1';
   ctx.font = '16px ui-monospace, monospace';
   ctx.fillText(`СМЕНА 03:17     ПЕРЕНЕСЕНО ${state.warehouse.manualDelivered}     ₽ ${state.warehouse.wage}`, 520, 825);
+  if (state.scene === 'red-crate') {
+    ctx.fillStyle = '#ff4d5a';
+    ctx.font = '900 28px ui-monospace, monospace';
+    ctx.fillText('ОШИБКА МАРШРУТА · ГРУЗ НЕ СОВПАДАЕТ', 590, 220);
+  }
+}
+
+function drawReward(ctx, state, now) {
+  ctx.fillStyle = '#04070b';
+  ctx.fillRect(0, 0, WORLD.width, WORLD.height);
+  drawCover(ctx, rewardImage, .68);
+  const shade = ctx.createLinearGradient(0, 0, WORLD.width, 0);
+  shade.addColorStop(0, '#05080de8');
+  shade.addColorStop(.55, '#05080d55');
+  shade.addColorStop(1, '#05080dcc');
+  ctx.fillStyle = shade;
+  ctx.fillRect(0, 0, WORLD.width, WORLD.height);
+  ctx.fillStyle = '#171e29';
+  ctx.fillRect(940, 610, 510, 38);
+  ctx.fillRect(990, 648, 24, 165);
+  ctx.fillRect(1375, 648, 24, 165);
+  ctx.strokeStyle = '#64e9ff';
+  ctx.lineWidth = 4;
+  ctx.shadowColor = '#64e9ff';
+  ctx.shadowBlur = 22;
+  ctx.beginPath(); ctx.arc(1200, 545, 64 + Math.sin(now / 800) * 3, 0, Math.PI * 2); ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#64e9ff';
+  ctx.fillRect(1177, 535, 12, 8);
+  ctx.fillRect(1211, 535, 12, 8);
+  ctx.fillStyle = '#e9e3d5';
+  ctx.font = '700 18px ui-monospace, monospace';
+  ctx.fillText('Q-BOT // EMPTY SHELL', 1080, 690);
+  ctx.fillStyle = '#ffc857';
+  ctx.fillText(`ЗАРАБОТАНО: ₽ ${state.warehouse.wage}`, 1080, 725);
 }
 
 function drawCollapse(ctx, state) {
@@ -204,6 +257,7 @@ export function renderGame(ctx, state, viewport, now) {
   viewportTransform(ctx, viewport);
   if (state.scene === 'prologue') drawPrologue(ctx, state, now);
   else if (state.scene === 'collapse') drawCollapse(ctx, state);
+  else if (state.scene === 'reward') drawReward(ctx, state, now);
   else drawWarehouse(ctx, state, now);
   ctx.restore();
 }

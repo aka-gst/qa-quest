@@ -1,8 +1,10 @@
 import {
+  ARM_TRANSFER_DURATION,
   COLLAPSE_DURATION,
   CRATE_LAYOUT,
   INTERACTION_RADIUS,
   MANUAL_CRATES_REQUIRED,
+  MACHINE,
   MAX_DT,
   PALLET,
   PLAYER_SPEED,
@@ -72,6 +74,52 @@ export function createGameState(overrides = {}) {
       active: overrides.arm?.active ? { ...overrides.arm.active } : null,
     },
   };
+}
+
+export function createCheckpointState(checkpoint = 'start') {
+  if (checkpoint === 'start') return createGameState();
+  const powers = { dash: false, pulse: false, shield: false };
+  if (checkpoint === 'warehouse') {
+    return createGameState({
+      scene: 'warehouse', checkpoint, powers,
+      player: { x: 520, y: 580 },
+    });
+  }
+  if (checkpoint === 'machine') {
+    return createGameState({
+      scene: 'machine', checkpoint, powers,
+      player: { x: 1120, y: 580 },
+      warehouse: {
+        manualDelivered: 3,
+        wage: 360,
+        crates: CRATE_LAYOUT.map((crate) => (
+          ['box-01', 'box-02', 'box-03'].includes(crate.id)
+            ? { ...crate, status: 'pallet', x: PALLET.x, y: PALLET.y }
+            : crate
+        )),
+      },
+    });
+  }
+  if (checkpoint === 'red-crate' || checkpoint === 'reward') {
+    return createGameState({
+      scene: checkpoint,
+      checkpoint,
+      powers,
+      player: { x: 800, y: 580 },
+      arm: { awake: true, blocked: true },
+      warehouse: {
+        manualDelivered: 3,
+        autoDelivered: 6,
+        wage: 1080,
+        freeTime: 24,
+        crates: CRATE_LAYOUT.map((crate) => {
+          if (crate.id === 'red-01') return { ...crate, status: 'blocked', x: 720, y: 575 };
+          return { ...crate, status: 'pallet', x: PALLET.x, y: PALLET.y };
+        }),
+      },
+    });
+  }
+  return createGameState();
 }
 
 function distance(a, b) {
@@ -225,12 +273,74 @@ export function applyGameAction(state, action) {
         },
       };
     }
+    case 'arm-awake': {
+      if (state.scene !== 'machine') return state;
+      return {
+        ...state,
+        scene: 'automation',
+        checkpoint: 'machine',
+        arm: { ...state.arm, awake: true, blocked: false },
+      };
+    }
+    case 'automation-queued': {
+      if (state.scene !== 'automation' || !state.arm.awake || state.arm.active) return state;
+      return {
+        ...state,
+        arm: {
+          ...state.arm,
+          queue: (action.events ?? []).map((event) => ({ ...event })),
+        },
+      };
+    }
+    case 'arm-transfer-finished': {
+      if (state.scene !== 'automation' || state.arm.active?.boxId !== action.boxId) return state;
+      const autoDelivered = state.warehouse.autoDelivered + 1;
+      const finished = autoDelivered >= 6;
+      return {
+        ...state,
+        scene: finished ? 'red-crate' : state.scene,
+        sceneTime: finished ? 0 : state.sceneTime,
+        checkpoint: finished ? 'red-crate' : state.checkpoint,
+        warehouse: {
+          ...state.warehouse,
+          autoDelivered,
+          wage: state.warehouse.wage + 120,
+          freeTime: state.warehouse.freeTime + 4,
+          crates: state.warehouse.crates.map((crate) => {
+            if (crate.id === action.boxId) return { ...crate, status: 'pallet' };
+            if (finished && crate.id === 'red-01') return { ...crate, status: 'blocked', x: 720, y: 575 };
+            return crate;
+          }),
+        },
+        arm: {
+          ...state.arm,
+          active: null,
+          queue: finished ? [] : state.arm.queue,
+          blocked: finished,
+        },
+      };
+    }
+    case 'inspect-red-crate': {
+      if (state.scene !== 'red-crate') return state;
+      return { ...state, scene: 'reward', sceneTime: 0, checkpoint: 'reward' };
+    }
     default:
       return state;
   }
 }
 
 export function getNearbyAction(state) {
+  if (state.scene === 'red-crate') {
+    const red = state.warehouse.crates.find((crate) => crate.id === 'red-01');
+    return red && distance(state.player, red) <= INTERACTION_RADIUS + 25
+      ? { type: 'inspect-red-crate', label: 'ПРОВЕРИТЬ ЯЩИК' }
+      : null;
+  }
+  if (state.scene === 'automation') {
+    return !state.arm.active && state.arm.queue.length === 0 && distance(state.player, MACHINE) <= INTERACTION_RADIUS + 45
+      ? { type: 'open-machine', label: 'ОТКРЫТЬ КОНСОЛЬ' }
+      : null;
+  }
   if (state.scene !== 'warehouse') return null;
   if (state.player.carrying) {
     if (distance(state.player, PALLET) <= INTERACTION_RADIUS + 35) {
@@ -303,6 +413,29 @@ export function stepGame(state, input = {}, rawDt) {
 
   if (next.scene === 'collapse' && next.sceneTime >= COLLAPSE_DURATION) {
     return enterWarehouse(next);
+  }
+
+  if (next.scene === 'automation' && next.arm.awake) {
+    if (!next.arm.active && next.arm.queue.length) {
+      const [event, ...queue] = next.arm.queue;
+      next = {
+        ...next,
+        warehouse: {
+          ...next.warehouse,
+          crates: updateCrate(next, event.boxId, (crate) => ({ ...crate, status: 'arm' })),
+        },
+        arm: { ...next.arm, queue, active: { ...event, progress: 0 } },
+      };
+    } else if (next.arm.active) {
+      const progress = next.arm.active.progress + dt / ARM_TRANSFER_DURATION;
+      next = {
+        ...next,
+        arm: { ...next.arm, active: { ...next.arm.active, progress } },
+      };
+      if (progress >= 1) {
+        next = applyGameAction(next, { type: 'arm-transfer-finished', boxId: next.arm.active.boxId });
+      }
+    }
   }
 
   return next;

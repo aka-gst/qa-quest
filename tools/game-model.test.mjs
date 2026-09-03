@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   applyGameAction,
+  createCheckpointState,
   createGameState,
   getNearbyAction,
   stepGame,
@@ -103,4 +104,64 @@ test('ящик засчитывается только после доставк
   state = applyGameAction(state, { type: 'drop-crate', target: 'pallet-a' });
   assert.equal(state.warehouse.manualDelivered, 1);
   assert.equal(state.warehouse.crates.find(({ id }) => id === 'box-01').status, 'pallet');
+});
+
+test('пробуждение руки не переносит ни одного ящика', () => {
+  const state = applyGameAction(createGameState({ scene: 'machine' }), { type: 'arm-awake' });
+  assert.equal(state.scene, 'automation');
+  assert.equal(state.arm.awake, true);
+  assert.equal(state.warehouse.autoDelivered, 0);
+  assert.deepEqual(state.arm.queue, []);
+});
+
+test('принятая команда сначала создаёт очередь, а не готовый результат', () => {
+  const awake = applyGameAction(createGameState({ scene: 'machine' }), { type: 'arm-awake' });
+  const queued = applyGameAction(awake, {
+    type: 'automation-queued',
+    events: [{ type: 'arm.move', boxId: 'box-04', targetId: 'pallet-a' }],
+  });
+  assert.equal(queued.warehouse.autoDelivered, 0);
+  assert.deepEqual(queued.arm.queue.map((event) => event.boxId), ['box-04']);
+});
+
+test('одна законченная команда переносит ровно один физический ящик', () => {
+  let state = createGameState({ scene: 'automation', arm: { awake: true } });
+  state = applyGameAction(state, {
+    type: 'automation-queued',
+    events: [{ type: 'arm.move', boxId: 'box-04', targetId: 'pallet-a' }],
+  });
+  state = stepGame(state, {}, 0.05);
+  assert.equal(state.warehouse.autoDelivered, 0);
+  assert.equal(state.arm.active.boxId, 'box-04');
+  state = applyGameAction(state, { type: 'arm-transfer-finished', boxId: 'box-04' });
+  assert.equal(state.warehouse.autoDelivered, 1);
+  assert.equal(state.warehouse.crates.find(({ id }) => id === 'box-04').status, 'pallet');
+});
+
+test('красный ящик останавливает обычный маршрут после шести переносов', () => {
+  const state = createGameState({ scene: 'automation', warehouse: { autoDelivered: 5 }, arm: { awake: true, active: { boxId: 'box-09', progress: .9 } } });
+  const next = applyGameAction(state, { type: 'arm-transfer-finished', boxId: 'box-09' });
+  assert.equal(next.warehouse.autoDelivered, 6);
+  assert.equal(next.scene, 'red-crate');
+  assert.equal(next.arm.blocked, true);
+  assert.equal(next.warehouse.crates.find(({ id }) => id === 'red-01').status, 'blocked');
+});
+
+test('награда открывается только после осмотра красного ящика', () => {
+  const blocked = createGameState({ scene: 'red-crate', arm: { blocked: true } });
+  const ignored = applyGameAction(createGameState({ scene: 'automation' }), { type: 'inspect-red-crate' });
+  assert.equal(ignored.scene, 'automation');
+  const reward = applyGameAction(blocked, { type: 'inspect-red-crate' });
+  assert.equal(reward.scene, 'reward');
+  assert.equal(reward.checkpoint, 'reward');
+});
+
+test('контрольная точка красного ящика восстанавливает мир, а не только название сцены', () => {
+  const restored = createCheckpointState('red-crate');
+  assert.equal(restored.scene, 'red-crate');
+  assert.equal(restored.arm.awake, true);
+  assert.equal(restored.arm.blocked, true);
+  assert.equal(restored.warehouse.manualDelivered, 3);
+  assert.equal(restored.warehouse.autoDelivered, 6);
+  assert.equal(restored.warehouse.crates.find(({ id }) => id === 'red-01').status, 'blocked');
 });
