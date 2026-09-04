@@ -1,6 +1,6 @@
 import { createInput } from './input.js';
 import { createAudioBus } from './audio.js';
-import { prepareMachinePython, runAutomation, runWake } from './machine.js';
+import { prepareMachinePython, runWake } from './machine.js?v=3';
 import {
   createFakeGateway,
   createMachineListeningEvent,
@@ -12,12 +12,12 @@ import {
   createGameState,
   getNearbyAction,
   stepGame,
-} from './model.js';
-import { renderGame } from './render.js';
-import { getWakeFailureGuidance } from './wake-help.js';
+} from './model.js?v=4';
+import { renderGame } from './render.js?v=7';
+import { getWakeFailureGuidance } from './wake-help.js?v=2';
 import { loadCheckpoint, resetCheckpoint, saveCheckpoint } from './save.js';
 import { createTelemetry } from './telemetry.js';
-import { CHECKPOINTS } from './config.js';
+import { CHECKPOINTS, OTHER_MIND_AWAKE_HOLD_DURATION, REWARD_REVEAL_DURATION } from './config.js?v=5';
 import { getViewportTransform, screenToWorld } from './viewport.js';
 
 const canvas = document.querySelector('#gameCanvas');
@@ -42,6 +42,8 @@ const hud = {
   otherMind: document.querySelector('#otherMindStatus'),
   otherMindPhase: document.querySelector('#otherMindPhase'),
   otherMindLine: document.querySelector('#otherMindLine'),
+  journal: document.querySelector('#skillJournal'),
+  printSkillMethod: document.querySelector('#printSkillMethod'),
 };
 
 const isLocal = ['127.0.0.1', 'localhost'].includes(location.hostname);
@@ -59,7 +61,6 @@ let lastTime = performance.now();
 let firstMovementSeen = false;
 let lastScene = state.scene;
 let machineOpen = false;
-let machineStage = state.arm.awake ? 'automation' : 'wake';
 let machineRunning = false;
 let wakeAttempts = 0;
 const input = createInput(canvas);
@@ -71,6 +72,17 @@ let firstActionRecorded = false;
 let manualStartedAt = null;
 let automationAcceptedAt = null;
 let lastAutoFinishedAt = null;
+let incomeNoticeUntil = 0;
+let warehouseCueStage = 0;
+let codeInputMethod = 'typed';
+
+function ambientForScene() {
+  return ['prologue', 'collapse'].includes(state.scene) ? 'combat' : 'warehouse';
+}
+
+async function unlockAudioForScene() {
+  if (await audio.unlock()) await audio.setAmbient(ambientForScene());
+}
 
 function prepareOtherMindRuntime() {
   const failGateway = isLocal && new URLSearchParams(location.search).get('fakeGateway') === 'fail';
@@ -86,6 +98,7 @@ function prepareOtherMindRuntime() {
         silent: 'other-mind-silent',
       }[phase];
       if (actionType) state = applyGameAction(state, { type: actionType, line });
+      if (phase === 'awake' && previous !== 'awake') audio.play('wake');
       if (phase !== previous) telemetry.mark(`other-mind-${phase}`);
     },
   });
@@ -99,20 +112,21 @@ function recordFirstAction() {
   telemetry.mark('first-action');
 }
 
-function setMachineStage(stage) {
-  machineStage = stage;
-  hud.feedback.textContent = stage === 'wake' ? 'Канал не активен' : 'Осталось построить маршрут';
+function resetMachinePanel() {
+  hud.feedback.textContent = 'Канал не активен';
   hud.feedback.dataset.status = 'idle';
-  if (stage === 'wake') {
-    hud.machineTitle.textContent = 'Терминал узла 07';
-    hud.machineBrief.textContent = 'На экране мигает курсор. Кажется, здесь можно ввести команду.';
-    hud.code.value = '';
-    wakeAttempts = 0;
-  } else {
-    hud.machineTitle.textContent = 'Прикажи один раз';
-    hud.machineBrief.textContent = 'Раньше ты носил каждый ящик. Теперь опиши правило для всех.';
-    hud.code.value = 'for box in boxes:\n    arm.move(box, ___)';
-  }
+  hud.machineTitle.textContent = 'Терминал узла 07';
+  hud.machineBrief.textContent = 'Мёртвая кнопка соединена с рукой. Здесь можно вернуть ей питание.';
+  hud.code.value = '';
+  wakeAttempts = 0;
+}
+
+function openMachinePanel() {
+  machineOpen = true;
+  prepareMachinePython();
+  requestAnimationFrame(() => {
+    if (machineOpen) hud.code.focus();
+  });
 }
 
 function resizeCanvas() {
@@ -127,9 +141,7 @@ function useAction() {
   if (!action) return;
   recordFirstAction();
   if (action.type === 'open-machine') {
-    setMachineStage(state.arm.awake ? 'automation' : 'wake');
-    machineOpen = true;
-    prepareMachinePython();
+    openMachinePanel();
     return;
   }
   const wasCarrying = Boolean(state.player.carrying);
@@ -161,35 +173,26 @@ function openMachineFromCanvas(event) {
   const action = getNearbyAction({ ...state, player });
   if (action?.type !== 'open-machine') return;
   recordFirstAction();
-  setMachineStage('wake');
-  machineOpen = true;
-  prepareMachinePython();
-}
-
-function explainAutomationFailure(result, source) {
-  const error = result.error;
-  if (error?.type === 'NameError' && /print\(\s*WAKE\s*\)/.test(source)) {
-    return 'WAKE — это текст, поэтому ему нужны кавычки: print("WAKE")';
-  }
-  if (error?.type === 'NameError' && source.includes('___')) {
-    return '___ — это пустое место, а не имя. На площадке написано pallet: подставь pallet без кавычек.';
-  }
-  const failedCheck = result.checks?.find((check) => !check.ok)?.detail;
-  if (!error) return failedCheck || 'Команда выполнилась, но ничего не изменила.';
-  return `${error.type}${error.line ? ` · строка ${error.line}` : ''}: ${error.text}${error.hint ? ` — ${error.hint}` : ''}`;
+  openMachinePanel();
 }
 
 function updateControls() {
+  if (machineOpen) {
+    input.consume('action');
+    return;
+  }
   if (input.consume('action')) useAction();
 }
 
-function updateHud() {
+function updateHud(now = performance.now()) {
   game.dataset.scene = state.scene;
+  game.dataset.intro = state.scene === 'warehouse' && !state.warehouse.introComplete ? 'warehouse' : '';
+  game.dataset.wakeReveal = state.arm.wakeRevealRemaining > 0 ? 'true' : 'false';
   const nearby = getNearbyAction(state);
   const inWarehouse = ['warehouse', 'machine', 'automation', 'red-crate', 'reward'].includes(state.scene);
   const powers = document.querySelectorAll('.power');
   powers.forEach((button) => { button.disabled = !state.powers[button.id.replace('power', '').toLowerCase()]; });
-  hud.action.style.display = nearby ? 'flex' : 'none';
+  hud.action.style.display = nearby && !machineOpen ? 'flex' : 'none';
   if (nearby) hud.action.querySelector('b').textContent = nearby.label;
 
   if (state.scene === 'prologue') {
@@ -202,8 +205,8 @@ function updateHud() {
     hud.targets.textContent = `${state.prologue.threats}/24`;
   } else if (state.scene === 'collapse') {
     hud.chapter.textContent = 'СЕТЬ · СОЕДИНЕНИЕ ПОТЕРЯНО';
-    hud.mission.textContent = 'DISCONNECT';
-    hud.message.textContent = 'ОПЯТЬ НА РАБОТУ';
+    hud.mission.textContent = state.sceneTime < 2 ? 'ОБРЫВ СВЯЗИ' : 'ПАМЯТЬ НЕ НАЙДЕНА';
+    hud.message.textContent = state.sceneTime < 2 ? 'КАНАЛ РАЗРУШЕН' : 'ЗАГРУЗКА РЕАЛЬНОСТИ';
     hud.progress.style.width = '100%';
     hud.system.textContent = 'ОТКАЗ';
     hud.sector.textContent = '???';
@@ -214,8 +217,15 @@ function updateHud() {
       hud.mission.textContent = 'Со стены сорвало плакат';
       hud.message.textContent = nearby?.label ?? 'Подойди к загоревшемуся терминалу';
     } else if (state.scene === 'automation') {
-      hud.mission.textContent = state.arm.active || state.arm.queue.length ? 'Ты больше не нужен этой работе' : 'Дай машине правило';
-      hud.message.textContent = nearby?.label ?? (state.arm.active ? 'Она работает. Ты можешь идти.' : `Автоматически: ${state.warehouse.autoDelivered}/6`);
+      const revealing = state.arm.wakeRevealRemaining > 0;
+      hud.mission.textContent = revealing
+        ? 'Машина услышала тебя'
+        : (state.arm.active || state.arm.queue.length ? 'Работа идёт сама' : 'Дай машине правило');
+      hud.message.textContent = revealing
+        ? 'PRINT ОТКРЫТ · РУКА 07 ПОЛУЧАЕТ ПИТАНИЕ'
+        : (now < incomeNoticeUntil
+        ? `+ ₽120 · +4 МИНУТЫ СВОБОДЫ · АВТО ${state.warehouse.autoDelivered}/6`
+        : (nearby?.label ?? (state.arm.active ? 'РУКА РАБОТАЕТ · ДЕНЬГИ КАПАЮТ' : `Автоматически: ${state.warehouse.autoDelivered}/6`)));
     } else if (state.scene === 'red-crate') {
       hud.mission.textContent = 'Машина остановилась';
       hud.message.textContent = nearby?.label ?? 'Подойди к красному ящику';
@@ -234,7 +244,11 @@ function updateHud() {
   }
 
   hud.machine.hidden = !machineOpen;
-  hud.ending.hidden = state.scene !== 'reward';
+  hud.ending.hidden = state.scene !== 'reward' || state.sceneTime < REWARD_REVEAL_DURATION;
+  hud.journal.hidden = !['automation', 'red-crate'].includes(state.scene) || !state.arm.awake;
+  hud.printSkillMethod.textContent = codeInputMethod === 'pasted'
+    ? 'СПОСОБ: ВСТАВЛЕНО · ЗАСЧИТАНО'
+    : 'СПОСОБ: НАБРАНО РУКАМИ';
   const mindCopy = {
     sleeping: ['СПИТ', 'Пока это только пустая оболочка.'],
     waking: ['СЛЫШИТ', 'Связь собирается…'],
@@ -247,23 +261,30 @@ function updateHud() {
 }
 
 function frame(now) {
-  if (Math.abs(input.state.moveX) + Math.abs(input.state.moveY) > 0) {
+  if (!machineOpen && Math.abs(input.state.moveX) + Math.abs(input.state.moveY) > 0) {
     firstMovementSeen = true;
     recordFirstAction();
   }
   updateControls();
-  state = stepGame(state, input.state, (now - lastTime) / 1000);
+  state = stepGame(state, input.state, (now - lastTime) / 1000, { paused: machineOpen });
   lastTime = now;
   if (state.scene !== lastScene) {
     if (['warehouse', 'machine', 'red-crate', 'reward'].includes(state.checkpoint)) saveCheckpoint(localStorage, state);
     lastScene = state.scene;
     if (state.scene === 'machine') {
-      setMachineStage('wake');
+      resetMachinePanel();
       prepareMachinePython();
+      audio.play('poster');
     }
+    if (state.scene === 'warehouse') warehouseCueStage = 0;
     if (state.scene === 'collapse') audio.play('collapse');
     if (state.scene === 'red-crate') audio.play('blocked');
+    if (audio.created()) audio.setAmbient(ambientForScene());
     telemetry.mark(`scene-${state.scene}`);
+  }
+  if (state.scene === 'warehouse' && !state.warehouse.introComplete && state.sceneTime >= 3.65 && warehouseCueStage < 1) {
+    warehouseCueStage = 1;
+    audio.play('door');
   }
   if (state.arm.active && automationAcceptedAt !== null) {
     telemetry.mark('event-to-motion-ms', Math.round(now - automationAcceptedAt));
@@ -275,13 +296,14 @@ function frame(now) {
     if (lastAutoFinishedAt !== null) telemetry.mark('automatic-transfer-ms', Math.round(now - lastAutoFinishedAt));
     lastAutoFinishedAt = now;
     lastAutoDelivered = state.warehouse.autoDelivered;
+    incomeNoticeUntil = now + 1100;
   }
   if (state.prologue.threats > lastThreats) {
     audio.play('cannon');
     audio.play('impact');
     lastThreats = state.prologue.threats;
   }
-  updateHud();
+  updateHud(now);
   const wakeProgress = state.otherMind.phase === 'waking' && otherMindWakingAt !== null
     ? Math.min(1, Math.max(0, (now - otherMindWakingAt) / 1200))
     : (state.otherMind.phase === 'awake' ? 1 : 0);
@@ -318,6 +340,7 @@ document.querySelector('#restartGame').addEventListener('click', () => {
   firstMovementSeen = false;
   machineOpen = false;
   wakeAttempts = 0;
+  resetMachinePanel();
   lastThreats = 0;
   lastScene = state.scene;
 });
@@ -331,54 +354,50 @@ hud.run.addEventListener('click', async () => {
   machineRunning = true;
   hud.run.disabled = true;
   hud.run.textContent = 'PYTHON ЗАПУСКАЕТСЯ…';
-  hud.feedback.textContent = machineStage === 'wake' ? 'Поднимаю питание и загружаю Python…' : 'Проверяю правило…';
+  hud.feedback.textContent = 'Поднимаю питание и передаю команду…';
   hud.feedback.dataset.status = 'loading';
   const source = hud.code.value;
   const runStarted = performance.now();
-  const remaining = state.warehouse.crates
-    .filter((crate) => crate.kind === 'normal' && crate.status === 'queued')
-    .map((crate) => crate.id);
-  const result = machineStage === 'wake'
-    ? await runWake(source)
-    : await runAutomation(source, remaining);
-  telemetry.mark(machineStage === 'wake' ? 'python-wake-ui-ms' : 'python-route-ui-ms', Math.round(performance.now() - runStarted));
+  const result = await runWake(source);
+  telemetry.mark('python-wake-ui-ms', Math.round(performance.now() - runStarted));
   telemetry.mark('python-exec-ms', result.ms);
   if (!result.ok) {
-    if (machineStage === 'wake') {
-      wakeAttempts += 1;
-      const guidance = getWakeFailureGuidance(wakeAttempts, result, source);
-      hud.feedback.textContent = guidance.message;
-      if (guidance.prefill !== null) {
-        hud.code.value = guidance.prefill;
-        hud.code.focus();
-        hud.code.setSelectionRange(hud.code.value.length, hud.code.value.length);
-      }
-    } else {
-      hud.feedback.textContent = explainAutomationFailure(result, source);
+    wakeAttempts += 1;
+    const guidance = getWakeFailureGuidance(wakeAttempts, result, source);
+    hud.feedback.textContent = guidance.message;
+    if (guidance.prefill !== null) {
+      hud.code.value = guidance.prefill;
+      hud.code.setSelectionRange(hud.code.value.length, hud.code.value.length);
     }
+    hud.code.focus();
     hud.feedback.dataset.status = 'error';
-  } else if (machineStage === 'wake') {
-    state = applyGameAction(state, { type: 'arm-awake' });
+  } else {
+    state = applyGameAction(state, { type: 'first-command-accepted' });
+    automationAcceptedAt = performance.now();
     saveCheckpoint(localStorage, state);
-    audio.play('wake');
-    setMachineStage('automation');
-    hud.feedback.textContent = `РУКА ОТВЕТИЛА: ${result.stdout.trim()}`;
+    audio.play('power');
+    hud.feedback.textContent = 'КОМАНДА ПРИНЯТА · КНОПКА ОЖИЛА · МАРШРУТ ЗАПУЩЕН';
     hud.feedback.dataset.status = 'success';
     const mindResult = await otherMindRuntime.unlock(createMachineListeningEvent());
     if (!mindResult.ok) {
       hud.feedback.textContent = mindResult.line;
       hud.feedback.dataset.status = 'error';
+    } else {
+      hud.run.textContent = 'СВЯЗЬ УСТАНОВЛЕНА';
+      await new Promise((resolve) => {
+        window.setTimeout(resolve, OTHER_MIND_AWAKE_HOLD_DURATION * 1000);
+      });
     }
-  } else {
-    state = applyGameAction(state, { type: 'automation-queued', events: result.events });
-    automationAcceptedAt = performance.now();
-    hud.feedback.textContent = `Принято команд: ${result.events.length}`;
-    hud.feedback.dataset.status = 'success';
     machineOpen = false;
   }
   machineRunning = false;
   hud.run.disabled = false;
   hud.run.innerHTML = '<span>▶</span> ЗАПУСТИТЬ';
+});
+
+hud.code.addEventListener('beforeinput', (event) => {
+  if (event.inputType === 'insertFromPaste') codeInputMethod = 'pasted';
+  else if (event.inputType?.startsWith('insert')) codeInputMethod = 'typed';
 });
 
 document.querySelector('#continueGame').addEventListener('click', () => {
@@ -388,7 +407,7 @@ document.querySelector('#continueGame').addEventListener('click', () => {
 });
 
 document.querySelector('#soundToggle').addEventListener('click', async () => {
-  await audio.unlock();
+  await unlockAudioForScene();
   const muted = audio.toggle();
   const button = document.querySelector('#soundToggle');
   button.setAttribute('aria-pressed', String(muted));
@@ -411,6 +430,9 @@ if (isLocal) {
       autoDelivered: state.warehouse.autoDelivered,
       arm: state.arm,
       crates: state.warehouse.crates,
+      machineOpen,
+      machineDraft: hud.code.value,
+      inputFocused: document.activeElement === hud.code,
     })),
     dispatch: (action) => {
       state = applyGameAction(state, action);
@@ -435,12 +457,12 @@ if (isLocal) {
 }
 
 window.addEventListener('resize', resizeCanvas);
-window.addEventListener('keydown', () => { audio.unlock(); }, { once: true });
-canvas.addEventListener('pointerdown', () => { audio.unlock(); }, { once: true });
+window.addEventListener('keydown', unlockAudioForScene, { once: true });
+canvas.addEventListener('pointerdown', unlockAudioForScene, { once: true });
 canvas.addEventListener('click', openMachineFromCanvas);
 resizeCanvas();
 if (state.scene === 'machine') {
-  setMachineStage('wake');
+  resetMachinePanel();
   prepareMachinePython();
 }
 updateHud();

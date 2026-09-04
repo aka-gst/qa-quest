@@ -8,22 +8,22 @@ const nameError = {
   checks: [],
 };
 
-test('первая ошибка объясняет причину, а не выдаёт готовый ответ', () => {
+test('первая ошибка не показывает новичку внутренности Python', () => {
   const guidance = getWakeFailureGuidance(1, nameError, 'print(WAKE)');
-  assert.match(guidance.message, /WAKE — это текст/);
-  assert.match(guidance.message, /кавыч/);
-  assert.doesNotMatch(guidance.message, /print\(["']WAKE["']\)/);
+  assert.equal(guidance.message, 'Команда не распознана. Сверь знаки с тем, что видел на складе.');
+  assert.doesNotMatch(guidance.message, /NameError|Python|строк|кавыч/i);
   assert.equal(guidance.prefill, null);
 });
 
-test('вторая ошибка возвращает игрока к упавшему плакату', () => {
+test('вторая ошибка подсказывает сверить форму, но не называет плакат', () => {
   const guidance = getWakeFailureGuidance(2, nameError, 'WAKE');
-  assert.match(guidance.message, /плакат/i);
+  assert.equal(guidance.message, 'Сигнал не совпал. Здесь важны все знаки, не только слово.');
+  assert.doesNotMatch(guidance.message, /плакат|print\(|готов/i);
   assert.equal(guidance.prefill, null);
 });
 
-test('третья ошибка оставляет игроку дописать команду самому', () => {
+test('третья ошибка не стирает и не подменяет написанное игроком', () => {
   const guidance = getWakeFailureGuidance(3, nameError, 'WAKE');
-  assert.equal(guidance.prefill, 'print("');
-  assert.match(guidance.message, /допиши/i);
+  assert.equal(guidance.prefill, null);
+  assert.equal(guidance.message, 'Почти. Сверь команду целиком и попробуй ещё раз.');
 });

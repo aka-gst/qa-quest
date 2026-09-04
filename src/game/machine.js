@@ -24,13 +24,31 @@ export function prepareMachinePython() {
   return bootRunner({ base: LOCAL_PYODIDE });
 }
 
+export function isWakeSignal(stdout) {
+  return typeof stdout === 'string' && stdout.trim().toLowerCase() === 'wake';
+}
+
+export function normalizeWakeSource(source) {
+  if (typeof source !== 'string') return source;
+  return source
+    .replace(/[“”„«»]/g, '"')
+    .replace(/[‘’]/g, "'");
+}
+
 export async function runWake(source) {
   const result = await runPython({
-    source,
+    source: normalizeWakeSource(source),
     eventVar: '',
-    checks: [{ kind: 'stdout', mode: 'equals', value: 'WAKE' }],
+    checks: [],
   });
-  return asMachineResult(result);
+  if (result.error) return asMachineResult(result);
+  return asMachineResult({
+    ...result,
+    checks: [{
+      ok: isWakeSignal(result.stdout),
+      detail: `в терминале: ${JSON.stringify(result.stdout.trim())}`,
+    }],
+  });
 }
 
 function automationPreamble(boxIds) {

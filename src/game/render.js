@@ -1,4 +1,13 @@
-import { MACHINE, PALLET, WORLD } from './config.js';
+import {
+  COLLAPSE_DURATION,
+  INTERACTION_RADIUS,
+  MACHINE,
+  PALLET,
+  WAKE_REVEAL_DURATION,
+  WAREHOUSE_INTRO_DURATION,
+  WORLD,
+} from './config.js?v=4';
+import { getArmTransferPhase } from './model.js?v=4';
 import { getViewportTransform } from './viewport.js';
 
 const prologueImage = new Image();
@@ -94,11 +103,27 @@ function drawWorker(ctx, state) {
   ctx.fillRect(7, 88, 31, 11);
   if (carrying) {
     ctx.fillStyle = '#bb8440';
-    ctx.fillRect(-42, -22, 84, 58);
+    ctx.shadowColor = '#000';
+    ctx.shadowBlur = 12;
+    ctx.fillRect(-48, -4, 96, 64);
+    ctx.shadowBlur = 0;
     ctx.strokeStyle = '#e9e3d5';
-    ctx.globalAlpha = .5;
-    ctx.strokeRect(-35, -15, 70, 44);
+    ctx.globalAlpha = .55;
+    ctx.strokeRect(-40, 4, 80, 48);
+    ctx.globalAlpha = 1;
   }
+  ctx.strokeStyle = '#cfa87c';
+  ctx.lineWidth = 14;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  if (carrying) {
+    ctx.moveTo(-33, -12); ctx.lineTo(-48, 7); ctx.lineTo(-36, 25);
+    ctx.moveTo(33, -12); ctx.lineTo(48, 7); ctx.lineTo(36, 25);
+  } else {
+    ctx.moveTo(-33, -12); ctx.lineTo(-48, 25); ctx.lineTo(-42, 58);
+    ctx.moveTo(33, -12); ctx.lineTo(48, 25); ctx.lineTo(42, 58);
+  }
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -198,7 +223,18 @@ function drawPrologue(ctx, state, now) {
 
 function drawTerminal(ctx, state, now) {
   const online = ['machine', 'automation', 'red-crate', 'reward'].includes(state.scene);
+  const foreshadow = state.scene === 'warehouse' && state.warehouse.manualDelivered >= 2;
+  const buttonAwake = state.arm.awake;
   ctx.save();
+  ctx.strokeStyle = buttonAwake ? '#64e9ff' : (foreshadow ? '#ffc857' : '#35404d');
+  ctx.globalAlpha = buttonAwake ? .9 : .55;
+  ctx.lineWidth = 7;
+  ctx.beginPath();
+  ctx.moveTo(MACHINE.x + 70, MACHINE.y + 40);
+  ctx.bezierCurveTo(MACHINE.x + 150, MACHINE.y + 85, MACHINE.x + 95, MACHINE.y + 175, MACHINE.x + 155, MACHINE.y + 205);
+  ctx.lineTo(MACHINE.x + 48, MACHINE.y + 254);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
   ctx.fillStyle = '#202b39';
   ctx.fillRect(MACHINE.x - 88, MACHINE.y - 62, 176, 124);
   ctx.strokeStyle = online ? '#64e9ff' : '#4c3032';
@@ -206,7 +242,7 @@ function drawTerminal(ctx, state, now) {
   ctx.strokeRect(MACHINE.x - 74, MACHINE.y - 48, 148, 76);
   ctx.fillStyle = online ? '#092d37' : '#160b0d';
   ctx.fillRect(MACHINE.x - 68, MACHINE.y - 42, 136, 64);
-  ctx.fillStyle = online ? '#64e9ff' : '#5d3438';
+  ctx.fillStyle = online ? '#64e9ff' : (foreshadow && Math.sin(now / 95) > .25 ? '#ffc857' : '#5d3438');
   ctx.shadowColor = ctx.fillStyle;
   ctx.shadowBlur = online ? 18 + Math.sin(now / 180) * 6 : 2;
   ctx.fillRect(MACHINE.x - 54, MACHINE.y - 25, online ? 78 : 32, 7);
@@ -215,17 +251,36 @@ function drawTerminal(ctx, state, now) {
   ctx.fillStyle = '#101721';
   ctx.fillRect(MACHINE.x - 18, MACHINE.y + 62, 36, 112);
   ctx.fillRect(MACHINE.x - 62, MACHINE.y + 170, 124, 22);
+  const buttonX = MACHINE.x + 155;
+  const buttonY = MACHINE.y + 205;
+  ctx.fillStyle = '#141b25';
+  ctx.strokeStyle = buttonAwake ? '#64e9ff' : '#59616b';
+  ctx.lineWidth = 5;
+  ctx.fillRect(buttonX - 42, buttonY - 30, 84, 60);
+  ctx.strokeRect(buttonX - 42, buttonY - 30, 84, 60);
+  ctx.fillStyle = buttonAwake ? '#64e9ff' : '#4c3032';
+  ctx.shadowColor = ctx.fillStyle;
+  ctx.shadowBlur = buttonAwake ? 25 : 3;
+  ctx.beginPath(); ctx.arc(buttonX, buttonY, 17, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = buttonAwake ? '#b9f6ff' : '#79828c';
+  ctx.font = '700 10px ui-monospace, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(buttonAwake ? 'ПИТАНИЕ' : 'НЕТ ПИТАНИЯ', buttonX, buttonY + 47);
   ctx.restore();
 }
 
-function drawPoster(ctx, state) {
+function drawPoster(ctx, state, now) {
   const fallen = state.scene !== 'warehouse';
   const progress = fallen ? Math.min(1, state.sceneTime / .9) : 0;
-  const x = 1180 - progress * 60;
+  const warning = !fallen && state.warehouse.manualDelivered >= 2;
+  const tremble = warning ? Math.sin(now / 42) * 3 : 0;
+  const x = 1180 - progress * 60 + tremble;
   const y = 215 + progress * 495;
   ctx.save();
+  if (state.scene === 'automation') ctx.globalAlpha = state.arm.wakeRevealRemaining > 0 ? .18 : .06;
   ctx.translate(x, y);
-  ctx.rotate(-.03 + progress * 1.1);
+  ctx.rotate(-.03 + progress * 1.1 + (warning ? Math.sin(now / 55) * .015 : 0));
   ctx.fillStyle = '#e9e3d5';
   ctx.shadowColor = '#000';
   ctx.shadowBlur = 18;
@@ -244,7 +299,7 @@ function drawPoster(ctx, state) {
     ctx.fillText('приказ № 07', 0, 51);
   } else {
     ctx.font = '900 23px ui-monospace, monospace';
-    ctx.fillText('print("WAKE")', 0, -25);
+    ctx.fillText('print("wake")', 0, -25);
     ctx.strokeStyle = '#111820';
     ctx.lineWidth = 7;
     ctx.beginPath();
@@ -265,26 +320,72 @@ function drawConveyor(ctx) {
   ctx.strokeRect(15, 445, 390, 290);
   ctx.fillStyle = '#8993a1';
   for (let y = 475; y < 720; y += 46) ctx.fillRect(32, y, 350, 5);
+  ctx.fillStyle = '#111924';
+  ctx.fillRect(660, 475, 180, 240);
+  ctx.strokeStyle = '#334357';
+  ctx.lineWidth = 8;
+  ctx.strokeRect(660, 475, 180, 240);
+  ctx.fillStyle = '#8993a1';
+  for (let y = 500; y < 705; y += 42) ctx.fillRect(674, y, 150, 4);
 }
 
-function drawArm(ctx, state, now, { machineFocus = false, wakeProgress = 0 } = {}) {
+function drawArm(ctx, state, now, { wakeProgress = 0 } = {}) {
   const awake = state.arm.awake;
   const watch = state.warehouse.manualDelivered * .14;
-  const angle = awake ? Math.sin(now / 650) * .08 : watch;
+  const wakeRevealProgress = awake
+    ? Math.max(0, Math.min(1, 1 - state.arm.wakeRevealRemaining / WAKE_REVEAL_DURATION))
+    : 0;
+  const angle = awake ? Math.sin(now / 650) * .035 : watch;
   const active = state.arm.active;
   const source = active
     ? state.warehouse.crates.find((crate) => crate.id === active.boxId)
     : null;
   const progress = Math.max(0, Math.min(1, active?.progress ?? 0));
-  const focusOffset = machineFocus && !active ? -330 : 0;
   const gesture = state.otherMind.phase === 'awake'
     ? 1
     : (state.otherMind.phase === 'waking' ? Math.min(1, wakeProgress * 1.25) : 0);
-  const endX = active ? source.x + (PALLET.x - source.x) * progress : MACHINE.x - 70 + focusOffset - gesture * 95;
-  const endY = active ? source.y + (PALLET.y - source.y) * progress - Math.sin(progress * Math.PI) * 330 : MACHINE.y - 55 - gesture * 40;
-  const baseX = MACHINE.x + focusOffset;
+  let endX = MACHINE.x - 70 - gesture * 95;
+  let endY = MACHINE.y - 55 - gesture * 40;
+  let crateX = null;
+  let crateY = null;
+  if (active && source) {
+    const phase = getArmTransferPhase(progress);
+    if (phase === 'pickup') {
+      const p = Math.min(1, progress / .24);
+      const returningFromPallet = state.warehouse.autoDelivered > 0;
+      const startX = returningFromPallet ? PALLET.x : MACHINE.x - 70 - gesture * 95;
+      const startY = returningFromPallet ? PALLET.y - 150 : MACHINE.y - 55 - gesture * 40;
+      const swing = Math.min(1, p / .68);
+      const swingEased = swing * swing * (3 - 2 * swing);
+      const descend = Math.max(0, (p - .68) / .32);
+      const descendEased = descend * descend * (3 - 2 * descend);
+      endX = startX + (source.x - startX) * swingEased;
+      endY = startY + (source.y - 115 - startY) * swingEased + descendEased * 78;
+      crateX = source.x;
+      crateY = p < .78 ? source.y : source.y - ((p - .78) / .22) * 16;
+    } else if (phase === 'carry') {
+      const p = (progress - .24) / .6;
+      const eased = p * p * (3 - 2 * p);
+      endX = source.x + (PALLET.x - source.x) * eased;
+      endY = source.y - 37 + (PALLET.y - source.y - 18) * eased - Math.sin(eased * Math.PI) * 245;
+      crateX = endX;
+      crateY = endY + 34;
+    } else {
+      const p = (progress - .84) / .16;
+      const eased = p * p * (3 - 2 * p);
+      endX = PALLET.x;
+      endY = PALLET.y - 55 - eased * 95;
+      crateX = PALLET.x;
+      crateY = PALLET.y + 26;
+    }
+  } else if (wakeRevealProgress > 0 && wakeRevealProgress < 1) {
+    const staged = Math.min(1, wakeRevealProgress * 1.25);
+    endX -= staged * 85;
+    endY -= Math.sin(staged * Math.PI) * 72;
+  }
+  const baseX = MACHINE.x;
   const baseY = MACHINE.y + 220;
-  const elbowX = active ? (baseX + endX) / 2 : MACHINE.x - 25 + focusOffset - gesture * 30;
+  const elbowX = active ? (baseX + endX) / 2 : MACHINE.x - 25 - gesture * 30;
   const elbowY = active ? Math.min(baseY, endY) - 150 : MACHINE.y - 70 - gesture * 18;
   ctx.save();
   ctx.fillStyle = '#283444';
@@ -297,8 +398,9 @@ function drawArm(ctx, state, now, { machineFocus = false, wakeProgress = 0 } = {
   for (const [x, y] of [[baseX, baseY + 34], [elbowX + angle * 30, elbowY], [endX, endY]]) {
     ctx.beginPath(); ctx.arc(x, y, 29, 0, Math.PI * 2); ctx.fill();
   }
-  if (state.otherMind.phase === 'waking') {
-    const signal = Math.min(2.99, wakeProgress * 3);
+  if (state.otherMind.phase === 'waking' || state.arm.wakeRevealRemaining > 0) {
+    const signalProgress = state.arm.wakeRevealRemaining > 0 ? wakeRevealProgress : wakeProgress;
+    const signal = Math.min(2.99, signalProgress * 3);
     const joints = [[baseX, baseY + 34], [elbowX + angle * 30, elbowY], [endX, endY]];
     joints.forEach(([x, y], index) => {
       const strength = Math.max(0, 1 - Math.abs(signal - index));
@@ -312,22 +414,139 @@ function drawArm(ctx, state, now, { machineFocus = false, wakeProgress = 0 } = {
   ctx.shadowColor = ctx.fillStyle;
   ctx.shadowBlur = 18;
   ctx.beginPath(); ctx.arc(endX, endY, 12, 0, Math.PI * 2); ctx.fill();
-  if (active) {
+  if (active && crateX !== null && crateY !== null) {
     ctx.shadowBlur = 12;
     ctx.fillStyle = '#bb8440';
-    ctx.fillRect(endX - 24, endY + 18, 48, 48);
+    ctx.fillRect(crateX - 24, crateY - 24, 48, 48);
+    ctx.strokeStyle = '#e9e3d5';
+    ctx.globalAlpha = .48;
+    ctx.strokeRect(crateX - 18, crateY - 18, 36, 36);
   }
   ctx.restore();
 }
 
-function drawOtherMind(ctx, state, now, { reducedMotion = false, machineFocus = false, wakeProgress = 0 } = {}) {
+function drawDropFeedback(ctx, state) {
+  const age = state.elapsed - state.warehouse.lastDropAt;
+  if (age < 0 || age > .72) return;
+  const strength = 1 - age / .72;
+  const delivered = state.warehouse.lastDropDelivered;
+  const x = delivered ? PALLET.x + 56 : state.player.x;
+  const y = delivered ? PALLET.y + 82 : state.player.y + 40;
+  ctx.save();
+  ctx.globalAlpha = strength;
+  ctx.strokeStyle = delivered ? '#ffc857' : '#8993a1';
+  ctx.lineWidth = 8 * strength + 2;
+  ctx.beginPath();
+  ctx.ellipse(x, y, 30 + age * 150, 10 + age * 35, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  for (let index = 0; index < 8; index += 1) {
+    const direction = index % 2 ? -1 : 1;
+    ctx.fillStyle = index % 3 ? '#8993a1' : '#ffc857';
+    ctx.fillRect(x + direction * (15 + index * 8), y - age * (70 + index * 6), 9, 5);
+  }
+  ctx.restore();
+}
+
+function drawWarehouseIntro(ctx, state) {
+  if (state.warehouse.introComplete) return;
+  const time = Math.min(WAREHOUSE_INTRO_DURATION, state.sceneTime);
+  const eye = Math.max(0, Math.min(1, time / .9));
+  const bossProgress = Math.max(0, Math.min(1, (time - .65) / .75));
+  const bossX = 870 - bossProgress * 155;
+  const bossY = 575;
+
+  ctx.save();
+  ctx.fillStyle = '#080b11';
+  ctx.fillRect(810, 330, 155, 355);
+  ctx.strokeStyle = '#59687a';
+  ctx.lineWidth = 8;
+  ctx.strokeRect(810, 330, 155, 355);
+  if (time < 3.85) {
+    ctx.save();
+    ctx.translate(bossX, bossY);
+    ctx.fillStyle = '#111820';
+    ctx.strokeStyle = '#e9e3d5';
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.arc(0, -92, 32, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillRect(-43, -60, 86, 125);
+    ctx.strokeRect(-43, -60, 86, 125);
+    ctx.fillStyle = '#ff4d5a';
+    ctx.fillRect(-32, -32, 64, 9);
+    ctx.restore();
+  }
+
+  if (time >= 1.15 && time < 3.75) {
+    const secondLine = time >= 2.75;
+    const label = secondLine ? 'ЗА РАБОТУ.' : 'ОПЯТЬ ОТКЛЮЧИЛСЯ?';
+    ctx.font = `900 ${secondLine ? 35 : 27}px ui-monospace, monospace`;
+    ctx.textAlign = 'center';
+    const width = ctx.measureText(label).width + 54;
+    ctx.fillStyle = secondLine ? '#ffc857' : '#e9e3d5';
+    ctx.fillRect(620 - width / 2, 310, width, 68);
+    ctx.fillStyle = '#080b11';
+    ctx.fillText(label, 620, 355);
+  }
+
+  if (time >= 3.7) {
+    const iconProgress = Math.min(1, (time - 3.7) / .7);
+    ctx.globalAlpha = iconProgress;
+    ctx.fillStyle = '#05080ddd';
+    ctx.fillRect(235, 285, 630, 150);
+    const labels = ['ВЗЯЛ', 'ДОНЁС', 'ПОСТАВИЛ'];
+    labels.forEach((label, index) => {
+      const x = 335 + index * 215;
+      ctx.fillStyle = index === 2 ? '#ffc857' : '#e9e3d5';
+      ctx.fillRect(x - 28, 315, 56, 56);
+      ctx.font = '800 18px ui-monospace, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(label, x, 405);
+      if (index < 2) {
+        ctx.font = '900 34px ui-monospace, monospace';
+        ctx.fillStyle = '#64e9ff';
+        ctx.fillText('→', x + 108, 358);
+      }
+    });
+  }
+
+  const lidHeight = (1 - eye) * WORLD.height * .5;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, WORLD.width, lidHeight);
+  ctx.fillRect(0, WORLD.height - lidHeight, WORLD.width, lidHeight);
+  ctx.restore();
+}
+
+function drawWakeReveal(ctx, state) {
+  if (!state.arm.awake || state.arm.wakeRevealRemaining <= 0) return;
+  const progress = 1 - state.arm.wakeRevealRemaining / WAKE_REVEAL_DURATION;
+  const pulse = Math.sin(progress * Math.PI);
+  const gradient = ctx.createRadialGradient(MACHINE.x, MACHINE.y + 80, 30, MACHINE.x, MACHINE.y + 80, 420);
+  gradient.addColorStop(0, `rgba(100,233,255,${.17 + pulse * .18})`);
+  gradient.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.save();
+  ctx.fillStyle = '#0008';
+  ctx.fillRect(0, 0, WORLD.width, WORLD.height);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(MACHINE.x - 430, MACHINE.y - 360, 860, 820);
+  ctx.textAlign = 'center';
+  const titleX = MACHINE.x + 70;
+  ctx.fillStyle = progress < .34 ? '#ffc857' : '#64e9ff';
+  ctx.font = '900 34px ui-monospace, monospace';
+  const line = progress < .34 ? 'СИГНАЛ ПРИНЯТ' : (progress < .7 ? 'ПИТАНИЕ ВОЗВРАЩЕНО' : 'РУКА 07 · ОНЛАЙН');
+  ctx.fillText(line, titleX, 205);
+  ctx.font = '700 16px ui-monospace, monospace';
+  ctx.fillStyle = '#e9e3d5';
+  ctx.fillText('print("wake")  →  первое слово машины', titleX, 242);
+  ctx.restore();
+}
+
+function drawOtherMind(ctx, state, now, { reducedMotion = false, wakeProgress = 0 } = {}) {
   const { phase } = state.otherMind;
   const waking = phase === 'waking';
   const awake = phase === 'awake';
   const silent = phase === 'silent';
   const pulse = reducedMotion ? 0 : Math.min(1, wakeProgress);
   const bob = awake && !reducedMotion ? Math.sin(now / 650) * 4 : 0;
-  const x = MACHINE.x + 145 + (machineFocus ? -330 : 0);
+  const x = MACHINE.x + 145;
   const y = MACHINE.y + 20 + bob;
 
   ctx.save();
@@ -381,6 +600,27 @@ function drawOtherMind(ctx, state, now, { reducedMotion = false, machineFocus = 
   ctx.restore();
 }
 
+function drawMachinePrompt(ctx, state) {
+  if (state.scene !== 'machine') return;
+  const near = Math.hypot(state.player.x - MACHINE.x, state.player.y - MACHINE.y) <= INTERACTION_RADIUS + 150;
+  if (!near) return;
+  const x = MACHINE.x;
+  const y = MACHINE.y - 118;
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.font = '800 16px ui-monospace, monospace';
+  const label = 'SPACE  ·  ОТКРЫТЬ ТЕРМИНАЛ';
+  const width = ctx.measureText(label).width + 34;
+  ctx.fillStyle = '#e9e3d5';
+  ctx.fillRect(x - width / 2, y - 25, width, 42);
+  ctx.fillStyle = '#080b11';
+  ctx.fillText(label, x, y + 2);
+  ctx.strokeStyle = '#ffc857';
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(x, y + 17); ctx.lineTo(x, y + 45); ctx.stroke();
+  ctx.restore();
+}
+
 function drawWarehouse(ctx, state, now, options = {}) {
   const gradient = ctx.createLinearGradient(0, 0, 0, WORLD.height);
   gradient.addColorStop(0, '#101722');
@@ -407,6 +647,7 @@ function drawWarehouse(ctx, state, now, options = {}) {
 
   drawArm(ctx, state, now, options);
   drawOtherMind(ctx, state, now, options);
+  if (!options.machineFocus) drawMachinePrompt(ctx, state);
 
   for (const crate of state.warehouse.crates) {
     if (['carried', 'hidden', 'arm'].includes(crate.status)) continue;
@@ -421,12 +662,15 @@ function drawWarehouse(ctx, state, now, options = {}) {
     ctx.globalAlpha = 1;
   }
 
+  drawDropFeedback(ctx, state);
   drawWorker(ctx, state);
-  drawPoster(ctx, state);
+  drawPoster(ctx, state, now);
+  drawWarehouseIntro(ctx, state);
+  drawWakeReveal(ctx, state);
 
   ctx.fillStyle = '#8993a1';
   ctx.font = '16px ui-monospace, monospace';
-  ctx.fillText(`СМЕНА 03:17     ПЕРЕНЕСЕНО ${state.warehouse.manualDelivered}     ₽ ${state.warehouse.wage}`, 520, 825);
+  ctx.fillText(`СМЕНА 03:17     ПЕРЕНЕСЕНО ${state.warehouse.manualDelivered + state.warehouse.autoDelivered}     ₽ ${state.warehouse.wage}     СВОБОДНО ${state.warehouse.freeTime} МИН`, 470, 825);
   if (state.scene === 'red-crate') {
     ctx.fillStyle = '#ff4d5a';
     ctx.font = '900 28px ui-monospace, monospace';
@@ -444,40 +688,60 @@ function drawReward(ctx, state, now) {
   shade.addColorStop(1, '#05080dcc');
   ctx.fillStyle = shade;
   ctx.fillRect(0, 0, WORLD.width, WORLD.height);
+  const qBotX = Math.min(WORLD.width - 170, state.player.x + 55);
+  const qBotY = 300;
   ctx.fillStyle = '#171e29';
-  ctx.fillRect(940, 610, 510, 38);
-  ctx.fillRect(990, 648, 24, 165);
-  ctx.fillRect(1375, 648, 24, 165);
+  ctx.fillRect(qBotX - 255, qBotY + 100, 510, 38);
+  ctx.fillRect(qBotX - 205, qBotY + 138, 24, 165);
+  ctx.fillRect(qBotX + 181, qBotY + 138, 24, 165);
   ctx.strokeStyle = '#64e9ff';
   ctx.lineWidth = 4;
   ctx.shadowColor = '#64e9ff';
   ctx.shadowBlur = 22;
-  ctx.beginPath(); ctx.arc(1200, 545, 64 + Math.sin(now / 800) * 3, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(qBotX, qBotY, 64 + Math.sin(now / 800) * 3, 0, Math.PI * 2); ctx.stroke();
   ctx.shadowBlur = 0;
   ctx.fillStyle = '#64e9ff';
-  ctx.fillRect(1177, 535, 12, 8);
-  ctx.fillRect(1211, 535, 12, 8);
+  ctx.fillRect(qBotX - 23, qBotY - 10, 12, 8);
+  ctx.fillRect(qBotX + 11, qBotY - 10, 12, 8);
   ctx.fillStyle = '#e9e3d5';
   ctx.font = '700 18px ui-monospace, monospace';
-  ctx.fillText('Q-BOT // EMPTY SHELL', 1080, 690);
+  ctx.textAlign = 'center';
+  ctx.fillText('Q-BOT // EMPTY SHELL', qBotX, qBotY + 180);
   ctx.fillStyle = '#ffc857';
-  ctx.fillText(`ЗАРАБОТАНО: ₽ ${state.warehouse.wage}`, 1080, 725);
+  ctx.fillText(`ЗАРАБОТАНО: ₽ ${state.warehouse.wage}`, qBotX, qBotY + 215);
 }
 
 function drawCollapse(ctx, state) {
-  const progress = Math.min(1, state.sceneTime / 1.55);
-  drawPrologue(ctx, state, state.elapsed * 1000);
-  ctx.fillStyle = `rgba(255, 77, 90, ${Math.sin(progress * Math.PI) * .42})`;
+  const progress = Math.min(1, state.sceneTime / COLLAPSE_DURATION);
+  if (progress < .72) drawPrologue(ctx, state, state.elapsed * 1000);
+  else {
+    ctx.fillStyle = '#020306';
+    ctx.fillRect(0, 0, WORLD.width, WORLD.height);
+  }
+  const blackout = Math.min(.94, progress * 1.08);
+  ctx.fillStyle = `rgba(0, 0, 0, ${blackout})`;
   ctx.fillRect(0, 0, WORLD.width, WORLD.height);
+  if (progress < .72) {
+    ctx.globalAlpha = Math.max(.12, 1 - progress);
+    for (let index = 0; index < 18; index += 1) {
+      const y = (index * 83 + Math.floor(state.sceneTime * 900)) % WORLD.height;
+      const height = 2 + (index % 4) * 3;
+      ctx.fillStyle = index % 3 ? '#64e9ff' : '#ff4d5a';
+      ctx.fillRect((index * 137) % 260 - 80, y, WORLD.width - (index * 41) % 310, height);
+    }
+    ctx.globalAlpha = 1;
+  }
   ctx.save();
-  ctx.translate(Math.sin(state.sceneTime * 92) * 18 * (1 - progress), Math.cos(state.sceneTime * 67) * 8 * (1 - progress));
+  const shake = progress < .5 ? 22 * (1 - progress * 2) : 0;
+  ctx.translate(Math.sin(state.sceneTime * 92) * shake, Math.cos(state.sceneTime * 67) * shake * .45);
   ctx.fillStyle = '#e9e3d5';
   ctx.font = '900 95px Arial Narrow, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(progress < .55 ? 'DISCONNECT' : 'ОПЯТЬ НА РАБОТУ', 800, 470);
+  const title = progress < .28 ? 'СИГНАЛ РВЁТСЯ' : (progress < .72 ? 'СВЯЗЬ ПОТЕРЯНА' : 'ТЫ ПРОСЫПАЕШЬСЯ');
+  ctx.fillText(title, 800, 470);
   ctx.font = '700 22px ui-monospace, monospace';
-  ctx.fillStyle = '#ffb4ba';
-  ctx.fillText(progress < .55 ? 'SIGNAL LOST · MEMORY LINK FAILED' : 'СМЕНА 03:17 · СКЛАД-07', 800, 520);
+  ctx.fillStyle = progress < .72 ? '#ffb4ba' : '#8993a1';
+  ctx.fillText(progress < .72 ? 'MEMORY LINK FAILED · DISCONNECT' : 'СМЕНА 03:17 · СКЛАД-07', 800, 520);
   ctx.restore();
 }
 

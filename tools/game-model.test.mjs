@@ -5,9 +5,17 @@ import {
   applyGameAction,
   createCheckpointState,
   createGameState,
+  getArmTransferPhase,
   getNearbyAction,
   stepGame,
 } from '../src/game/model.js';
+import {
+  ARM_TRANSFER_DURATION,
+  OTHER_MIND_AWAKE_HOLD_DURATION,
+  REWARD_REVEAL_DURATION,
+  WAKE_REVEAL_DURATION,
+  WAREHOUSE_INTRO_DURATION,
+} from '../src/game/config.js';
 
 function advance(state, seconds, input = {}) {
   let next = state;
@@ -16,6 +24,16 @@ function advance(state, seconds, input = {}) {
   }
   return next;
 }
+
+test('первая реплика Иного разума держится достаточно долго для чтения', () => {
+  assert.ok(OTHER_MIND_AWAKE_HOLD_DURATION >= 1.3);
+  assert.ok(OTHER_MIND_AWAKE_HOLD_DURATION <= 1.8);
+});
+
+test('Q-Bot получает чистый кадр до появления наградной панели', () => {
+  assert.ok(REWARD_REVEAL_DURATION >= 1.5);
+  assert.ok(REWARD_REVEAL_DURATION <= 2.2);
+});
 
 test('орудие само попадает в первую цель до половины секунды', () => {
   const beforeShot = advance(createGameState(), 0.3);
@@ -34,10 +52,24 @@ test('автобой почти уничтожает рой и обрывает�
   assert.equal(disconnected.prologue.enemies.filter(({ alive }) => alive).length, 2);
 });
 
-test('весь пролог от автопушки до склада укладывается в десять секунд', () => {
-  const warehouse = advance(createGameState(), 10);
+test('между боем и складом есть заметный двухсекундный обрыв связи', () => {
+  const disconnected = advance(createGameState({ scene: 'collapse' }), 2.3);
+  assert.equal(disconnected.scene, 'collapse');
+
+  const warehouse = advance(disconnected, 0.6);
   assert.equal(warehouse.scene, 'warehouse');
   assert.deepEqual(warehouse.powers, { dash: false, pulse: false, shield: false });
+});
+
+test('склад сначала разыгрывает вступление и не отдаёт управление раньше времени', () => {
+  const start = createCheckpointState('warehouse');
+  const frozen = advance(start, WAREHOUSE_INTRO_DURATION - 0.2, { moveX: 1 });
+  assert.equal(frozen.player.x, start.player.x);
+  assert.equal(getNearbyAction(frozen), null);
+
+  const awake = advance(frozen, 0.3, { moveX: 1 });
+  assert.equal(awake.warehouse.introComplete, true);
+  assert.ok(awake.player.x > start.player.x);
 });
 
 test('три ручных ящика открывают машину, но не запускают её', () => {
@@ -73,8 +105,8 @@ test('движение меняет положение игрока, но не �
 });
 
 test('катастрофа заканчивается складом с выключенными силами', () => {
-  const collapsed = createGameState({ scene: 'collapse', sceneTime: 2.48 });
-  const next = stepGame(collapsed, {}, 0.25);
+  const collapsed = createGameState({ scene: 'collapse', sceneTime: 2.76 });
+  const next = stepGame(collapsed, {}, 0.05);
   assert.equal(next.scene, 'warehouse');
   assert.deepEqual(next.powers, { dash: false, pulse: false, shield: false });
   assert.equal(next.checkpoint, 'warehouse');
@@ -123,6 +155,8 @@ test('ящик засчитывается только после доставк
   state = applyGameAction(state, { type: 'drop-crate', target: 'pallet-a' });
   assert.equal(state.warehouse.manualDelivered, 1);
   assert.equal(state.warehouse.crates.find(({ id }) => id === 'box-01').status, 'pallet');
+  assert.equal(state.warehouse.lastDropDelivered, true);
+  assert.equal(state.warehouse.lastDroppedId, 'box-01');
 });
 
 test('пробуждение руки не переносит ни одного ящика', () => {
@@ -131,6 +165,79 @@ test('пробуждение руки не переносит ни одного 
   assert.equal(state.arm.awake, true);
   assert.equal(state.warehouse.autoDelivered, 0);
   assert.deepEqual(state.arm.queue, []);
+});
+
+test('первая принятая команда будит руку и ставит все оставшиеся ящики в очередь', () => {
+  const machine = createCheckpointState('machine');
+  const automated = applyGameAction(machine, { type: 'first-command-accepted' });
+
+  assert.equal(automated.scene, 'automation');
+  assert.equal(automated.arm.awake, true);
+  assert.equal(automated.arm.wakeRevealRemaining, WAKE_REVEAL_DURATION);
+  assert.equal(automated.warehouse.autoDelivered, 0);
+  assert.deepEqual(
+    automated.arm.queue.map(({ boxId, targetId }) => [boxId, targetId]),
+    [
+      ['box-04', 'pallet-a'],
+      ['box-05', 'pallet-a'],
+      ['box-06', 'pallet-a'],
+      ['box-07', 'pallet-a'],
+      ['box-08', 'pallet-a'],
+      ['box-09', 'pallet-a'],
+    ],
+  );
+});
+
+test('после print wake машина сначала заметно просыпается и только потом берёт ящик', () => {
+  let state = applyGameAction(createCheckpointState('machine'), { type: 'first-command-accepted' });
+  state = advance(state, WAKE_REVEAL_DURATION - 0.2);
+  assert.equal(state.arm.active, null);
+  assert.equal(state.warehouse.autoDelivered, 0);
+
+  state = advance(state, 0.25);
+  assert.equal(state.arm.active?.boxId, 'box-04');
+});
+
+test('роборука движется читаемыми фазами и остаётся быстрее человека', () => {
+  assert.ok(ARM_TRANSFER_DURATION >= 1.8 && ARM_TRANSFER_DURATION <= 2.4);
+  assert.equal(getArmTransferPhase(0.1), 'pickup');
+  assert.equal(getArmTransferPhase(0.5), 'carry');
+  assert.equal(getArmTransferPhase(0.92), 'release');
+});
+
+test('шесть автоматических переносов видны по одному после отдельного пробуждения', () => {
+  let state = applyGameAction(createCheckpointState('machine'), { type: 'first-command-accepted' });
+  let elapsed = 0;
+  const deliveryTimes = [];
+  let delivered = 0;
+
+  while (state.scene === 'automation' && elapsed < 20) {
+    state = stepGame(state, {}, 1 / 60);
+    elapsed += 1 / 60;
+    if (state.warehouse.autoDelivered !== delivered) {
+      delivered = state.warehouse.autoDelivered;
+      deliveryTimes.push(elapsed);
+    }
+  }
+
+  assert.equal(deliveryTimes.length, 6);
+  assert.ok(deliveryTimes[0] >= WAKE_REVEAL_DURATION + ARM_TRANSFER_DURATION);
+  const expected = WAKE_REVEAL_DURATION + ARM_TRANSFER_DURATION * 6;
+  assert.ok(elapsed >= expected && elapsed <= expected + 0.25);
+});
+
+test('открытый терминал замораживает человека и роборуку', () => {
+  const running = createGameState({
+    scene: 'automation',
+    player: { x: 900, y: 500 },
+    arm: {
+      awake: true,
+      active: { type: 'arm.move', boxId: 'box-04', targetId: 'pallet-a', progress: .25 },
+    },
+  });
+  const paused = stepGame(running, { moveX: 1, moveY: 1 }, 1, { paused: true });
+
+  assert.deepEqual(paused, running);
 });
 
 test('принятая команда сначала создаёт очередь, а не готовый результат', () => {
@@ -155,6 +262,25 @@ test('одна законченная команда переносит ровн
   state = applyGameAction(state, { type: 'arm-transfer-finished', boxId: 'box-04' });
   assert.equal(state.warehouse.autoDelivered, 1);
   assert.equal(state.warehouse.crates.find(({ id }) => id === 'box-04').status, 'pallet');
+});
+
+test('между автоматическими ящиками у руки нет кадра-телепорта в позу покоя', () => {
+  const state = createGameState({
+    scene: 'automation',
+    warehouse: { autoDelivered: 0 },
+    arm: {
+      awake: true,
+      wakeRevealRemaining: 0,
+      active: { type: 'arm.move', boxId: 'box-04', targetId: 'pallet-a', progress: .99 },
+      queue: [{ type: 'arm.move', boxId: 'box-05', targetId: 'pallet-a' }],
+    },
+  });
+  const next = stepGame(state, {}, .05);
+
+  assert.equal(next.warehouse.autoDelivered, 1);
+  assert.equal(next.arm.active?.boxId, 'box-05');
+  assert.equal(next.arm.active?.progress, 0);
+  assert.equal(next.warehouse.crates.find(({ id }) => id === 'box-05').status, 'arm');
 });
 
 test('красный ящик останавливает обычный маршрут после шести переносов', () => {

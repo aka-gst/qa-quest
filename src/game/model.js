@@ -13,8 +13,10 @@ import {
   PROLOGUE_TIMEOUT,
   THREAT_LAYOUT,
   THREATS_TO_COLLAPSE,
+  WAKE_REVEAL_DURATION,
+  WAREHOUSE_INTRO_DURATION,
   WORLD,
-} from './config.js';
+} from './config.js?v=4';
 
 const DEFAULT_STATE = Object.freeze({
   scene: 'prologue',
@@ -40,13 +42,18 @@ const DEFAULT_STATE = Object.freeze({
     lastTargets: [],
   }),
   warehouse: Object.freeze({
+    introComplete: true,
     manualDelivered: 0,
     autoDelivered: 0,
     wage: 0,
     freeTime: 0,
     crates: [],
+    lastPickupAt: -1,
+    lastDropAt: -1,
+    lastDroppedId: null,
+    lastDropDelivered: false,
   }),
-  arm: Object.freeze({ awake: false, blocked: false, queue: [], active: null }),
+  arm: Object.freeze({ awake: false, blocked: false, queue: [], active: null, wakeRevealRemaining: 0 }),
   otherMind: Object.freeze({ phase: 'sleeping', line: '' }),
 });
 
@@ -96,6 +103,7 @@ export function createCheckpointState(checkpoint = 'start') {
     return createGameState({
       scene: 'warehouse', checkpoint, powers,
       player: { x: 520, y: 580 },
+      warehouse: { introComplete: false },
     });
   }
   if (checkpoint === 'machine') {
@@ -183,13 +191,37 @@ function enterWarehouse(state) {
       carrying: null,
       shieldUntil: 0,
     },
+    warehouse: {
+      ...state.warehouse,
+      introComplete: false,
+    },
   };
+}
+
+export function getArmTransferPhase(progress = 0) {
+  const value = Math.max(0, Math.min(1, progress));
+  if (value < .24) return 'pickup';
+  if (value < .84) return 'carry';
+  return 'release';
 }
 
 function updateCrate(state, crateId, updater) {
   return state.warehouse.crates.map((crate) => (
     crate.id === crateId ? updater(crate) : crate
   ));
+}
+
+function startNextArmTransfer(state) {
+  if (state.scene !== 'automation' || state.arm.active || !state.arm.queue.length) return state;
+  const [event, ...queue] = state.arm.queue;
+  return {
+    ...state,
+    warehouse: {
+      ...state.warehouse,
+      crates: updateCrate(state, event.boxId, (crate) => ({ ...crate, status: 'arm' })),
+    },
+    arm: { ...state.arm, queue, active: { ...event, progress: 0 } },
+  };
 }
 
 export function applyGameAction(state, action) {
@@ -256,7 +288,7 @@ export function applyGameAction(state, action) {
         player: { ...state.player, shieldUntil: state.elapsed + 2 },
       };
     case 'pick-crate': {
-      if (state.scene !== 'warehouse' || state.player.carrying || action.distance > INTERACTION_RADIUS) return state;
+      if (state.scene !== 'warehouse' || !state.warehouse.introComplete || state.player.carrying || action.distance > INTERACTION_RADIUS) return state;
       const crate = state.warehouse.crates.find(({ id }) => id === action.crateId);
       if (!crate || crate.kind !== 'normal' || !['source', 'floor'].includes(crate.status)) return state;
       return {
@@ -264,6 +296,7 @@ export function applyGameAction(state, action) {
         player: { ...state.player, carrying: crate.id },
         warehouse: {
           ...state.warehouse,
+          lastPickupAt: state.elapsed,
           crates: updateCrate(state, crate.id, (item) => ({ ...item, status: 'carried' })),
         },
       };
@@ -286,6 +319,9 @@ export function applyGameAction(state, action) {
           ...state.warehouse,
           manualDelivered,
           wage: state.warehouse.wage + (delivered ? 120 : 0),
+          lastDropAt: state.elapsed,
+          lastDroppedId: crateId,
+          lastDropDelivered: delivered,
           crates: updateCrate(state, crateId, (crate) => ({
             ...crate,
             x: delivered ? PALLET.x : (action.x ?? state.player.x),
@@ -300,8 +336,28 @@ export function applyGameAction(state, action) {
       return {
         ...state,
         scene: 'automation',
+        sceneTime: 0,
         checkpoint: 'machine',
         arm: { ...state.arm, awake: true, blocked: false },
+      };
+    }
+    case 'first-command-accepted': {
+      if (state.scene !== 'machine') return state;
+      const queue = state.warehouse.crates
+        .filter((crate) => crate.kind === 'normal' && crate.status === 'queued')
+        .map((crate) => ({ type: 'arm.move', boxId: crate.id, targetId: PALLET.id }));
+      return {
+        ...state,
+        scene: 'automation',
+        checkpoint: 'machine',
+        arm: {
+          ...state.arm,
+          awake: true,
+          blocked: false,
+          active: null,
+          queue,
+          wakeRevealRemaining: WAKE_REVEAL_DURATION,
+        },
       };
     }
     case 'other-mind-waking': {
@@ -396,6 +452,7 @@ export function getNearbyAction(state) {
       : null;
   }
   if (state.scene !== 'warehouse') return null;
+  if (!state.warehouse.introComplete) return null;
   if (state.player.carrying) {
     if (distance(state.player, PALLET) <= INTERACTION_RADIUS + 35) {
       return { type: 'drop-crate', target: PALLET.id, label: 'НА ПАЛЕТУ' };
@@ -447,22 +504,24 @@ function moveEnemies(state, dt) {
   return reflected.length ? withNeutralized(moved, reflected) : moved;
 }
 
-export function stepGame(state, input = {}, rawDt) {
+export function stepGame(state, input = {}, rawDt, options = {}) {
+  if (options.paused) return state;
   const dt = Math.min(MAX_DT, Math.max(0, Number.isFinite(rawDt) ? rawDt : 0));
   const moveLength = Math.hypot(input.moveX ?? 0, input.moveY ?? 0) || 1;
   const moveX = (input.moveX ?? 0) / moveLength;
   const moveY = (input.moveY ?? 0) / moveLength;
   const isMoving = Math.abs(input.moveX ?? 0) + Math.abs(input.moveY ?? 0) > 0;
+  const warehouseIntroLocked = state.scene === 'warehouse' && !state.warehouse.introComplete;
   let next = {
     ...state,
     elapsed: state.elapsed + dt,
     sceneTime: state.sceneTime + dt,
     player: {
       ...state.player,
-      x: Math.max(40, Math.min(WORLD.width - 40, state.player.x + moveX * PLAYER_SPEED * dt)),
-      y: Math.max(40, Math.min(WORLD.height - 40, state.player.y + moveY * PLAYER_SPEED * dt)),
-      facingX: isMoving ? moveX : state.player.facingX,
-      facingY: isMoving ? moveY : state.player.facingY,
+      x: warehouseIntroLocked ? state.player.x : Math.max(40, Math.min(WORLD.width - 40, state.player.x + moveX * PLAYER_SPEED * dt)),
+      y: warehouseIntroLocked ? state.player.y : Math.max(40, Math.min(WORLD.height - 40, state.player.y + moveY * PLAYER_SPEED * dt)),
+      facingX: isMoving && !warehouseIntroLocked ? moveX : state.player.facingX,
+      facingY: isMoving && !warehouseIntroLocked ? moveY : state.player.facingY,
       energy: Math.min(3, state.player.energy + dt * .25),
     },
     prologue: {
@@ -483,17 +542,25 @@ export function stepGame(state, input = {}, rawDt) {
     return enterWarehouse(next);
   }
 
+  if (next.scene === 'warehouse' && !next.warehouse.introComplete && next.sceneTime >= WAREHOUSE_INTRO_DURATION) {
+    next = {
+      ...next,
+      warehouse: { ...next.warehouse, introComplete: true },
+    };
+  }
+
   if (next.scene === 'automation' && next.arm.awake) {
-    if (!next.arm.active && next.arm.queue.length) {
-      const [event, ...queue] = next.arm.queue;
+    if (next.arm.wakeRevealRemaining > 0) {
       next = {
         ...next,
-        warehouse: {
-          ...next.warehouse,
-          crates: updateCrate(next, event.boxId, (crate) => ({ ...crate, status: 'arm' })),
+        arm: {
+          ...next.arm,
+          wakeRevealRemaining: Math.max(0, next.arm.wakeRevealRemaining - dt),
         },
-        arm: { ...next.arm, queue, active: { ...event, progress: 0 } },
       };
+    }
+    if (next.arm.wakeRevealRemaining <= 0 && !next.arm.active && next.arm.queue.length) {
+      next = startNextArmTransfer(next);
     } else if (next.arm.active) {
       const progress = next.arm.active.progress + dt / ARM_TRANSFER_DURATION;
       next = {
@@ -502,6 +569,7 @@ export function stepGame(state, input = {}, rawDt) {
       };
       if (progress >= 1) {
         next = applyGameAction(next, { type: 'arm-transfer-finished', boxId: next.arm.active.boxId });
+        next = startNextArmTransfer(next);
       }
     }
   }

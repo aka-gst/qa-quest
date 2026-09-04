@@ -10,6 +10,14 @@ export const SOUND_RECIPES = Object.freeze({
   arm: Object.freeze({ frequency: 118, end: 154, duration: .18, gain: .045, type: 'triangle' }),
   blocked: Object.freeze({ frequency: 96, end: 96, duration: .35, gain: .09, type: 'square' }),
   reward: Object.freeze({ frequency: 330, end: 880, duration: .58, gain: .12, type: 'sine' }),
+  door: Object.freeze({ frequency: 95, end: 42, duration: .26, gain: .1, type: 'square' }),
+  poster: Object.freeze({ frequency: 310, end: 92, duration: .2, gain: .075, type: 'triangle' }),
+  power: Object.freeze({ frequency: 155, end: 640, duration: .48, gain: .085, type: 'sawtooth' }),
+});
+
+export const AMBIENT_RECIPES = Object.freeze({
+  combat: Object.freeze({ frequency: 54, harmonic: 108, gain: .009, type: 'sawtooth' }),
+  warehouse: Object.freeze({ frequency: 86, harmonic: 172, gain: .012, type: 'triangle' }),
 });
 
 export function quietFrom(search = '', hash = '') {
@@ -28,6 +36,8 @@ export function createAudioBus({ search, hash } = {}) {
   let master = null;
   let analyser = null;
   let muted = false;
+  let ambientNodes = null;
+  let ambientName = null;
 
   async function unlock() {
     if (quiet) return false;
@@ -65,6 +75,51 @@ export function createAudioBus({ search, hash } = {}) {
     return true;
   }
 
+  function stopAmbient() {
+    if (!ambientNodes || !context) {
+      ambientNodes = null;
+      ambientName = null;
+      return;
+    }
+    const stoppedAt = context.currentTime + .1;
+    ambientNodes.envelope.gain.cancelScheduledValues(context.currentTime);
+    ambientNodes.envelope.gain.setValueAtTime(Math.max(.0001, ambientNodes.envelope.gain.value), context.currentTime);
+    ambientNodes.envelope.gain.exponentialRampToValueAtTime(.0001, stoppedAt);
+    ambientNodes.oscillators.forEach((oscillator) => oscillator.stop(stoppedAt + .02));
+    ambientNodes = null;
+    ambientName = null;
+  }
+
+  async function setAmbient(name) {
+    if (!name) {
+      stopAmbient();
+      return true;
+    }
+    const recipe = AMBIENT_RECIPES[name];
+    if (!recipe || !(await unlock())) return false;
+    if (ambientName === name && ambientNodes) return true;
+    stopAmbient();
+    const started = context.currentTime;
+    const envelope = context.createGain();
+    envelope.gain.setValueAtTime(.0001, started);
+    envelope.gain.exponentialRampToValueAtTime(recipe.gain, started + .35);
+    const oscillators = [recipe.frequency, recipe.harmonic].map((frequency, index) => {
+      const oscillator = context.createOscillator();
+      const layer = context.createGain();
+      oscillator.type = recipe.type;
+      oscillator.frequency.value = frequency;
+      layer.gain.value = index ? .22 : 1;
+      oscillator.connect(layer);
+      layer.connect(envelope);
+      oscillator.start(started);
+      return oscillator;
+    });
+    envelope.connect(master);
+    ambientNodes = { envelope, oscillators };
+    ambientName = name;
+    return true;
+  }
+
   function setMuted(nextMuted) {
     muted = Boolean(nextMuted);
     if (master && context) master.gain.setTargetAtTime(muted ? 0 : .62, context.currentTime, .012);
@@ -82,11 +137,13 @@ export function createAudioBus({ search, hash } = {}) {
   return {
     unlock,
     play,
+    setAmbient,
     setMuted,
     toggle() { return setMuted(!muted); },
     muted() { return muted; },
     level,
     created() { return Boolean(context); },
+    ambient() { return ambientName; },
     quiet,
   };
 }

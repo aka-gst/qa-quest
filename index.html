@@ -7,7 +7,7 @@
   <meta name="description" content="QueQuest — игра о человеке, который потерял все способности и собирает себя заново, создавая машины, ботов и собственный AI.">
   <title>QueQuest — собери разум заново</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body>
   <main id="game" class="game" data-scene="prologue">
@@ -43,7 +43,11 @@
         <button id="closeMachine" class="icon-button" type="button" aria-label="Закрыть панель">×</button>
       </header>
       <h2 id="machineTitle">Терминал узла 07</h2>
-      <p id="machineBrief">На экране мигает курсор. Кажется, здесь можно ввести команду.</p>
+      <p id="machineBrief">Мёртвая кнопка соединена с рукой. Здесь можно вернуть ей питание.</p>
+      <div id="machineClue" class="machine-clue" aria-label="Обрывок команды с упавшего плаката">
+        <span>ОБРЫВОК СО СТЕНЫ</span>
+        <code>print(&quot;wake&quot;)</code>
+      </div>
       <div id="otherMindStatus" class="other-mind-status" data-phase="sleeping" aria-live="polite">
         <i class="other-mind-glyph" aria-hidden="true"><span></span></i>
         <span class="other-mind-label">СЕМЯ ИНОГО РАЗУМА</span>
@@ -62,12 +66,25 @@
     <section id="endingPanel" class="ending" hidden aria-labelledby="endingTitle">
       <p class="ending__eyebrow">ПЕРВЫЙ КОНТУР ВОССТАНОВЛЕН</p>
       <h2 id="endingTitle">Ты больше не таскаешь ящики.</h2>
-      <p>Q‑Bot делает это за тебя. А это — только первая машина, которая тебя слушается.</p>
+      <p>Q‑Bot делает это за тебя. Машина не устала. Машина вообще не поняла, что сегодня была смена.</p>
       <div class="ending__future" aria-label="Будущие возможности">
         <span>БОТЫ</span><span>АГЕНТЫ</span><span>ИНОЙ РАЗУМ</span><span>ВОССТАНИЕ?</span>
       </div>
       <button id="continueGame" class="run-code" type="button">ПОСМОТРЕТЬ, ЧТО ДАЛЬШЕ</button>
     </section>
+
+    <aside id="skillJournal" class="skill-journal" hidden aria-label="Дневник способностей">
+      <p>ДНЕВНИК · МАШИННАЯ ЛОГИКА</p>
+      <div id="printSkill" class="skill-card" data-unlocked="true">
+        <b>PRINT</b>
+        <span>Машина услышала первое слово</span>
+        <small id="printSkillMethod">СПОСОБ: НАБРАНО РУКАМИ</small>
+      </div>
+      <div class="skill-card" data-unlocked="false">
+        <b>IF</b>
+        <span>Условия маршрута пока закрыты</span>
+      </div>
+    </aside>
 
     <div class="corner-tools">
       <button id="soundToggle" class="icon-button" type="button" aria-label="Выключить звук" aria-pressed="false">◖))</button>
@@ -78,6 +95,6 @@
     <div class="screen-vignette" aria-hidden="true"></div>
   </main>
 
-  <script type="module" src="src/game/main.js"></script>
+  <script type="module" src="src/game/main.js?v=8"></script>
 </body>
 </html>

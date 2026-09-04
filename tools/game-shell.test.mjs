@@ -41,6 +41,11 @@ test('терминал не выдаёт первую команду до нах
   assert.doesNotMatch(html, /Отправь первое слово/);
 });
 
+test('обрывок с найденной командой остаётся внутри открытого терминала', () => {
+  assert.match(html, /id=["']machineClue["']/);
+  assert.match(html, /print\(&quot;wake&quot;\)/i);
+});
+
 test('основное действие на телефоне остаётся большой кнопкой', () => {
   const mobileBlock = css.match(/@media \(max-width: 760px\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
   const height = Number(mobileBlock.match(/\.action-button \{[^}]*height:\s*([\d.]+)px/)?.[1]);
@@ -61,6 +66,16 @@ test('рождение иного разума видно и доступно н
   const height = Number(glyph.match(/height:\s*([\d.]+)px/)?.[1]);
   assert.ok(width >= 44 && height >= 44, `семя меньше 44px: ${width}×${height}`);
   assert.doesNotMatch(css, /other-mind[^;}]*animation:[^;}]*infinite/);
+  assert.doesNotMatch(css, /\.machine \.other-mind-status\s*\{[^}]*display:\s*none/);
+});
+
+test('первая автоматизация оставляет способность в дневнике, а не только деньги', () => {
+  assert.match(html, /id=["']skillJournal["']/);
+  assert.match(html, /id=["']printSkill["']/);
+  assert.match(html, /PRINT/);
+  assert.match(html, /Машина не устала\. Машина вообще не поняла, что сегодня была смена\./);
+  assert.match(css, /\.skill-journal/);
+  assert.match(css, /\.skill-card\[data-unlocked=["']true["']\]/);
 });
 
 test('сниженная анимация сохраняет читаемые состояния семени', () => {
