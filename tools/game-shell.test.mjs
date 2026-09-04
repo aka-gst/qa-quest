@@ -17,9 +17,6 @@ test('игровая оболочка содержит нужные органы
     'gameHud',
     'missionText',
     'actionButton',
-    'powerDash',
-    'powerPulse',
-    'powerShield',
     'machinePanel',
     'codeInput',
     'runCode',
@@ -29,20 +26,27 @@ test('игровая оболочка содержит нужные органы
   ]) {
     assert.match(html, new RegExp(`id=["']${id}["']`), `нет #${id}`);
   }
+  assert.doesNotMatch(html, /class=["']power-rack["']/, 'старые ручные способности всё ещё видны');
 });
 
 test('первый экран обещает игру, а не учебный курс', () => {
   assert.match(html, /Ты всё умел\. Теперь вспомни\./);
-  assert.match(html, />\s*Двигайся\s*</);
+  assert.match(html, /WASD · МАНЕВРИРУЙ · ОРУДИЕ СТРЕЛЯЕТ САМО/);
   assert.doesNotMatch(html, /коротк|подробн|урок|обучени/i);
 });
 
-test('подписи мобильных способностей остаются читаемыми', () => {
-  const mobileBlock = css.match(/@media \(max-width: 760px\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
-  const fontSize = Number(mobileBlock.match(/\.power b \{[^}]*font-size:\s*([\d.]+)px/)?.[1]);
+test('терминал не выдаёт первую команду до находки плаката', () => {
+  const editor = html.match(/<textarea[^>]*id=["']codeInput["'][^>]*>([\s\S]*?)<\/textarea>/)?.[1];
+  assert.equal(editor, '');
+  assert.doesNotMatch(html, /Отправь первое слово/);
+});
 
-  assert.ok(Number.isFinite(fontSize), 'не найден размер подписи .power b в мобильном CSS');
-  assert.ok(fontSize >= 10, `подпись способности слишком мелкая: ${fontSize}px`);
+test('основное действие на телефоне остаётся большой кнопкой', () => {
+  const mobileBlock = css.match(/@media \(max-width: 760px\) \{([\s\S]*?)\n\}/)?.[1] ?? '';
+  const height = Number(mobileBlock.match(/\.action-button \{[^}]*height:\s*([\d.]+)px/)?.[1]);
+
+  assert.ok(Number.isFinite(height), 'не найдена мобильная высота .action-button');
+  assert.ok(height >= 44, `основное действие меньше 44px: ${height}px`);
 });
 
 test('рождение иного разума видно и доступно не только через canvas', () => {

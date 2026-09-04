@@ -1,4 +1,6 @@
 export const SOUND_RECIPES = Object.freeze({
+  cannon: Object.freeze({ frequency: 124, end: 58, duration: .09, gain: .095, type: 'sawtooth' }),
+  impact: Object.freeze({ frequency: 76, end: 31, duration: .16, gain: .105, type: 'square' }),
   hit: Object.freeze({ frequency: 92, end: 48, duration: .13, gain: .08, type: 'square' }),
   dash: Object.freeze({ frequency: 180, end: 620, duration: .11, gain: .06, type: 'sawtooth' }),
   collapse: Object.freeze({ frequency: 74, end: 27, duration: .72, gain: .14, type: 'sawtooth' }),

@@ -18,6 +18,9 @@ test('немой адрес не срабатывает внутри чужог�
 test('важные звуки громче интерфейсных, но ни один рецепт не клипует', () => {
   assert.ok(SOUND_RECIPES.collapse.gain > SOUND_RECIPES.pickup.gain);
   assert.ok(SOUND_RECIPES.reward.gain > SOUND_RECIPES.wake.gain);
+  assert.ok(SOUND_RECIPES.cannon.gain > SOUND_RECIPES.pickup.gain);
+  assert.ok(SOUND_RECIPES.impact.gain > SOUND_RECIPES.pickup.gain);
+  assert.ok(SOUND_RECIPES.cannon.duration < 0.2);
   for (const recipe of Object.values(SOUND_RECIPES)) {
     assert.ok(recipe.gain > 0 && recipe.gain <= 0.18);
     assert.ok(recipe.duration >= 0.04 && recipe.duration <= 0.8);

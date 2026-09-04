@@ -21,27 +21,15 @@
     <section id="gameHud" class="hud" aria-live="polite">
       <p class="hud__eyebrow" id="chapterText">ПРОЛОГ · ДО ПАДЕНИЯ</p>
       <h1 id="missionText">Ты всё умел. Теперь вспомни.</h1>
-      <p id="gameMessage">Двигайся</p>
+      <p id="gameMessage">WASD · МАНЕВРИРУЙ · ОРУДИЕ СТРЕЛЯЕТ САМО</p>
       <div class="hud__progress" aria-hidden="true"><i id="missionProgress"></i></div>
     </section>
 
     <div class="system-readout" aria-hidden="true">
       <span>СИСТЕМА <b id="systemState">БОЕВАЯ</b></span>
       <span>СЕКТОР <b id="sectorState">00-А</b></span>
-      <span>ЦЕЛИ <b id="targetState">0/6</b></span>
+      <span>ЦЕЛИ <b id="targetState">0/24</b></span>
     </div>
-
-    <nav class="power-rack" aria-label="Способности">
-      <button id="powerDash" class="power power--dash" type="button" aria-label="Рывок">
-        <span class="power__key">SHIFT</span><b>РЫВОК</b><i></i>
-      </button>
-      <button id="powerPulse" class="power power--pulse" type="button" aria-label="Импульс">
-        <span class="power__key">Q</span><b>ИМПУЛЬС</b><i></i>
-      </button>
-      <button id="powerShield" class="power power--shield" type="button" aria-label="Щит">
-        <span class="power__key">E</span><b>ЩИТ</b><i></i>
-      </button>
-    </nav>
 
     <button id="actionButton" class="action-button" type="button">
       <span class="action-button__key">SPACE</span>
@@ -54,8 +42,8 @@
         <span class="machine__status"><i></i> УЗЕЛ 07</span>
         <button id="closeMachine" class="icon-button" type="button" aria-label="Закрыть панель">×</button>
       </header>
-      <h2 id="machineTitle">Машина ждёт команду</h2>
-      <p id="machineBrief">Скажи руке проснуться. Всё остальное она сделает сама.</p>
+      <h2 id="machineTitle">Терминал узла 07</h2>
+      <p id="machineBrief">На экране мигает курсор. Кажется, здесь можно ввести команду.</p>
       <div id="otherMindStatus" class="other-mind-status" data-phase="sleeping" aria-live="polite">
         <i class="other-mind-glyph" aria-hidden="true"><span></span></i>
         <span class="other-mind-label">СЕМЯ ИНОГО РАЗУМА</span>
@@ -65,7 +53,7 @@
       <label class="code-label" for="codeInput">КАНАЛ УПРАВЛЕНИЯ · PYTHON</label>
       <div class="code-editor">
         <span aria-hidden="true">1</span>
-        <textarea id="codeInput" rows="7" spellcheck="false" autocapitalize="off" autocomplete="off">print("WAKE")</textarea>
+        <textarea id="codeInput" rows="7" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
       </div>
       <div id="codeFeedback" class="code-feedback" role="status">Канал не активен</div>
       <button id="runCode" class="run-code" type="button"><span>▶</span> ЗАПУСТИТЬ</button>

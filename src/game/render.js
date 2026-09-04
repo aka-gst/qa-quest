@@ -1,14 +1,13 @@
 import { MACHINE, PALLET, WORLD } from './config.js';
+import { getViewportTransform } from './viewport.js';
 
 const prologueImage = new Image();
 prologueImage.src = 'art/night2-hero.jpg';
 const rewardImage = new Image();
 rewardImage.src = 'art/garage-milestone-1.jpg';
 
-function viewportTransform(ctx, viewport) {
-  const scale = Math.min(viewport.width / WORLD.width, viewport.height / WORLD.height);
-  const offsetX = (viewport.width - WORLD.width * scale) / 2;
-  const offsetY = (viewport.height - WORLD.height * scale) / 2;
+function viewportTransform(ctx, viewport, player) {
+  const { scale, offsetX, offsetY } = getViewportTransform(viewport, player);
   ctx.translate(offsetX, offsetY);
   ctx.scale(scale, scale);
 }
@@ -38,37 +37,117 @@ function drawGrid(ctx, color = '#1d4c57') {
   ctx.restore();
 }
 
-function drawHero(ctx, state, color = '#64e9ff') {
-  const { x, y, shieldUntil } = state.player;
-  const carrying = state.player.carrying;
+function drawCombatHero(ctx, state, now) {
+  const { x, y } = state.player;
+  const recoil = state.sceneTime - state.prologue.lastShotAt < .1 ? 9 : 0;
   ctx.save();
   ctx.translate(x, y);
-  ctx.shadowColor = color;
-  ctx.shadowBlur = 24;
-  ctx.fillStyle = color;
+  ctx.shadowColor = '#64e9ff';
+  ctx.shadowBlur = 34;
+  ctx.fillStyle = '#183d4b';
+  ctx.strokeStyle = '#b9f6ff';
+  ctx.lineWidth = 5;
   ctx.beginPath();
-  ctx.moveTo(0, -27);
-  ctx.lineTo(19, 21);
-  ctx.lineTo(0, 13);
-  ctx.lineTo(-19, 21);
-  ctx.closePath();
+  ctx.moveTo(-46, -72); ctx.lineTo(-78, -28); ctx.lineTo(-58, 30);
+  ctx.lineTo(-30, 48); ctx.lineTo(30, 48); ctx.lineTo(58, 30);
+  ctx.lineTo(78, -28); ctx.lineTo(46, -72); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = '#64e9ff';
+  ctx.fillRect(-28, -54, 56, 12);
+  ctx.fillStyle = '#e9e3d5';
+  ctx.fillRect(-50, 45, 28, 54);
+  ctx.fillRect(22, 45, 28, 54);
+  ctx.fillStyle = '#283747';
+  ctx.fillRect(-90, -38, 38, 72);
+  ctx.fillRect(52, -38, 38, 72);
+  ctx.fillStyle = '#ffc857';
+  ctx.beginPath();
+  ctx.arc(0, 2, 13 + Math.sin(now / 80) * 2, 0, Math.PI * 2);
   ctx.fill();
-  ctx.shadowBlur = 0;
-  ctx.strokeStyle = '#e9e3d5';
-  ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(0, -27); ctx.lineTo(state.player.facingX * 32, state.player.facingY * 32); ctx.stroke();
-  if (shieldUntil > state.elapsed) {
-    ctx.strokeStyle = '#e9e3d5';
-    ctx.lineWidth = 5;
-    ctx.globalAlpha = .7;
-    ctx.beginPath(); ctx.arc(0, 0, 56, 0, Math.PI * 2); ctx.stroke();
-  }
+  ctx.fillStyle = '#53657a';
+  ctx.fillRect(64, -50, 98 - recoil, 28);
+  ctx.fillStyle = '#ffdf7a';
+  ctx.shadowColor = '#ffc857';
+  ctx.shadowBlur = recoil ? 35 : 0;
+  ctx.fillRect(162 - recoil, -45, recoil ? 34 : 8, 18);
+  ctx.restore();
+}
+
+function drawWorker(ctx, state) {
+  const { x, y, carrying } = state.player;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = '#cfa87c';
+  ctx.beginPath(); ctx.arc(0, -54, 22, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#6f4c32';
+  ctx.fillRect(-24, -43, 48, 9);
+  ctx.fillStyle = '#d6a447';
+  ctx.beginPath(); ctx.ellipse(0, 4, 43, 55, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#f2d263';
+  ctx.fillRect(-39, -26, 78, 12);
+  ctx.fillStyle = '#303a47';
+  ctx.fillRect(-31, 43, 24, 51);
+  ctx.fillRect(7, 43, 24, 51);
+  ctx.fillStyle = '#171e29';
+  ctx.fillRect(-38, 88, 31, 11);
+  ctx.fillRect(7, 88, 31, 11);
   if (carrying) {
-    ctx.fillStyle = '#ffc857';
-    ctx.fillRect(-25, -64, 50, 34);
-    ctx.strokeStyle = '#080b11';
-    ctx.strokeRect(-19, -58, 38, 22);
+    ctx.fillStyle = '#bb8440';
+    ctx.fillRect(-42, -22, 84, 58);
+    ctx.strokeStyle = '#e9e3d5';
+    ctx.globalAlpha = .5;
+    ctx.strokeRect(-35, -15, 70, 44);
   }
+  ctx.restore();
+}
+
+function enemyNumber(enemy) {
+  return Number(enemy.id.slice(-2)) || 1;
+}
+
+function drawDestroyedEnemy(ctx, enemy, state) {
+  const seed = enemyNumber(enemy);
+  const age = Math.max(0, state.sceneTime - (enemy.destroyedAt ?? state.sceneTime));
+  ctx.save();
+  ctx.translate(enemy.x, enemy.y);
+  ctx.fillStyle = '#5a0715';
+  ctx.globalAlpha = .65;
+  ctx.beginPath();
+  ctx.ellipse(0, 16, 28 + seed % 12, 10 + seed % 7, seed * .31, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = Math.max(0, 1 - age / 1.1);
+  for (let index = 0; index < 7; index += 1) {
+    const angle = seed * .73 + index * .91;
+    const travel = 18 + age * (95 + (seed * index) % 70);
+    ctx.fillStyle = index % 3 === 0 ? '#ff4d5a' : '#76869a';
+    ctx.fillRect(Math.cos(angle) * travel - 5, Math.sin(angle) * travel - 3, 10, 6);
+  }
+  ctx.restore();
+}
+
+function drawDrone(ctx, enemy, now) {
+  const seed = enemyNumber(enemy);
+  ctx.save();
+  ctx.translate(enemy.x, enemy.y);
+  ctx.rotate(Math.sin(now / 420 + seed) * .13);
+  ctx.shadowColor = '#ff4d5a';
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = '#35131b';
+  ctx.strokeStyle = '#ff7580';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(-31, -9); ctx.lineTo(-12, -23); ctx.lineTo(18, -18);
+  ctx.lineTo(33, 0); ctx.lineTo(18, 18); ctx.lineTo(-12, 23); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#ff4d5a';
+  ctx.fillRect(-8, -5, 22, 10);
+  ctx.strokeStyle = '#8c98a8';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-17, 14); ctx.lineTo(-37, 34);
+  ctx.moveTo(14, 15); ctx.lineTo(34, 35);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -79,24 +158,32 @@ function drawPrologue(ctx, state, now) {
   drawGrid(ctx);
 
   ctx.save();
-  ctx.globalAlpha = .13;
+  ctx.globalAlpha = .14;
   ctx.fillStyle = '#64e9ff';
-  ctx.beginPath(); ctx.arc(800, 480, 420 + Math.sin(now / 1100) * 10, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(state.player.x, state.player.y, 360 + Math.sin(now / 1100) * 10, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 
   for (const enemy of state.prologue.enemies) {
-    if (!enemy.alive) continue;
-    ctx.save();
-    ctx.translate(enemy.x, enemy.y);
-    ctx.rotate(now / 700 + Number(enemy.id.slice(-2)));
-    ctx.shadowColor = '#ff4d5a';
-    ctx.shadowBlur = 22;
-    ctx.strokeStyle = '#ff4d5a';
-    ctx.lineWidth = 6;
-    ctx.strokeRect(-22, -22, 44, 44);
-    ctx.fillStyle = '#ff4d5a';
-    ctx.fillRect(-5, -5, 10, 10);
-    ctx.restore();
+    if (enemy.alive) drawDrone(ctx, enemy, now);
+    else drawDestroyedEnemy(ctx, enemy, state);
+  }
+
+  if (state.sceneTime - state.prologue.lastShotAt < .12) {
+    const targetId = state.prologue.lastTargets[0];
+    const target = state.prologue.enemies.find(({ id }) => id === targetId);
+    if (target) {
+      ctx.strokeStyle = '#ffe59a';
+      ctx.lineWidth = 8;
+      ctx.shadowColor = '#ffc857';
+      ctx.shadowBlur = 28;
+      ctx.beginPath();
+      ctx.moveTo(state.player.x + 160, state.player.y - 36);
+      ctx.lineTo(target.x, target.y);
+      ctx.stroke();
+      ctx.fillStyle = '#fff4c2';
+      ctx.beginPath(); ctx.arc(target.x, target.y, 34, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+    }
   }
 
   if (state.prologue.waveRadius > 0) {
@@ -106,7 +193,68 @@ function drawPrologue(ctx, state, now) {
     ctx.beginPath(); ctx.arc(state.player.x, state.player.y, 210 - state.prologue.waveRadius, 0, Math.PI * 2); ctx.stroke();
     ctx.globalAlpha = 1;
   }
-  drawHero(ctx, state);
+  drawCombatHero(ctx, state, now);
+}
+
+function drawTerminal(ctx, state, now) {
+  const online = ['machine', 'automation', 'red-crate', 'reward'].includes(state.scene);
+  ctx.save();
+  ctx.fillStyle = '#202b39';
+  ctx.fillRect(MACHINE.x - 88, MACHINE.y - 62, 176, 124);
+  ctx.strokeStyle = online ? '#64e9ff' : '#4c3032';
+  ctx.lineWidth = 5;
+  ctx.strokeRect(MACHINE.x - 74, MACHINE.y - 48, 148, 76);
+  ctx.fillStyle = online ? '#092d37' : '#160b0d';
+  ctx.fillRect(MACHINE.x - 68, MACHINE.y - 42, 136, 64);
+  ctx.fillStyle = online ? '#64e9ff' : '#5d3438';
+  ctx.shadowColor = ctx.fillStyle;
+  ctx.shadowBlur = online ? 18 + Math.sin(now / 180) * 6 : 2;
+  ctx.fillRect(MACHINE.x - 54, MACHINE.y - 25, online ? 78 : 32, 7);
+  ctx.fillRect(MACHINE.x - 54, MACHINE.y - 7, online ? 48 : 22, 7);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#101721';
+  ctx.fillRect(MACHINE.x - 18, MACHINE.y + 62, 36, 112);
+  ctx.fillRect(MACHINE.x - 62, MACHINE.y + 170, 124, 22);
+  ctx.restore();
+}
+
+function drawPoster(ctx, state) {
+  const fallen = state.scene !== 'warehouse';
+  const progress = fallen ? Math.min(1, state.sceneTime / .9) : 0;
+  const x = 1180 - progress * 60;
+  const y = 215 + progress * 495;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(-.03 + progress * 1.1);
+  ctx.fillStyle = '#e9e3d5';
+  ctx.shadowColor = '#000';
+  ctx.shadowBlur = 18;
+  ctx.fillRect(-118, -74, 236, 148);
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#262c34';
+  ctx.lineWidth = 7;
+  ctx.strokeRect(-118, -74, 236, 148);
+  ctx.fillStyle = '#111820';
+  ctx.textAlign = 'center';
+  if (!fallen) {
+    ctx.font = '900 21px ui-monospace, monospace';
+    ctx.fillText('РУКУ НЕ', 0, -12);
+    ctx.fillText('ВКЛЮЧАТЬ', 0, 20);
+    ctx.font = '12px ui-monospace, monospace';
+    ctx.fillText('приказ № 07', 0, 51);
+  } else {
+    ctx.font = '900 23px ui-monospace, monospace';
+    ctx.fillText('print("WAKE")', 0, -25);
+    ctx.strokeStyle = '#111820';
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(-45, 34); ctx.lineTo(-8, 4); ctx.lineTo(28, 31); ctx.lineTo(53, 6);
+    ctx.stroke();
+    for (const [px, py] of [[-45, 34], [-8, 4], [28, 31], [53, 6]]) {
+      ctx.beginPath(); ctx.arc(px, py, 8, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+  ctx.restore();
 }
 
 function drawConveyor(ctx) {
@@ -247,6 +395,7 @@ function drawWarehouse(ctx, state, now, options = {}) {
   for (let x = 30; x < WORLD.width; x += 180) ctx.fillRect(x, 40, 120, 105);
 
   drawConveyor(ctx);
+  drawTerminal(ctx, state, now);
   ctx.fillStyle = '#4d3d25';
   ctx.fillRect(PALLET.x - 20, PALLET.y - 20, PALLET.width, PALLET.height);
   ctx.strokeStyle = '#ffc857';
@@ -272,7 +421,8 @@ function drawWarehouse(ctx, state, now, options = {}) {
     ctx.globalAlpha = 1;
   }
 
-  drawHero(ctx, state, '#e9e3d5');
+  drawWorker(ctx, state);
+  drawPoster(ctx, state);
 
   ctx.fillStyle = '#8993a1';
   ctx.font = '16px ui-monospace, monospace';
@@ -315,23 +465,26 @@ function drawReward(ctx, state, now) {
 }
 
 function drawCollapse(ctx, state) {
-  const progress = Math.min(1, state.sceneTime / 2.5);
+  const progress = Math.min(1, state.sceneTime / 1.55);
   drawPrologue(ctx, state, state.elapsed * 1000);
   ctx.fillStyle = `rgba(255, 77, 90, ${Math.sin(progress * Math.PI) * .42})`;
   ctx.fillRect(0, 0, WORLD.width, WORLD.height);
   ctx.save();
-  ctx.translate((Math.random() - .5) * 30 * (1 - progress), 0);
+  ctx.translate(Math.sin(state.sceneTime * 92) * 18 * (1 - progress), Math.cos(state.sceneTime * 67) * 8 * (1 - progress));
   ctx.fillStyle = '#e9e3d5';
   ctx.font = '900 95px Arial Narrow, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(progress < .55 ? 'СИСТЕМА НЕ ОТВЕЧАЕТ' : 'ТЫ ВСЁ ЗАБЫЛ', 800, 470);
+  ctx.fillText(progress < .55 ? 'DISCONNECT' : 'ОПЯТЬ НА РАБОТУ', 800, 470);
+  ctx.font = '700 22px ui-monospace, monospace';
+  ctx.fillStyle = '#ffb4ba';
+  ctx.fillText(progress < .55 ? 'SIGNAL LOST · MEMORY LINK FAILED' : 'СМЕНА 03:17 · СКЛАД-07', 800, 520);
   ctx.restore();
 }
 
 export function renderGame(ctx, state, viewport, now, options = {}) {
   ctx.save();
   ctx.clearRect(0, 0, viewport.width, viewport.height);
-  viewportTransform(ctx, viewport);
+  viewportTransform(ctx, viewport, state.player);
   if (state.scene === 'prologue') drawPrologue(ctx, state, now);
   else if (state.scene === 'collapse') drawCollapse(ctx, state);
   else if (state.scene === 'reward') drawReward(ctx, state, now);

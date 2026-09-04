@@ -14,8 +14,11 @@ import {
   stepGame,
 } from './model.js';
 import { renderGame } from './render.js';
+import { getWakeFailureGuidance } from './wake-help.js';
 import { loadCheckpoint, resetCheckpoint, saveCheckpoint } from './save.js';
 import { createTelemetry } from './telemetry.js';
+import { CHECKPOINTS } from './config.js';
+import { getViewportTransform, screenToWorld } from './viewport.js';
 
 const canvas = document.querySelector('#gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -41,8 +44,11 @@ const hud = {
   otherMindLine: document.querySelector('#otherMindLine'),
 };
 
-const checkpoint = loadCheckpoint();
 const isLocal = ['127.0.0.1', 'localhost'].includes(location.hostname);
+const requestedCheckpoint = new URLSearchParams(location.search).get('checkpoint');
+const checkpoint = isLocal && CHECKPOINTS.includes(requestedCheckpoint)
+  ? { checkpoint: requestedCheckpoint }
+  : loadCheckpoint();
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const telemetry = createTelemetry({ enabled: isLocal });
 let state = createCheckpointState(checkpoint.checkpoint);
@@ -52,12 +58,15 @@ let otherMindWakingAt = null;
 let lastTime = performance.now();
 let firstMovementSeen = false;
 let lastScene = state.scene;
-let machineOpen = state.scene === 'machine';
+let machineOpen = false;
 let machineStage = state.arm.awake ? 'automation' : 'wake';
 let machineRunning = false;
+let wakeAttempts = 0;
 const input = createInput(canvas);
 const audio = createAudioBus();
 let lastAutoDelivered = state.warehouse.autoDelivered;
+let lastThreats = state.prologue.threats;
+let audioPeak = 0;
 let firstActionRecorded = false;
 let manualStartedAt = null;
 let automationAcceptedAt = null;
@@ -95,9 +104,10 @@ function setMachineStage(stage) {
   hud.feedback.textContent = stage === 'wake' ? 'Канал не активен' : 'Осталось построить маршрут';
   hud.feedback.dataset.status = 'idle';
   if (stage === 'wake') {
-    hud.machineTitle.textContent = 'Разбуди машину';
-    hud.machineBrief.textContent = 'Она ждала здесь всё это время. Отправь первое слово.';
-    hud.code.value = 'print("WAKE")';
+    hud.machineTitle.textContent = 'Терминал узла 07';
+    hud.machineBrief.textContent = 'На экране мигает курсор. Кажется, здесь можно ввести команду.';
+    hud.code.value = '';
+    wakeAttempts = 0;
   } else {
     hud.machineTitle.textContent = 'Прикажи один раз';
     hud.machineBrief.textContent = 'Раньше ты носил каждый ящик. Теперь опиши правило для всех.';
@@ -112,23 +122,14 @@ function resizeCanvas() {
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
 }
 
-function usePower(type) {
-  if (state.scene !== 'prologue') return;
-  state = applyGameAction(state, {
-    type,
-    x: state.player.facingX,
-    y: state.player.facingY,
-  });
-  audio.play(type === 'dash' ? 'dash' : 'hit');
-}
-
 function useAction() {
   const action = getNearbyAction(state);
   if (!action) return;
   recordFirstAction();
   if (action.type === 'open-machine') {
-    setMachineStage('automation');
+    setMachineStage(state.arm.awake ? 'automation' : 'wake');
     machineOpen = true;
+    prepareMachinePython();
     return;
   }
   const wasCarrying = Boolean(state.player.carrying);
@@ -147,7 +148,25 @@ function useAction() {
   }
 }
 
-function explainMachineFailure(result, source) {
+function openMachineFromCanvas(event) {
+  if (state.scene !== 'machine') return;
+  const rect = canvas.getBoundingClientRect();
+  const transform = getViewportTransform({ width: rect.width, height: rect.height }, state.player);
+  const point = screenToWorld({ x: event.clientX - rect.left, y: event.clientY - rect.top }, transform);
+  const player = {
+    ...state.player,
+    x: point.x,
+    y: point.y,
+  };
+  const action = getNearbyAction({ ...state, player });
+  if (action?.type !== 'open-machine') return;
+  recordFirstAction();
+  setMachineStage('wake');
+  machineOpen = true;
+  prepareMachinePython();
+}
+
+function explainAutomationFailure(result, source) {
   const error = result.error;
   if (error?.type === 'NameError' && /print\(\s*WAKE\s*\)/.test(source)) {
     return 'WAKE — это текст, поэтому ему нужны кавычки: print("WAKE")';
@@ -161,9 +180,6 @@ function explainMachineFailure(result, source) {
 }
 
 function updateControls() {
-  if (input.consume('dash')) usePower('dash');
-  if (input.consume('pulse')) usePower('pulse');
-  if (input.consume('shield')) usePower('shield');
   if (input.consume('action')) useAction();
 }
 
@@ -179,15 +195,15 @@ function updateHud() {
   if (state.scene === 'prologue') {
     hud.chapter.textContent = 'ПРОЛОГ · ДО ПАДЕНИЯ';
     hud.mission.textContent = firstMovementSeen ? 'Верни контроль' : 'Ты всё умел. Теперь вспомни.';
-    hud.message.textContent = firstMovementSeen ? 'Три силы. Шесть целей.' : 'Двигайся';
-    hud.progress.style.width = `${(state.prologue.threats / 6) * 100}%`;
+    hud.message.textContent = 'WASD · МАНЕВРИРУЙ · ОРУДИЕ СТРЕЛЯЕТ САМО';
+    hud.progress.style.width = `${(state.prologue.threats / 24) * 100}%`;
     hud.system.textContent = 'БОЕВАЯ';
     hud.sector.textContent = '00-А';
-    hud.targets.textContent = `${state.prologue.threats}/6`;
+    hud.targets.textContent = `${state.prologue.threats}/24`;
   } else if (state.scene === 'collapse') {
-    hud.chapter.textContent = 'ОШИБКА · ПАМЯТЬ ПОВРЕЖДЕНА';
-    hud.mission.textContent = 'Сил больше нет';
-    hud.message.textContent = 'Собери себя заново';
+    hud.chapter.textContent = 'СЕТЬ · СОЕДИНЕНИЕ ПОТЕРЯНО';
+    hud.mission.textContent = 'DISCONNECT';
+    hud.message.textContent = 'ОПЯТЬ НА РАБОТУ';
     hud.progress.style.width = '100%';
     hud.system.textContent = 'ОТКАЗ';
     hud.sector.textContent = '???';
@@ -195,8 +211,8 @@ function updateHud() {
   } else if (inWarehouse) {
     hud.chapter.textContent = 'ГЛАВА 1 · НИЖНИЙ УРОВЕНЬ';
     if (state.scene === 'machine') {
-      hud.mission.textContent = 'Ты заметил то, чего не видят другие';
-      hud.message.textContent = 'Разбуди старую руку';
+      hud.mission.textContent = 'Со стены сорвало плакат';
+      hud.message.textContent = nearby?.label ?? 'Подойди к загоревшемуся терминалу';
     } else if (state.scene === 'automation') {
       hud.mission.textContent = state.arm.active || state.arm.queue.length ? 'Ты больше не нужен этой работе' : 'Дай машине правило';
       hud.message.textContent = nearby?.label ?? (state.arm.active ? 'Она работает. Ты можешь идти.' : `Автоматически: ${state.warehouse.autoDelivered}/6`);
@@ -242,7 +258,6 @@ function frame(now) {
     if (['warehouse', 'machine', 'red-crate', 'reward'].includes(state.checkpoint)) saveCheckpoint(localStorage, state);
     lastScene = state.scene;
     if (state.scene === 'machine') {
-      machineOpen = true;
       setMachineStage('wake');
       prepareMachinePython();
     }
@@ -261,6 +276,11 @@ function frame(now) {
     lastAutoFinishedAt = now;
     lastAutoDelivered = state.warehouse.autoDelivered;
   }
+  if (state.prologue.threats > lastThreats) {
+    audio.play('cannon');
+    audio.play('impact');
+    lastThreats = state.prologue.threats;
+  }
   updateHud();
   const wakeProgress = state.otherMind.phase === 'waking' && otherMindWakingAt !== null
     ? Math.min(1, Math.max(0, (now - otherMindWakingAt) / 1200))
@@ -272,15 +292,14 @@ function frame(now) {
     now,
     { reducedMotion: prefersReducedMotion, machineFocus: machineOpen, wakeProgress },
   );
+  if (isLocal) {
+    audioPeak = Math.max(audioPeak, audio.level());
+    game.dataset.audioPeak = audioPeak.toFixed(5);
+  }
   requestAnimationFrame(frame);
 }
 
-for (const [selector, action] of [
-  ['#powerDash', 'dash'],
-  ['#powerPulse', 'pulse'],
-  ['#powerShield', 'shield'],
-  ['#actionButton', 'action'],
-]) {
+for (const [selector, action] of [['#actionButton', 'action']]) {
   document.querySelector(selector).addEventListener('pointerdown', (event) => {
     event.preventDefault();
     recordFirstAction();
@@ -297,6 +316,9 @@ document.querySelector('#restartGame').addEventListener('click', () => {
   otherMindWakingAt = null;
   prepareOtherMindRuntime();
   firstMovementSeen = false;
+  machineOpen = false;
+  wakeAttempts = 0;
+  lastThreats = 0;
   lastScene = state.scene;
 });
 
@@ -322,7 +344,18 @@ hud.run.addEventListener('click', async () => {
   telemetry.mark(machineStage === 'wake' ? 'python-wake-ui-ms' : 'python-route-ui-ms', Math.round(performance.now() - runStarted));
   telemetry.mark('python-exec-ms', result.ms);
   if (!result.ok) {
-    hud.feedback.textContent = explainMachineFailure(result, source);
+    if (machineStage === 'wake') {
+      wakeAttempts += 1;
+      const guidance = getWakeFailureGuidance(wakeAttempts, result, source);
+      hud.feedback.textContent = guidance.message;
+      if (guidance.prefill !== null) {
+        hud.code.value = guidance.prefill;
+        hud.code.focus();
+        hud.code.setSelectionRange(hud.code.value.length, hud.code.value.length);
+      }
+    } else {
+      hud.feedback.textContent = explainAutomationFailure(result, source);
+    }
     hud.feedback.dataset.status = 'error';
   } else if (machineStage === 'wake') {
     state = applyGameAction(state, { type: 'arm-awake' });
@@ -372,6 +405,8 @@ if (isLocal) {
       checkpoint: state.checkpoint,
       player: state.player,
       threats: state.prologue.threats,
+      remainingThreats: state.prologue.enemies.filter(({ alive }) => alive).length,
+      lastShotAt: state.prologue.lastShotAt,
       manualDelivered: state.warehouse.manualDelivered,
       autoDelivered: state.warehouse.autoDelivered,
       arm: state.arm,
@@ -400,6 +435,9 @@ if (isLocal) {
 }
 
 window.addEventListener('resize', resizeCanvas);
+window.addEventListener('keydown', () => { audio.unlock(); }, { once: true });
+canvas.addEventListener('pointerdown', () => { audio.unlock(); }, { once: true });
+canvas.addEventListener('click', openMachineFromCanvas);
 resizeCanvas();
 if (state.scene === 'machine') {
   setMachineStage('wake');

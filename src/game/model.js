@@ -1,5 +1,7 @@
 import {
   ARM_TRANSFER_DURATION,
+  AUTOFIRE_FIRST_SHOT,
+  AUTOFIRE_INTERVAL,
   COLLAPSE_DURATION,
   CRATE_LAYOUT,
   INTERACTION_RADIUS,
@@ -22,14 +24,21 @@ const DEFAULT_STATE = Object.freeze({
   powers: Object.freeze({ dash: true, pulse: true, shield: true }),
   player: Object.freeze({
     x: 800,
-    y: 480,
+    y: 720,
     facingX: 1,
     facingY: 0,
     carrying: null,
     energy: 3,
     shieldUntil: 0,
   }),
-  prologue: Object.freeze({ threats: 0, waveRadius: 0, enemies: [] }),
+  prologue: Object.freeze({
+    threats: 0,
+    waveRadius: 0,
+    enemies: [],
+    nextShotAt: AUTOFIRE_FIRST_SHOT,
+    lastShotAt: -1,
+    lastTargets: [],
+  }),
   warehouse: Object.freeze({
     manualDelivered: 0,
     autoDelivered: 0,
@@ -134,12 +143,18 @@ function distance(a, b) {
 function withNeutralized(state, ids) {
   const idSet = new Set(ids);
   const enemies = state.prologue.enemies.map((enemy) => (
-    idSet.has(enemy.id) ? { ...enemy, alive: false } : enemy
+    idSet.has(enemy.id) ? { ...enemy, alive: false, destroyedAt: state.sceneTime } : enemy
   ));
   const threats = enemies.filter((enemy) => !enemy.alive).length;
   const next = {
     ...state,
-    prologue: { ...state.prologue, enemies, threats },
+    prologue: {
+      ...state.prologue,
+      enemies,
+      threats,
+      lastShotAt: state.sceneTime,
+      lastTargets: [...ids],
+    },
   };
   return threats >= THREATS_TO_COLLAPSE
     ? { ...next, scene: 'collapse', sceneTime: 0 }
@@ -193,6 +208,7 @@ export function applyGameAction(state, action) {
       return {
         ...state,
         scene: manualDelivered === MANUAL_CRATES_REQUIRED ? 'machine' : state.scene,
+        sceneTime: manualDelivered === MANUAL_CRATES_REQUIRED ? 0 : state.sceneTime,
         checkpoint: manualDelivered === MANUAL_CRATES_REQUIRED ? 'machine' : state.checkpoint,
         warehouse: { ...state.warehouse, manualDelivered },
       };
@@ -263,6 +279,7 @@ export function applyGameAction(state, action) {
       return {
         ...state,
         scene: manualDelivered === MANUAL_CRATES_REQUIRED ? 'machine' : state.scene,
+        sceneTime: manualDelivered === MANUAL_CRATES_REQUIRED ? 0 : state.sceneTime,
         checkpoint: manualDelivered === MANUAL_CRATES_REQUIRED ? 'machine' : state.checkpoint,
         player: { ...state.player, carrying: null },
         warehouse: {
@@ -368,6 +385,11 @@ export function getNearbyAction(state) {
       ? { type: 'inspect-red-crate', label: 'ПРОВЕРИТЬ ЯЩИК' }
       : null;
   }
+  if (state.scene === 'machine') {
+    return distance(state.player, MACHINE) <= INTERACTION_RADIUS + 45
+      ? { type: 'open-machine', label: 'ОТКРЫТЬ ТЕРМИНАЛ' }
+      : null;
+  }
   if (state.scene === 'automation') {
     return !state.arm.active && state.arm.queue.length === 0 && distance(state.player, MACHINE) <= INTERACTION_RADIUS + 45
       ? { type: 'open-machine', label: 'ОТКРЫТЬ КОНСОЛЬ' }
@@ -389,6 +411,19 @@ export function getNearbyAction(state) {
   return nearby
     ? { type: 'pick-crate', crateId: nearby.crate.id, label: 'ВЗЯТЬ ЯЩИК' }
     : null;
+}
+
+function autoFire(state) {
+  if (state.prologue.threats >= THREATS_TO_COLLAPSE) return state;
+  if (state.sceneTime + Number.EPSILON < state.prologue.nextShotAt) return state;
+  const target = nearestAlive(state)[0]?.enemy;
+  if (!target) return state;
+  const nextShotAt = state.prologue.nextShotAt + AUTOFIRE_INTERVAL;
+  const fired = withNeutralized({
+    ...state,
+    prologue: { ...state.prologue, nextShotAt },
+  }, [target.id]);
+  return fired;
 }
 
 function moveEnemies(state, dt) {
@@ -438,6 +473,7 @@ export function stepGame(state, input = {}, rawDt) {
 
   if (next.scene === 'prologue') {
     next = moveEnemies(next, dt);
+    next = autoFire(next);
     if (next.sceneTime >= PROLOGUE_TIMEOUT) {
       next = { ...next, scene: 'collapse', sceneTime: 0 };
     }

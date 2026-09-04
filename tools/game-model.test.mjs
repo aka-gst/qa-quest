@@ -9,21 +9,35 @@ import {
   stepGame,
 } from '../src/game/model.js';
 
-test('шесть обезвреженных угроз запускают катастрофу', () => {
-  let state = createGameState();
-  for (let index = 0; index < 6; index += 1) {
-    state = applyGameAction(state, { type: 'threat-neutralized' });
+function advance(state, seconds, input = {}) {
+  let next = state;
+  for (let elapsed = 0; elapsed < seconds; elapsed += 0.05) {
+    next = stepGame(next, input, 0.05);
   }
-  assert.equal(state.prologue.threats, 6);
-  assert.equal(state.scene, 'collapse');
+  return next;
+}
+
+test('орудие само попадает в первую цель до половины секунды', () => {
+  const beforeShot = advance(createGameState(), 0.3);
+  assert.equal(beforeShot.prologue.threats, 0);
+
+  const afterShot = advance(beforeShot, 0.2);
+  assert.equal(afterShot.prologue.threats, 1);
+  assert.equal(afterShot.prologue.lastTargets.length, 1);
+  assert.ok(afterShot.prologue.lastShotAt >= 0.3);
 });
 
-test('первые пять угроз не заканчивают пролог', () => {
-  let state = createGameState();
-  for (let index = 0; index < 5; index += 1) {
-    state = applyGameAction(state, { type: 'threat-neutralized' });
-  }
-  assert.equal(state.scene, 'prologue');
+test('автобой почти уничтожает рой и обрывается дисконнектом', () => {
+  const disconnected = advance(createGameState(), 8.4);
+  assert.equal(disconnected.scene, 'collapse');
+  assert.equal(disconnected.prologue.threats, 22);
+  assert.equal(disconnected.prologue.enemies.filter(({ alive }) => alive).length, 2);
+});
+
+test('весь пролог от автопушки до склада укладывается в десять секунд', () => {
+  const warehouse = advance(createGameState(), 10);
+  assert.equal(warehouse.scene, 'warehouse');
+  assert.deepEqual(warehouse.powers, { dash: false, pulse: false, shield: false });
 });
 
 test('три ручных ящика открывают машину, но не запускают её', () => {
@@ -58,11 +72,6 @@ test('движение меняет положение игрока, но не �
   assert.ok(edge.player.y <= 860);
 });
 
-test('пролог не может запереть новичка дольше тридцати секунд', () => {
-  const timedOut = stepGame(createGameState({ sceneTime: 29.98 }), {}, 0.05);
-  assert.equal(timedOut.scene, 'collapse');
-});
-
 test('катастрофа заканчивается складом с выключенными силами', () => {
   const collapsed = createGameState({ scene: 'collapse', sceneTime: 2.48 });
   const next = stepGame(collapsed, {}, 0.25);
@@ -91,6 +100,16 @@ test('подсказка появляется только рядом с физ�
   assert.equal(getNearbyAction(far), null);
   const near = createGameState({ scene: 'warehouse', player: { x: 265, y: 560 } });
   assert.deepEqual(getNearbyAction(near), { type: 'pick-crate', crateId: 'box-01', label: 'ВЗЯТЬ ЯЩИК' });
+});
+
+test('после третьего ящика терминал открывается только рядом с ним', () => {
+  const far = createCheckpointState('machine');
+  assert.equal(getNearbyAction(far), null);
+
+  const near = createCheckpointState('machine');
+  near.player.x = 1010;
+  near.player.y = 350;
+  assert.deepEqual(getNearbyAction(near), { type: 'open-machine', label: 'ОТКРЫТЬ ТЕРМИНАЛ' });
 });
 
 test('ящик засчитывается только после доставки на палету', () => {
