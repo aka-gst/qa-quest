@@ -5,13 +5,16 @@ import {
   applyGameAction,
   createCheckpointState,
   createGameState,
+  getArmFailurePhase,
   getArmTransferPhase,
+  getFirstActionGuide,
   getNearbyAction,
   stepGame,
 } from '../src/game/model.js';
 import {
   ARM_TRANSFER_DURATION,
   OTHER_MIND_AWAKE_HOLD_DURATION,
+  RED_CRATE_FAILURE_DURATION,
   REWARD_REVEAL_DURATION,
   WAKE_REVEAL_DURATION,
   WAREHOUSE_INTRO_DURATION,
@@ -134,6 +137,42 @@ test('подсказка появляется только рядом с физ�
   assert.deepEqual(getNearbyAction(near), { type: 'pick-crate', crateId: 'box-01', label: 'ВЗЯТЬ ЯЩИК' });
 });
 
+test('мобильный проводник ведёт к ближайшему ящику, затем к палете', () => {
+  const start = createGameState({
+    scene: 'warehouse',
+    player: { x: 280, y: 590 },
+  });
+  assert.deepEqual(getFirstActionGuide(start), {
+    action: 'pick-crate',
+    targetId: 'box-01',
+    x: 265,
+    y: 560,
+    label: 'ИДИ ПО СТРЕЛКЕ · У ЯЩИКА НАЖМИ ДЕЙСТВИЕ',
+  });
+
+  const carrying = applyGameAction(start, {
+    type: 'pick-crate',
+    crateId: 'box-01',
+    distance: 20,
+  });
+  assert.deepEqual(getFirstActionGuide(carrying), {
+    action: 'drop-crate',
+    targetId: 'pallet-a',
+    x: 1300,
+    y: 590,
+    label: 'НЕСИ К ЖЁЛТОЙ РАМКЕ · НАЖМИ ДЕЙСТВИЕ',
+  });
+});
+
+test('проводник первого действия исчезает после первой успешной доставки', () => {
+  let state = createGameState({ scene: 'warehouse', player: { x: 265, y: 560 } });
+  state = applyGameAction(state, { type: 'pick-crate', crateId: 'box-01', distance: 10 });
+  state = applyGameAction(state, { type: 'drop-crate', target: 'pallet-a' });
+
+  assert.equal(state.warehouse.manualDelivered, 1);
+  assert.equal(getFirstActionGuide(state), null);
+});
+
 test('после третьего ящика терминал открывается только рядом с ним', () => {
   const far = createCheckpointState('machine');
   assert.equal(getNearbyAction(far), null);
@@ -205,13 +244,13 @@ test('роборука движется читаемыми фазами и ос�
   assert.equal(getArmTransferPhase(0.92), 'release');
 });
 
-test('шесть автоматических переносов видны по одному после отдельного пробуждения', () => {
+test('шесть автоматических переносов видны по одному, затем рука проживает физическую ошибку', () => {
   let state = applyGameAction(createCheckpointState('machine'), { type: 'first-command-accepted' });
   let elapsed = 0;
   const deliveryTimes = [];
   let delivered = 0;
 
-  while (state.scene === 'automation' && elapsed < 20) {
+  while (state.scene === 'automation' && elapsed < 24) {
     state = stepGame(state, {}, 1 / 60);
     elapsed += 1 / 60;
     if (state.warehouse.autoDelivered !== delivered) {
@@ -222,7 +261,7 @@ test('шесть автоматических переносов видны по
 
   assert.equal(deliveryTimes.length, 6);
   assert.ok(deliveryTimes[0] >= WAKE_REVEAL_DURATION + ARM_TRANSFER_DURATION);
-  const expected = WAKE_REVEAL_DURATION + ARM_TRANSFER_DURATION * 6;
+  const expected = WAKE_REVEAL_DURATION + ARM_TRANSFER_DURATION * 6 + RED_CRATE_FAILURE_DURATION;
   assert.ok(elapsed >= expected && elapsed <= expected + 0.25);
 });
 
@@ -283,13 +322,25 @@ test('между автоматическими ящиками у руки не�
   assert.equal(next.warehouse.crates.find(({ id }) => id === 'box-05').status, 'arm');
 });
 
-test('красный ящик останавливает обычный маршрут после шести переносов', () => {
+test('красный ящик сначала физически ломает маршрут и только потом останавливает руку', () => {
   const state = createGameState({ scene: 'automation', warehouse: { autoDelivered: 5 }, arm: { awake: true, active: { boxId: 'box-09', progress: .9 } } });
-  const next = applyGameAction(state, { type: 'arm-transfer-finished', boxId: 'box-09' });
-  assert.equal(next.warehouse.autoDelivered, 6);
-  assert.equal(next.scene, 'red-crate');
-  assert.equal(next.arm.blocked, true);
-  assert.equal(next.warehouse.crates.find(({ id }) => id === 'red-01').status, 'blocked');
+  const failing = applyGameAction(state, { type: 'arm-transfer-finished', boxId: 'box-09' });
+  assert.equal(failing.warehouse.autoDelivered, 6);
+  assert.equal(failing.scene, 'automation');
+  assert.deepEqual(failing.arm.failure, { progress: 0, phase: 'reach' });
+  assert.equal(failing.arm.blocked, false);
+  assert.equal(failing.warehouse.crates.find(({ id }) => id === 'red-01').status, 'scan');
+
+  const scanning = advance(failing, RED_CRATE_FAILURE_DURATION * .4);
+  assert.equal(scanning.scene, 'automation');
+  assert.equal(scanning.arm.failure.phase, 'scan');
+  assert.equal(getArmFailurePhase(.64), 'reject-one');
+  assert.equal(getArmFailurePhase(.82), 'reject-two');
+
+  const blocked = advance(failing, RED_CRATE_FAILURE_DURATION + .1);
+  assert.equal(blocked.scene, 'red-crate');
+  assert.equal(blocked.arm.blocked, true);
+  assert.equal(blocked.warehouse.crates.find(({ id }) => id === 'red-01').status, 'blocked');
 });
 
 test('награда открывается только после осмотра красного ящика', () => {

@@ -23,6 +23,7 @@ test('игровая оболочка содержит нужные органы
     'gameMessage',
     'soundToggle',
     'restartGame',
+    'storageWarning',
   ]) {
     assert.match(html, new RegExp(`id=["']${id}["']`), `нет #${id}`);
   }

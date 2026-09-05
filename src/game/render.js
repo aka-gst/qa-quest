@@ -6,8 +6,8 @@ import {
   WAKE_REVEAL_DURATION,
   WAREHOUSE_INTRO_DURATION,
   WORLD,
-} from './config.js?v=4';
-import { getArmTransferPhase } from './model.js?v=4';
+} from './config.js?v=5';
+import { getArmTransferPhase } from './model.js?v=5';
 import { getViewportTransform } from './viewport.js';
 
 const prologueImage = new Image();
@@ -337,6 +337,7 @@ function drawArm(ctx, state, now, { wakeProgress = 0 } = {}) {
     : 0;
   const angle = awake ? Math.sin(now / 650) * .035 : watch;
   const active = state.arm.active;
+  const failure = state.arm.failure;
   const source = active
     ? state.warehouse.crates.find((crate) => crate.id === active.boxId)
     : null;
@@ -348,7 +349,41 @@ function drawArm(ctx, state, now, { wakeProgress = 0 } = {}) {
   let endY = MACHINE.y - 55 - gesture * 40;
   let crateX = null;
   let crateY = null;
-  if (active && source) {
+  let failurePulse = 0;
+  if (failure) {
+    const red = state.warehouse.crates.find((crate) => crate.id === 'red-01');
+    const p = Math.max(0, Math.min(1, failure.progress));
+    const targetX = red?.x ?? 720;
+    const targetY = (red?.y ?? 575) - 38;
+    const restX = MACHINE.x - 70 - gesture * 95;
+    const restY = MACHINE.y - 55 - gesture * 40;
+    if (failure.phase === 'reach') {
+      const t = Math.min(1, p / .28);
+      const eased = t * t * (3 - 2 * t);
+      endX = restX + (targetX - restX) * eased;
+      endY = restY + (targetY - restY) * eased;
+    } else if (failure.phase === 'scan') {
+      endX = targetX + Math.sin(now / 90) * 18;
+      endY = targetY - 12 + Math.sin(now / 55) * 9;
+      failurePulse = .45 + Math.sin(now / 85) * .25;
+    } else if (failure.phase === 'reject-one') {
+      const t = (p - .52) / .24;
+      const recoil = Math.sin(Math.min(1, t) * Math.PI);
+      endX = targetX + recoil * 155;
+      endY = targetY - recoil * 100;
+      failurePulse = recoil;
+    } else if (failure.phase === 'reject-two') {
+      const t = (p - .76) / .16;
+      const recoil = Math.sin(Math.min(1, t) * Math.PI);
+      endX = targetX + recoil * 210;
+      endY = targetY - recoil * 145;
+      failurePulse = recoil;
+    } else {
+      endX = targetX + 205;
+      endY = targetY - 150;
+      failurePulse = 1;
+    }
+  } else if (active && source) {
     const phase = getArmTransferPhase(progress);
     if (phase === 'pickup') {
       const p = Math.min(1, progress / .24);
@@ -385,8 +420,9 @@ function drawArm(ctx, state, now, { wakeProgress = 0 } = {}) {
   }
   const baseX = MACHINE.x;
   const baseY = MACHINE.y + 220;
-  const elbowX = active ? (baseX + endX) / 2 : MACHINE.x - 25 - gesture * 30;
-  const elbowY = active ? Math.min(baseY, endY) - 150 : MACHINE.y - 70 - gesture * 18;
+  const moving = active || failure;
+  const elbowX = moving ? (baseX + endX) / 2 : MACHINE.x - 25 - gesture * 30;
+  const elbowY = moving ? Math.min(baseY, endY) - 150 : MACHINE.y - 70 - gesture * 18;
   ctx.save();
   ctx.fillStyle = '#283444';
   ctx.fillRect(baseX - 70, baseY + 30, 140, 72);
@@ -414,6 +450,25 @@ function drawArm(ctx, state, now, { wakeProgress = 0 } = {}) {
   ctx.shadowColor = ctx.fillStyle;
   ctx.shadowBlur = 18;
   ctx.beginPath(); ctx.arc(endX, endY, 12, 0, Math.PI * 2); ctx.fill();
+  if (failure) {
+    const red = state.warehouse.crates.find((crate) => crate.id === 'red-01');
+    const x = red?.x ?? 720;
+    const y = red?.y ?? 575;
+    ctx.globalAlpha = .35 + failurePulse * .45;
+    ctx.strokeStyle = failure.phase === 'scan' ? '#64e9ff' : '#ff4d5a';
+    ctx.lineWidth = 5 + failurePulse * 7;
+    ctx.beginPath();
+    ctx.arc(x, y, 42 + failurePulse * 38, 0, Math.PI * 2);
+    ctx.stroke();
+    if (failure.phase.startsWith('reject') || failure.phase === 'freeze') {
+      ctx.globalAlpha = .7 + failurePulse * .3;
+      ctx.beginPath();
+      ctx.moveTo(x - 42, y - 42); ctx.lineTo(x + 42, y + 42);
+      ctx.moveTo(x + 42, y - 42); ctx.lineTo(x - 42, y + 42);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
   if (active && crateX !== null && crateY !== null) {
     ctx.shadowBlur = 12;
     ctx.fillStyle = '#bb8440';
@@ -422,6 +477,34 @@ function drawArm(ctx, state, now, { wakeProgress = 0 } = {}) {
     ctx.globalAlpha = .48;
     ctx.strokeRect(crateX - 18, crateY - 18, 36, 36);
   }
+  ctx.restore();
+}
+
+function drawFirstActionGuide(ctx, state, now, guide) {
+  if (!guide) return;
+  const dx = guide.x - state.player.x;
+  const dy = guide.y - state.player.y;
+  const length = Math.hypot(dx, dy) || 1;
+  const ux = dx / length;
+  const uy = dy / length;
+  const radius = Math.min(145, Math.max(82, length - 54));
+  const x = state.player.x + ux * radius;
+  const y = state.player.y + uy * radius;
+  const pulse = .82 + Math.sin(now / 120) * .18;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(Math.atan2(uy, ux));
+  ctx.globalAlpha = pulse;
+  ctx.fillStyle = '#ffc857';
+  ctx.shadowColor = '#ffc857';
+  ctx.shadowBlur = 24;
+  ctx.beginPath();
+  ctx.moveTo(34, 0);
+  ctx.lineTo(-18, -27);
+  ctx.lineTo(-7, 0);
+  ctx.lineTo(-18, 27);
+  ctx.closePath();
+  ctx.fill();
   ctx.restore();
 }
 
@@ -664,6 +747,7 @@ function drawWarehouse(ctx, state, now, options = {}) {
 
   drawDropFeedback(ctx, state);
   drawWorker(ctx, state);
+  drawFirstActionGuide(ctx, state, now, options.firstActionGuide);
   drawPoster(ctx, state, now);
   drawWarehouseIntro(ctx, state);
   drawWakeReveal(ctx, state);

@@ -7,7 +7,7 @@
   <meta name="description" content="QueQuest — игра о человеке, который потерял все способности и собирает себя заново, создавая машины, ботов и собственный AI.">
   <title>QueQuest — собери разум заново</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=9">
+  <link rel="stylesheet" href="styles.css?v=10">
 </head>
 <body>
   <main id="game" class="game" data-scene="prologue">
@@ -35,6 +35,10 @@
       <span class="action-button__key">SPACE</span>
       <b>ДЕЙСТВИЕ</b>
     </button>
+
+    <div id="storageWarning" class="storage-warning" role="status" aria-live="polite" hidden>
+      ПРОГРЕСС НЕ СОХРАНЁН · ИГРА ПРОДОЛЖАЕТСЯ
+    </div>
 
     <aside id="machinePanel" class="machine" hidden aria-labelledby="machineTitle">
       <div class="machine__rail" aria-hidden="true"><span></span></div>
@@ -95,6 +99,6 @@
     <div class="screen-vignette" aria-hidden="true"></div>
   </main>
 
-  <script type="module" src="src/game/main.js?v=8"></script>
+  <script type="module" src="src/game/main.js?v=10"></script>
 </body>
 </html>

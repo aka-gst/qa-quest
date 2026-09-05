@@ -209,6 +209,26 @@ textarea:focus-visible {
 
 .action-button__key { color: #6c665b; font: 9px ui-monospace, monospace; }
 
+.storage-warning {
+  position: absolute;
+  z-index: 6;
+  top: max(74px, calc(env(safe-area-inset-top) + 58px));
+  left: 50%;
+  width: min(520px, calc(100vw - 32px));
+  padding: 11px 14px;
+  transform: translateX(-50%);
+  border: 1px solid #ff4d5a88;
+  background: #1a090de8;
+  box-shadow: 0 14px 45px #000b, inset 3px 0 0 var(--danger);
+  color: #ffb4ba;
+  font: 800 10px/1.35 ui-monospace, monospace;
+  letter-spacing: .08em;
+  text-align: center;
+  pointer-events: none;
+}
+
+.storage-warning[hidden] { display: none; }
+
 .corner-tools {
   position: absolute;
   top: max(14px, env(safe-area-inset-top));
@@ -394,6 +414,11 @@ textarea:focus-visible {
   .power__key { display: none; }
   .power b { margin-top: 22px; font-size: 10px; }
   .action-button { left: max(12px, env(safe-area-inset-left)); bottom: calc(12px + var(--safe-bottom)); height: 64px; }
+  .game[data-first-action-guide="true"] .action-button {
+    border-color: var(--sodium);
+    box-shadow: 0 0 0 1px #ffc85788, 0 0 28px #ffc85744;
+    animation: first-action-pulse .72s ease-in-out infinite alternate;
+  }
   .machine { top: auto; bottom: 0; width: 100%; height: min(82dvh, 720px); padding: 20px 18px calc(18px + var(--safe-bottom)); border-top: 1px solid #64e9ff52; border-left: 0; }
   .machine__rail { left: 50%; top: -28px; width: 4px; height: 28px; }
   .machine__rail span { right: -4px; top: 6px; }
@@ -406,6 +431,11 @@ textarea:focus-visible {
   .code-editor { min-height: 120px; }
   .ending__future { grid-template-columns: repeat(2, 1fr); }
   .skill-journal { right: 12px; bottom: calc(12px + var(--safe-bottom)); width: min(250px, calc(100vw - 24px)); }
+}
+
+@keyframes first-action-pulse {
+  from { transform: translateY(0); }
+  to { transform: translateY(-4px); }
 }
 
 @media (max-height: 520px) and (orientation: landscape) {

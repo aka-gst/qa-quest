@@ -1,12 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createGameState } from '../src/game/model.js';
-import {
-  loadCheckpoint,
-  resetCheckpoint,
-  saveCheckpoint,
-} from '../src/game/save.js';
+import { applyGameAction, createCheckpointState, createGameState } from '../src/game/model.js';
+import * as checkpointModule from '../src/game/save.js';
+
+const { loadCheckpoint, resetCheckpoint, saveCheckpoint } = checkpointModule;
 
 function fakeStorage(initial = {}) {
   const values = new Map(Object.entries(initial));
@@ -41,9 +39,64 @@ test('сохраняется только безопасная граница, �
     checkpoint: 'machine',
     arm: { active: { boxId: 'box-04', progress: 0.7 } },
   });
-  saveCheckpoint(storage, state);
+  assert.deepEqual(saveCheckpoint(storage, state), { ok: true, operation: 'save' });
   const saved = JSON.parse(storage.getItem('quequest.game.v1'));
   assert.deepEqual(saved, { version: 1, checkpoint: 'machine' });
+});
+
+test('отказ записи не прерывает игру и возвращает управляемый результат', () => {
+  const storage = {
+    setItem() { throw new Error('simulated quota exceeded'); },
+  };
+
+  assert.doesNotThrow(() => saveCheckpoint(storage, createCheckpointState('reward')));
+  assert.deepEqual(
+    saveCheckpoint(storage, createCheckpointState('reward')),
+    { ok: false, operation: 'save' },
+  );
+});
+
+test('отказ сброса не прерывает новый старт и возвращает управляемый результат', () => {
+  const storage = {
+    removeItem() { throw new Error('simulated storage denial'); },
+  };
+
+  assert.doesNotThrow(() => resetCheckpoint(storage));
+  assert.deepEqual(resetCheckpoint(storage), { ok: false, operation: 'reset' });
+});
+
+test('контракт сохранения предупреждает один раз при повторных отказах', () => {
+  const failures = [];
+  const storage = {
+    setItem() { throw new Error('simulated quota exceeded'); },
+    removeItem() { throw new Error('simulated storage denial'); },
+  };
+  const persistence = checkpointModule.createCheckpointPersistence({
+    storage,
+    onFailure: (failure) => failures.push(failure),
+  });
+
+  persistence.save(createCheckpointState('machine'));
+  persistence.save(createCheckpointState('reward'));
+  persistence.reset();
+
+  assert.deepEqual(failures, [{ ok: false, operation: 'save' }]);
+});
+
+test('неудачная запись награды не позволяет получить её повторно в этой партии', () => {
+  const persistence = checkpointModule.createCheckpointPersistence({
+    storage: { setItem() { throw new Error('simulated quota exceeded'); } },
+  });
+  const blocked = createCheckpointState('red-crate');
+  const rewarded = applyGameAction(blocked, { type: 'inspect-red-crate' });
+
+  assert.equal(rewarded.scene, 'reward');
+  assert.equal(persistence.save(rewarded).ok, false);
+  assert.strictEqual(
+    applyGameAction(rewarded, { type: 'inspect-red-crate' }),
+    rewarded,
+  );
+  assert.equal(rewarded.warehouse.wage, blocked.warehouse.wage);
 });
 
 for (const broken of ['{', 'null', '{"version":9,"checkpoint":"reward"}', '{"version":1,"checkpoint":"unknown"}']) {

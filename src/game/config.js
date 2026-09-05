@@ -16,6 +16,7 @@ export const WAKE_REVEAL_DURATION = 2.6;
 export const OTHER_MIND_AWAKE_HOLD_DURATION = 1.5;
 export const REWARD_REVEAL_DURATION = 1.8;
 export const ARM_TRANSFER_DURATION = 2;
+export const RED_CRATE_FAILURE_DURATION = 3.6;
 
 export const PALLET = Object.freeze({ id: 'pallet-a', x: 1300, y: 590, width: 180, height: 120 });
 export const MACHINE = Object.freeze({ x: 1010, y: 350 });

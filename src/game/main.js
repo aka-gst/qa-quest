@@ -10,14 +10,15 @@ import {
   applyGameAction,
   createCheckpointState,
   createGameState,
+  getFirstActionGuide,
   getNearbyAction,
   stepGame,
-} from './model.js?v=4';
-import { renderGame } from './render.js?v=7';
+} from './model.js?v=5';
+import { renderGame } from './render.js?v=8';
 import { getWakeFailureGuidance } from './wake-help.js?v=2';
-import { loadCheckpoint, resetCheckpoint, saveCheckpoint } from './save.js';
+import { createCheckpointPersistence, loadCheckpoint } from './save.js?v=2';
 import { createTelemetry } from './telemetry.js';
-import { CHECKPOINTS, OTHER_MIND_AWAKE_HOLD_DURATION, REWARD_REVEAL_DURATION } from './config.js?v=5';
+import { CHECKPOINTS, OTHER_MIND_AWAKE_HOLD_DURATION, REWARD_REVEAL_DURATION } from './config.js?v=6';
 import { getViewportTransform, screenToWorld } from './viewport.js';
 
 const canvas = document.querySelector('#gameCanvas');
@@ -44,6 +45,7 @@ const hud = {
   otherMindLine: document.querySelector('#otherMindLine'),
   journal: document.querySelector('#skillJournal'),
   printSkillMethod: document.querySelector('#printSkillMethod'),
+  storageWarning: document.querySelector('#storageWarning'),
 };
 
 const isLocal = ['127.0.0.1', 'localhost'].includes(location.hostname);
@@ -52,6 +54,7 @@ const checkpoint = isLocal && CHECKPOINTS.includes(requestedCheckpoint)
   ? { checkpoint: requestedCheckpoint }
   : loadCheckpoint();
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const narrowViewport = window.matchMedia('(max-width: 760px)');
 const telemetry = createTelemetry({ enabled: isLocal });
 let state = createCheckpointState(checkpoint.checkpoint);
 let fakeGateway;
@@ -75,6 +78,13 @@ let lastAutoFinishedAt = null;
 let incomeNoticeUntil = 0;
 let warehouseCueStage = 0;
 let codeInputMethod = 'typed';
+
+const persistence = createCheckpointPersistence({
+  storage: localStorage,
+  onFailure: () => {
+    hud.storageWarning.hidden = false;
+  },
+});
 
 function ambientForScene() {
   return ['prologue', 'collapse'].includes(state.scene) ? 'combat' : 'warehouse';
@@ -189,6 +199,8 @@ function updateHud(now = performance.now()) {
   game.dataset.intro = state.scene === 'warehouse' && !state.warehouse.introComplete ? 'warehouse' : '';
   game.dataset.wakeReveal = state.arm.wakeRevealRemaining > 0 ? 'true' : 'false';
   const nearby = getNearbyAction(state);
+  const firstActionGuide = narrowViewport.matches ? getFirstActionGuide(state) : null;
+  game.dataset.firstActionGuide = firstActionGuide ? 'true' : 'false';
   const inWarehouse = ['warehouse', 'machine', 'automation', 'red-crate', 'reward'].includes(state.scene);
   const powers = document.querySelectorAll('.power');
   powers.forEach((button) => { button.disabled = !state.powers[button.id.replace('power', '').toLowerCase()]; });
@@ -218,14 +230,21 @@ function updateHud(now = performance.now()) {
       hud.message.textContent = nearby?.label ?? 'Подойди к загоревшемуся терминалу';
     } else if (state.scene === 'automation') {
       const revealing = state.arm.wakeRevealRemaining > 0;
-      hud.mission.textContent = revealing
+      const failureCopy = state.arm.failure ? {
+        reach: ['Рука увидела новый груз', 'МАНИПУЛЯТОР ТЯНЕТСЯ К КРАСНОМУ ЯЩИКУ'],
+        scan: ['Сканирование груза', 'МАРШРУТ ИЩЕТ СОВПАДЕНИЕ'],
+        'reject-one': ['Первый отказ', 'РУКУ ОТДЁРНУЛО · ПОВТОРНАЯ ПОПЫТКА'],
+        'reject-two': ['Второй отказ', 'МАНИПУЛЯТОР НЕ МОЖЕТ ПРОДОЛЖИТЬ'],
+        freeze: ['Рука застыла', 'СТАРЫЙ МАРШРУТ СЛОМАН'],
+      }[state.arm.failure.phase] : null;
+      hud.mission.textContent = failureCopy?.[0] ?? (revealing
         ? 'Машина услышала тебя'
-        : (state.arm.active || state.arm.queue.length ? 'Работа идёт сама' : 'Дай машине правило');
-      hud.message.textContent = revealing
+        : (state.arm.active || state.arm.queue.length ? 'Работа идёт сама' : 'Дай машине правило'));
+      hud.message.textContent = failureCopy?.[1] ?? (revealing
         ? 'PRINT ОТКРЫТ · РУКА 07 ПОЛУЧАЕТ ПИТАНИЕ'
         : (now < incomeNoticeUntil
         ? `+ ₽120 · +4 МИНУТЫ СВОБОДЫ · АВТО ${state.warehouse.autoDelivered}/6`
-        : (nearby?.label ?? (state.arm.active ? 'РУКА РАБОТАЕТ · ДЕНЬГИ КАПАЮТ' : `Автоматически: ${state.warehouse.autoDelivered}/6`)));
+        : (nearby?.label ?? (state.arm.active ? 'РУКА РАБОТАЕТ · ДЕНЬГИ КАПАЮТ' : `Автоматически: ${state.warehouse.autoDelivered}/6`))));
     } else if (state.scene === 'red-crate') {
       hud.mission.textContent = 'Машина остановилась';
       hud.message.textContent = nearby?.label ?? 'Подойди к красному ящику';
@@ -234,7 +253,7 @@ function updateHud(now = performance.now()) {
       hud.message.textContent = 'Q‑Bot ждёт дома';
     } else {
       hud.mission.textContent = 'Перенеси три ящика';
-      hud.message.textContent = nearby?.label ?? 'Найди ящик слева';
+      hud.message.textContent = nearby?.label ?? firstActionGuide?.label ?? 'Найди ящик слева';
     }
     const completed = state.warehouse.manualDelivered + state.warehouse.autoDelivered;
     hud.progress.style.width = `${Math.min(100, (completed / 9) * 100)}%`;
@@ -269,7 +288,7 @@ function frame(now) {
   state = stepGame(state, input.state, (now - lastTime) / 1000, { paused: machineOpen });
   lastTime = now;
   if (state.scene !== lastScene) {
-    if (['warehouse', 'machine', 'red-crate', 'reward'].includes(state.checkpoint)) saveCheckpoint(localStorage, state);
+    if (['warehouse', 'machine', 'red-crate', 'reward'].includes(state.checkpoint)) persistence.save(state);
     lastScene = state.scene;
     if (state.scene === 'machine') {
       resetMachinePanel();
@@ -312,7 +331,12 @@ function frame(now) {
     state,
     { width: canvas.clientWidth, height: canvas.clientHeight },
     now,
-    { reducedMotion: prefersReducedMotion, machineFocus: machineOpen, wakeProgress },
+    {
+      reducedMotion: prefersReducedMotion,
+      machineFocus: machineOpen,
+      wakeProgress,
+      firstActionGuide: narrowViewport.matches ? getFirstActionGuide(state) : null,
+    },
   );
   if (isLocal) {
     audioPeak = Math.max(audioPeak, audio.level());
@@ -333,7 +357,7 @@ for (const [selector, action] of [['#actionButton', 'action']]) {
 document.querySelector('#restartGame').addEventListener('click', () => {
   const progressed = state.checkpoint !== 'start';
   if (progressed && !window.confirm('Начать заново? Текущий прогресс этой игры исчезнет.')) return;
-  resetCheckpoint();
+  persistence.reset();
   state = createGameState();
   otherMindWakingAt = null;
   prepareOtherMindRuntime();
@@ -374,7 +398,7 @@ hud.run.addEventListener('click', async () => {
   } else {
     state = applyGameAction(state, { type: 'first-command-accepted' });
     automationAcceptedAt = performance.now();
-    saveCheckpoint(localStorage, state);
+    persistence.save(state);
     audio.play('power');
     hud.feedback.textContent = 'КОМАНДА ПРИНЯТА · КНОПКА ОЖИЛА · МАРШРУТ ЗАПУЩЕН';
     hud.feedback.dataset.status = 'success';

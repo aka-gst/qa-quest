@@ -11,12 +11,13 @@ import {
   PALLET,
   PLAYER_SPEED,
   PROLOGUE_TIMEOUT,
+  RED_CRATE_FAILURE_DURATION,
   THREAT_LAYOUT,
   THREATS_TO_COLLAPSE,
   WAKE_REVEAL_DURATION,
   WAREHOUSE_INTRO_DURATION,
   WORLD,
-} from './config.js?v=4';
+} from './config.js?v=5';
 
 const DEFAULT_STATE = Object.freeze({
   scene: 'prologue',
@@ -53,7 +54,7 @@ const DEFAULT_STATE = Object.freeze({
     lastDroppedId: null,
     lastDropDelivered: false,
   }),
-  arm: Object.freeze({ awake: false, blocked: false, queue: [], active: null, wakeRevealRemaining: 0 }),
+  arm: Object.freeze({ awake: false, blocked: false, queue: [], active: null, failure: null, wakeRevealRemaining: 0 }),
   otherMind: Object.freeze({ phase: 'sleeping', line: '' }),
 });
 
@@ -91,6 +92,7 @@ export function createGameState(overrides = {}) {
       ...mergePart(DEFAULT_STATE.arm, overrides.arm),
       queue: [...(overrides.arm?.queue ?? DEFAULT_STATE.arm.queue)],
       active: overrides.arm?.active ? { ...overrides.arm.active } : null,
+      failure: overrides.arm?.failure ? { ...overrides.arm.failure } : null,
     },
     otherMind: mergePart(DEFAULT_STATE.otherMind, overrides.otherMind),
   };
@@ -203,6 +205,15 @@ export function getArmTransferPhase(progress = 0) {
   if (value < .24) return 'pickup';
   if (value < .84) return 'carry';
   return 'release';
+}
+
+export function getArmFailurePhase(progress = 0) {
+  const value = Math.max(0, Math.min(1, progress));
+  if (value < .28) return 'reach';
+  if (value < .52) return 'scan';
+  if (value < .76) return 'reject-one';
+  if (value < .92) return 'reject-two';
+  return 'freeze';
 }
 
 function updateCrate(state, crateId, updater) {
@@ -403,9 +414,9 @@ export function applyGameAction(state, action) {
       const finished = autoDelivered >= 6;
       return {
         ...state,
-        scene: finished ? 'red-crate' : state.scene,
-        sceneTime: finished ? 0 : state.sceneTime,
-        checkpoint: finished ? 'red-crate' : state.checkpoint,
+        scene: state.scene,
+        sceneTime: state.sceneTime,
+        checkpoint: state.checkpoint,
         warehouse: {
           ...state.warehouse,
           autoDelivered,
@@ -413,7 +424,7 @@ export function applyGameAction(state, action) {
           freeTime: state.warehouse.freeTime + 4,
           crates: state.warehouse.crates.map((crate) => {
             if (crate.id === action.boxId) return { ...crate, status: 'pallet' };
-            if (finished && crate.id === 'red-01') return { ...crate, status: 'blocked', x: 720, y: 575 };
+            if (finished && crate.id === 'red-01') return { ...crate, status: 'scan', x: 720, y: 575 };
             return crate;
           }),
         },
@@ -421,7 +432,28 @@ export function applyGameAction(state, action) {
           ...state.arm,
           active: null,
           queue: finished ? [] : state.arm.queue,
-          blocked: finished,
+          failure: finished ? { progress: 0, phase: 'reach' } : state.arm.failure,
+          blocked: false,
+        },
+      };
+    }
+    case 'arm-failure-finished': {
+      if (state.scene !== 'automation' || !state.arm.failure) return state;
+      return {
+        ...state,
+        scene: 'red-crate',
+        sceneTime: 0,
+        checkpoint: 'red-crate',
+        warehouse: {
+          ...state.warehouse,
+          crates: updateCrate(state, 'red-01', (crate) => ({ ...crate, status: 'blocked' })),
+        },
+        arm: {
+          ...state.arm,
+          active: null,
+          queue: [],
+          blocked: true,
+          failure: { progress: 1, phase: 'freeze' },
         },
       };
     }
@@ -447,7 +479,7 @@ export function getNearbyAction(state) {
       : null;
   }
   if (state.scene === 'automation') {
-    return !state.arm.active && state.arm.queue.length === 0 && distance(state.player, MACHINE) <= INTERACTION_RADIUS + 45
+    return !state.arm.active && !state.arm.failure && state.arm.queue.length === 0 && distance(state.player, MACHINE) <= INTERACTION_RADIUS + 45
       ? { type: 'open-machine', label: 'ОТКРЫТЬ КОНСОЛЬ' }
       : null;
   }
@@ -468,6 +500,30 @@ export function getNearbyAction(state) {
   return nearby
     ? { type: 'pick-crate', crateId: nearby.crate.id, label: 'ВЗЯТЬ ЯЩИК' }
     : null;
+}
+
+export function getFirstActionGuide(state) {
+  if (state.scene !== 'warehouse' || !state.warehouse.introComplete || state.warehouse.manualDelivered > 0) return null;
+  if (state.player.carrying) {
+    return {
+      action: 'drop-crate',
+      targetId: PALLET.id,
+      x: PALLET.x,
+      y: PALLET.y,
+      label: 'НЕСИ К ЖЁЛТОЙ РАМКЕ · НАЖМИ ДЕЙСТВИЕ',
+    };
+  }
+  const nearest = state.warehouse.crates
+    .filter((crate) => crate.kind === 'normal' && ['source', 'floor'].includes(crate.status))
+    .map((crate) => ({ crate, distance: distance(state.player, crate) }))
+    .sort((a, b) => a.distance - b.distance)[0]?.crate;
+  return nearest ? {
+    action: 'pick-crate',
+    targetId: nearest.id,
+    x: nearest.x,
+    y: nearest.y,
+    label: 'ИДИ ПО СТРЕЛКЕ · У ЯЩИКА НАЖМИ ДЕЙСТВИЕ',
+  } : null;
 }
 
 function autoFire(state) {
@@ -550,6 +606,18 @@ export function stepGame(state, input = {}, rawDt, options = {}) {
   }
 
   if (next.scene === 'automation' && next.arm.awake) {
+    if (next.arm.failure) {
+      const progress = next.arm.failure.progress + dt / RED_CRATE_FAILURE_DURATION;
+      next = {
+        ...next,
+        arm: {
+          ...next.arm,
+          failure: { progress, phase: getArmFailurePhase(progress) },
+        },
+      };
+      if (progress >= 1) next = applyGameAction(next, { type: 'arm-failure-finished' });
+      return next;
+    }
     if (next.arm.wakeRevealRemaining > 0) {
       next = {
         ...next,
