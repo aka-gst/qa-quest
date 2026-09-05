@@ -8,15 +8,15 @@ import {
   WORLD,
 } from './config.js?v=5';
 import { getArmTransferPhase } from './model.js?v=5';
-import { getViewportTransform } from './viewport.js';
+import { getSceneCameraTarget, getViewportTransform } from './viewport.js?v=2';
 
 const prologueImage = new Image();
 prologueImage.src = 'art/night2-hero.jpg';
 const rewardImage = new Image();
 rewardImage.src = 'art/garage-milestone-1.jpg';
 
-function viewportTransform(ctx, viewport, player) {
-  const { scale, offsetX, offsetY } = getViewportTransform(viewport, player);
+function viewportTransform(ctx, viewport, state) {
+  const { scale, offsetX, offsetY } = getViewportTransform(viewport, getSceneCameraTarget(state));
   ctx.translate(offsetX, offsetY);
   ctx.scale(scale, scale);
 }
@@ -832,7 +832,7 @@ function drawCollapse(ctx, state) {
 export function renderGame(ctx, state, viewport, now, options = {}) {
   ctx.save();
   ctx.clearRect(0, 0, viewport.width, viewport.height);
-  viewportTransform(ctx, viewport, state.player);
+  viewportTransform(ctx, viewport, state);
   if (state.scene === 'prologue') drawPrologue(ctx, state, now);
   else if (state.scene === 'collapse') drawCollapse(ctx, state);
   else if (state.scene === 'reward') drawReward(ctx, state, now);

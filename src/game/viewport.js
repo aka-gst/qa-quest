@@ -1,4 +1,16 @@
-import { WORLD } from './config.js';
+import { MACHINE, WORLD } from './config.js';
+
+export function getSceneCameraTarget(state) {
+  if (state.scene !== 'automation' || !state.arm?.failure) return state.player;
+
+  const redCrate = state.warehouse?.crates?.find((crate) => crate.id === 'red-01');
+  if (!redCrate) return state.player;
+
+  return {
+    x: redCrate.x * 0.6 + MACHINE.x * 0.4,
+    y: state.player.y,
+  };
+}
 
 export function getViewportTransform(viewport, player) {
   const portrait = viewport.width < viewport.height * 0.82;

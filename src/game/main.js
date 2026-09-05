@@ -14,7 +14,7 @@ import {
   getNearbyAction,
   stepGame,
 } from './model.js?v=5';
-import { renderGame } from './render.js?v=8';
+import { renderGame } from './render.js?v=9';
 import { getWakeFailureGuidance } from './wake-help.js?v=2';
 import { createCheckpointPersistence, loadCheckpoint } from './save.js?v=2';
 import { createTelemetry } from './telemetry.js';
