@@ -13,12 +13,12 @@ import {
   getFirstActionGuide,
   getNearbyAction,
   stepGame,
-} from './model.js?v=5';
-import { renderGame } from './render.js?v=9';
+} from './model.js?v=6';
+import { renderGame } from './render.js?v=10';
 import { getWakeFailureGuidance } from './wake-help.js?v=2';
 import { createCheckpointPersistence, loadCheckpoint } from './save.js?v=2';
 import { createTelemetry } from './telemetry.js';
-import { CHECKPOINTS, OTHER_MIND_AWAKE_HOLD_DURATION, REWARD_REVEAL_DURATION } from './config.js?v=6';
+import { CHECKPOINTS, OTHER_MIND_AWAKE_HOLD_DURATION, REWARD_REVEAL_DURATION } from './config.js?v=7';
 import { getViewportTransform, screenToWorld } from './viewport.js';
 
 const canvas = document.querySelector('#gameCanvas');
@@ -33,6 +33,7 @@ const hud = {
   sector: document.querySelector('#sectorState'),
   targets: document.querySelector('#targetState'),
   action: document.querySelector('#actionButton'),
+  chip: document.querySelector('#pythonChip'),
   machine: document.querySelector('#machinePanel'),
   ending: document.querySelector('#endingPanel'),
   code: document.querySelector('#codeInput'),
@@ -49,10 +50,12 @@ const hud = {
 };
 
 const isLocal = ['127.0.0.1', 'localhost'].includes(location.hostname);
-const requestedCheckpoint = new URLSearchParams(location.search).get('checkpoint');
+const query = new URLSearchParams(location.search);
+const requestedCheckpoint = query.get('checkpoint');
+const showcaseChip = isLocal && query.get('showcase') === 'chip';
 const checkpoint = isLocal && CHECKPOINTS.includes(requestedCheckpoint)
   ? { checkpoint: requestedCheckpoint }
-  : loadCheckpoint();
+  : (showcaseChip ? { checkpoint: 'chip' } : loadCheckpoint());
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const narrowViewport = window.matchMedia('(max-width: 760px)');
 const telemetry = createTelemetry({ enabled: isLocal });
@@ -78,6 +81,7 @@ let lastAutoFinishedAt = null;
 let incomeNoticeUntil = 0;
 let warehouseCueStage = 0;
 let codeInputMethod = 'typed';
+let showcaseStartedAt = showcaseChip ? performance.now() : null;
 
 const persistence = createCheckpointPersistence({
   storage: localStorage,
@@ -201,10 +205,11 @@ function updateHud(now = performance.now()) {
   const nearby = getNearbyAction(state);
   const firstActionGuide = narrowViewport.matches ? getFirstActionGuide(state) : null;
   game.dataset.firstActionGuide = firstActionGuide ? 'true' : 'false';
-  const inWarehouse = ['warehouse', 'machine', 'automation', 'red-crate', 'reward'].includes(state.scene);
+  const inWarehouse = ['warehouse', 'chip', 'machine', 'automation', 'red-crate', 'reward'].includes(state.scene);
   const powers = document.querySelectorAll('.power');
   powers.forEach((button) => { button.disabled = !state.powers[button.id.replace('power', '').toLowerCase()]; });
   hud.action.style.display = nearby && !machineOpen ? 'flex' : 'none';
+  hud.chip.hidden = !(state.scene === 'chip' && state.arm.chip === 'fallen');
   if (nearby) hud.action.querySelector('b').textContent = nearby.label;
 
   if (state.scene === 'prologue') {
@@ -225,7 +230,10 @@ function updateHud(now = performance.now()) {
     hud.targets.textContent = '—';
   } else if (inWarehouse) {
     hud.chapter.textContent = 'ГЛАВА 1 · НИЖНИЙ УРОВЕНЬ';
-    if (state.scene === 'machine') {
+    if (state.scene === 'chip') {
+      hud.mission.textContent = state.arm.chip === 'inserting' ? 'Чип встаёт на место' : 'Нашёлся чип Python';
+      hud.message.textContent = state.arm.chip === 'inserting' ? 'РУКА 07 ПОЛУЧАЕТ НОВЫЙ НАВЫК' : 'НАЖМИ ЧИП · ВСТАВЬ ЕГО В РУКУ';
+    } else if (state.scene === 'machine') {
       hud.mission.textContent = 'Со стены сорвало плакат';
       hud.message.textContent = nearby?.label ?? 'Подойди к загоревшемуся терминалу';
     } else if (state.scene === 'automation') {
@@ -280,6 +288,17 @@ function updateHud(now = performance.now()) {
 }
 
 function frame(now) {
+  if (showcaseChip) {
+    const phase = (now - showcaseStartedAt) % 6200;
+    if (phase < 2300 && state.scene !== 'chip') {
+      state = createCheckpointState('chip');
+      machineOpen = false;
+    } else if (phase >= 2300 && state.scene === 'chip' && state.arm.chip === 'fallen') {
+      state = applyGameAction(state, { type: 'insert-python-chip' });
+    } else if (phase >= 3600 && state.scene === 'machine' && !machineOpen) {
+      openMachinePanel();
+    }
+  }
   if (!machineOpen && Math.abs(input.state.moveX) + Math.abs(input.state.moveY) > 0) {
     firstMovementSeen = true;
     recordFirstAction();
@@ -288,11 +307,12 @@ function frame(now) {
   state = stepGame(state, input.state, (now - lastTime) / 1000, { paused: machineOpen });
   lastTime = now;
   if (state.scene !== lastScene) {
-    if (['warehouse', 'machine', 'red-crate', 'reward'].includes(state.checkpoint)) persistence.save(state);
+    if (!showcaseChip && ['warehouse', 'chip', 'machine', 'red-crate', 'reward'].includes(state.checkpoint)) persistence.save(state);
     lastScene = state.scene;
     if (state.scene === 'machine') {
       resetMachinePanel();
       prepareMachinePython();
+      if (state.arm.chip === 'installed') machineOpen = true;
       audio.play('poster');
     }
     if (state.scene === 'warehouse') warehouseCueStage = 0;
@@ -371,6 +391,15 @@ document.querySelector('#restartGame').addEventListener('click', () => {
 
 document.querySelector('#closeMachine').addEventListener('click', () => {
   machineOpen = false;
+});
+
+hud.chip.addEventListener('click', () => {
+  if (state.scene !== 'chip' || state.arm.chip !== 'fallen') return;
+  recordFirstAction();
+  audio.unlock();
+  state = applyGameAction(state, { type: 'insert-python-chip' });
+  hud.chip.hidden = true;
+  audio.play('power');
 });
 
 hud.run.addEventListener('click', async () => {
@@ -453,6 +482,7 @@ if (isLocal) {
       manualDelivered: state.warehouse.manualDelivered,
       autoDelivered: state.warehouse.autoDelivered,
       arm: state.arm,
+      showcase: showcaseChip,
       crates: state.warehouse.crates,
       machineOpen,
       machineDraft: hud.code.value,

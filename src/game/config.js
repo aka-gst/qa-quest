@@ -12,6 +12,7 @@ export const AUTOFIRE_FIRST_SHOT = 0.35;
 export const AUTOFIRE_INTERVAL = 0.36;
 export const PROLOGUE_TIMEOUT = 8.4;
 export const WAREHOUSE_INTRO_DURATION = 5.2;
+export const CHIP_INSERT_DURATION = 1.05;
 export const WAKE_REVEAL_DURATION = 2.6;
 export const OTHER_MIND_AWAKE_HOLD_DURATION = 1.5;
 export const REWARD_REVEAL_DURATION = 1.8;
@@ -43,6 +44,7 @@ export const CRATE_LAYOUT = Object.freeze([
 export const CHECKPOINTS = Object.freeze([
   'start',
   'warehouse',
+  'chip',
   'machine',
   'red-crate',
   'reward',

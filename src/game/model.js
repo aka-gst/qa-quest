@@ -1,5 +1,6 @@
 import {
   ARM_TRANSFER_DURATION,
+  CHIP_INSERT_DURATION,
   AUTOFIRE_FIRST_SHOT,
   AUTOFIRE_INTERVAL,
   COLLAPSE_DURATION,
@@ -17,7 +18,7 @@ import {
   WAKE_REVEAL_DURATION,
   WAREHOUSE_INTRO_DURATION,
   WORLD,
-} from './config.js?v=5';
+} from './config.js?v=6';
 
 const DEFAULT_STATE = Object.freeze({
   scene: 'prologue',
@@ -54,7 +55,7 @@ const DEFAULT_STATE = Object.freeze({
     lastDroppedId: null,
     lastDropDelivered: false,
   }),
-  arm: Object.freeze({ awake: false, blocked: false, queue: [], active: null, failure: null, wakeRevealRemaining: 0 }),
+  arm: Object.freeze({ awake: false, blocked: false, chip: 'missing', queue: [], active: null, failure: null, wakeRevealRemaining: 0 }),
   otherMind: Object.freeze({ phase: 'sleeping', line: '' }),
 });
 
@@ -108,10 +109,27 @@ export function createCheckpointState(checkpoint = 'start') {
       warehouse: { introComplete: false },
     });
   }
+  if (checkpoint === 'chip') {
+    return createGameState({
+      scene: 'chip', checkpoint, powers,
+      player: { x: 1010, y: 580 },
+      arm: { chip: 'fallen' },
+      warehouse: {
+        manualDelivered: 3,
+        wage: 360,
+        crates: CRATE_LAYOUT.map((crate) => (
+          ['box-01', 'box-02', 'box-03'].includes(crate.id)
+            ? { ...crate, status: 'pallet', x: PALLET.x, y: PALLET.y }
+            : crate
+        )),
+      },
+    });
+  }
   if (checkpoint === 'machine') {
     return createGameState({
       scene: 'machine', checkpoint, powers,
       player: { x: 1120, y: 580 },
+      arm: { chip: 'installed' },
       warehouse: {
         manualDelivered: 3,
         wage: 360,
@@ -250,9 +268,10 @@ export function applyGameAction(state, action) {
       );
       return {
         ...state,
-        scene: manualDelivered === MANUAL_CRATES_REQUIRED ? 'machine' : state.scene,
+        scene: manualDelivered === MANUAL_CRATES_REQUIRED ? 'chip' : state.scene,
         sceneTime: manualDelivered === MANUAL_CRATES_REQUIRED ? 0 : state.sceneTime,
-        checkpoint: manualDelivered === MANUAL_CRATES_REQUIRED ? 'machine' : state.checkpoint,
+        checkpoint: manualDelivered === MANUAL_CRATES_REQUIRED ? 'chip' : state.checkpoint,
+        arm: manualDelivered === MANUAL_CRATES_REQUIRED ? { ...state.arm, chip: 'fallen' } : state.arm,
         warehouse: { ...state.warehouse, manualDelivered },
       };
     }
@@ -322,10 +341,11 @@ export function applyGameAction(state, action) {
       );
       return {
         ...state,
-        scene: manualDelivered === MANUAL_CRATES_REQUIRED ? 'machine' : state.scene,
+        scene: manualDelivered === MANUAL_CRATES_REQUIRED ? 'chip' : state.scene,
         sceneTime: manualDelivered === MANUAL_CRATES_REQUIRED ? 0 : state.sceneTime,
-        checkpoint: manualDelivered === MANUAL_CRATES_REQUIRED ? 'machine' : state.checkpoint,
+        checkpoint: manualDelivered === MANUAL_CRATES_REQUIRED ? 'chip' : state.checkpoint,
         player: { ...state.player, carrying: null },
+        arm: manualDelivered === MANUAL_CRATES_REQUIRED ? { ...state.arm, chip: 'fallen' } : state.arm,
         warehouse: {
           ...state.warehouse,
           manualDelivered,
@@ -350,6 +370,14 @@ export function applyGameAction(state, action) {
         sceneTime: 0,
         checkpoint: 'machine',
         arm: { ...state.arm, awake: true, blocked: false },
+      };
+    }
+    case 'insert-python-chip': {
+      if (state.scene !== 'chip' || state.arm.chip !== 'fallen') return state;
+      return {
+        ...state,
+        sceneTime: 0,
+        arm: { ...state.arm, chip: 'inserting' },
       };
     }
     case 'first-command-accepted': {
@@ -467,6 +495,11 @@ export function applyGameAction(state, action) {
 }
 
 export function getNearbyAction(state) {
+  if (state.scene === 'chip') {
+    return state.arm.chip === 'fallen'
+      ? { type: 'insert-python-chip', label: 'ВСТАВИТЬ ЧИП PYTHON' }
+      : null;
+  }
   if (state.scene === 'red-crate') {
     const red = state.warehouse.crates.find((crate) => crate.id === 'red-01');
     return red && distance(state.player, red) <= INTERACTION_RADIUS + 25
@@ -602,6 +635,17 @@ export function stepGame(state, input = {}, rawDt, options = {}) {
     next = {
       ...next,
       warehouse: { ...next.warehouse, introComplete: true },
+    };
+  }
+
+  if (next.scene === 'chip' && next.arm.chip === 'inserting' && next.sceneTime >= CHIP_INSERT_DURATION) {
+    next = {
+      ...next,
+      scene: 'machine',
+      sceneTime: 0,
+      checkpoint: 'machine',
+      player: { ...next.player, x: MACHINE.x, y: MACHINE.y + 220 },
+      arm: { ...next.arm, chip: 'installed' },
     };
   }
 

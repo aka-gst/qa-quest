@@ -17,6 +17,7 @@ test('игровая оболочка содержит нужные органы
     'gameHud',
     'missionText',
     'actionButton',
+    'pythonChip',
     'machinePanel',
     'codeInput',
     'runCode',
@@ -28,6 +29,13 @@ test('игровая оболочка содержит нужные органы
     assert.match(html, new RegExp(`id=["']${id}["']`), `нет #${id}`);
   }
   assert.doesNotMatch(html, /class=["']power-rack["']/, 'старые ручные способности всё ещё видны');
+});
+
+test('первый Python-чип остаётся действием игрока и имеет витринный адрес', () => {
+  assert.match(html, /id=["']pythonChip["']/);
+  assert.match(html, /ВСТАВИТЬ ЧИП PYTHON/);
+  assert.match(readFileSync(new URL('../src/game/main.js', import.meta.url), 'utf8'), /query\.get\('showcase'\) === 'chip'/);
+  assert.match(readFileSync(new URL('../src/game/main.js', import.meta.url), 'utf8'), /state\.arm\.chip === 'installed'\) machineOpen = true/);
 });
 
 test('первый экран обещает игру, а не учебный курс', () => {

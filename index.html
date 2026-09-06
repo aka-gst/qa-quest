@@ -7,7 +7,7 @@
   <meta name="description" content="QueQuest — игра о человеке, который потерял все способности и собирает себя заново, создавая машины, ботов и собственный AI.">
   <title>QueQuest — собери разум заново</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=10">
+  <link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
   <main id="game" class="game" data-scene="prologue">
@@ -34,6 +34,9 @@
     <button id="actionButton" class="action-button" type="button">
       <span class="action-button__key">SPACE</span>
       <b>ДЕЙСТВИЕ</b>
+    </button>
+    <button id="pythonChip" class="python-chip" type="button" hidden>
+      <span>PY</span><b>ВСТАВИТЬ ЧИП PYTHON</b><small>новый навык для руки 07</small>
     </button>
 
     <div id="storageWarning" class="storage-warning" role="status" aria-live="polite" hidden>
@@ -99,6 +102,6 @@
     <div class="screen-vignette" aria-hidden="true"></div>
   </main>
 
-  <script type="module" src="src/game/main.js?v=11"></script>
+  <script type="module" src="src/game/main.js?v=12"></script>
 </body>
 </html>

@@ -13,6 +13,7 @@ import {
 } from '../src/game/model.js';
 import {
   ARM_TRANSFER_DURATION,
+  CHIP_INSERT_DURATION,
   OTHER_MIND_AWAKE_HOLD_DURATION,
   RED_CRATE_FAILURE_DURATION,
   REWARD_REVEAL_DURATION,
@@ -75,14 +76,15 @@ test('склад сначала разыгрывает вступление и �
   assert.ok(awake.player.x > start.player.x);
 });
 
-test('три ручных ящика открывают машину, но не запускают её', () => {
+test('три ручных ящика роняют чип, но ещё не запускают руку', () => {
   let state = createGameState({ scene: 'warehouse' });
   for (let index = 0; index < 3; index += 1) {
     state = applyGameAction(state, { type: 'manual-crate-delivered' });
   }
-  assert.equal(state.scene, 'machine');
+  assert.equal(state.scene, 'chip');
   assert.equal(state.warehouse.manualDelivered, 3);
   assert.equal(state.arm.awake, false);
+  assert.equal(state.arm.chip, 'fallen');
 });
 
 test('способности дают разные последствия', () => {
@@ -173,14 +175,24 @@ test('проводник первого действия исчезает пос
   assert.equal(getFirstActionGuide(state), null);
 });
 
-test('после третьего ящика терминал открывается только рядом с ним', () => {
-  const far = createCheckpointState('machine');
-  assert.equal(getNearbyAction(far), null);
+test('после третьего ящика появляется чип, а терминал ещё недоступен', () => {
+  const chip = createCheckpointState('chip');
+  assert.deepEqual(getNearbyAction(chip), { type: 'insert-python-chip', label: 'ВСТАВИТЬ ЧИП PYTHON' });
+});
 
-  const near = createCheckpointState('machine');
-  near.player.x = 1010;
-  near.player.y = 350;
-  assert.deepEqual(getNearbyAction(near), { type: 'open-machine', label: 'ОТКРЫТЬ ТЕРМИНАЛ' });
+test('клик по чипу вставляет его в руку, и терминал открывается только после вставки', () => {
+  let state = createCheckpointState('chip');
+  state = applyGameAction(state, { type: 'insert-python-chip' });
+  assert.equal(state.scene, 'chip');
+  assert.equal(state.arm.chip, 'inserting');
+  assert.equal(getNearbyAction(state), null);
+
+  state = advance(state, CHIP_INSERT_DURATION + .05);
+  assert.equal(state.scene, 'machine');
+  assert.equal(state.arm.chip, 'installed');
+  state.player.x = 1010;
+  state.player.y = 350;
+  assert.deepEqual(getNearbyAction(state), { type: 'open-machine', label: 'ОТКРЫТЬ ТЕРМИНАЛ' });
 });
 
 test('ящик засчитывается только после доставки на палету', () => {

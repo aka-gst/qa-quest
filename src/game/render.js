@@ -6,8 +6,8 @@ import {
   WAKE_REVEAL_DURATION,
   WAREHOUSE_INTRO_DURATION,
   WORLD,
-} from './config.js?v=5';
-import { getArmTransferPhase } from './model.js?v=5';
+} from './config.js?v=6';
+import { getArmTransferPhase } from './model.js?v=6';
 import { getSceneCameraTarget, getViewportTransform } from './viewport.js?v=2';
 
 const prologueImage = new Image();
@@ -560,7 +560,7 @@ function drawWarehouseIntro(ctx, state) {
 
   if (time >= 1.15 && time < 3.75) {
     const secondLine = time >= 2.75;
-    const label = secondLine ? 'ЗА РАБОТУ.' : 'ОПЯТЬ ОТКЛЮЧИЛСЯ?';
+    const label = secondLine ? 'РАБОТАЙ БЫСТРЕЕ.' : 'ОПЯТЬ ОТКЛЮЧИЛСЯ?';
     ctx.font = `900 ${secondLine ? 35 : 27}px ui-monospace, monospace`;
     ctx.textAlign = 'center';
     const width = ctx.measureText(label).width + 54;
@@ -595,6 +595,43 @@ function drawWarehouseIntro(ctx, state) {
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, WORLD.width, lidHeight);
   ctx.fillRect(0, WORLD.height - lidHeight, WORLD.width, lidHeight);
+  ctx.restore();
+}
+
+function drawPythonChip(ctx, state, now) {
+  if (!['chip', 'machine', 'automation', 'red-crate', 'reward'].includes(state.scene)) return;
+  const chip = state.arm.chip;
+  if (chip === 'missing') return;
+  const fallenX = 850;
+  const fallenY = 535;
+  const progress = chip === 'inserting' ? Math.min(1, state.sceneTime / 1.05) : (chip === 'installed' ? 1 : 0);
+  const x = fallenX + (MACHINE.x - 35 - fallenX) * progress;
+  const y = fallenY + (MACHINE.y + 62 - fallenY) * progress - Math.sin(progress * Math.PI) * 105;
+  const pulse = .75 + Math.sin(now / 110) * .25;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(-.12 + progress * .6);
+  ctx.shadowColor = '#64e9ff';
+  ctx.shadowBlur = 17 + pulse * 16;
+  ctx.fillStyle = '#133b48';
+  ctx.fillRect(-54, -31, 108, 62);
+  ctx.strokeStyle = '#b9f6ff';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(-54, -31, 108, 62);
+  ctx.fillStyle = '#64e9ff';
+  for (const side of [-1, 1]) {
+    for (let index = -2; index <= 2; index += 1) ctx.fillRect(side * 59 - (side < 0 ? 6 : 0), index * 10 - 3, 8, 6);
+  }
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#e9e3d5';
+  ctx.font = '900 19px ui-monospace, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('PYTHON', 0, 7);
+  if (chip === 'fallen') {
+    ctx.fillStyle = '#ffc857';
+    ctx.font = '800 13px ui-monospace, monospace';
+    ctx.fillText('НАЖМИ ЧИП', 0, 57);
+  }
   ctx.restore();
 }
 
@@ -729,6 +766,7 @@ function drawWarehouse(ctx, state, now, options = {}) {
   ctx.fillText('PALLET', PALLET.x, PALLET.y + 150);
 
   drawArm(ctx, state, now, options);
+  drawPythonChip(ctx, state, now);
   drawOtherMind(ctx, state, now, options);
   if (!options.machineFocus) drawMachinePrompt(ctx, state);
 
