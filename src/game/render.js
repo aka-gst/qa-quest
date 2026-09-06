@@ -6,8 +6,8 @@ import {
   WAKE_REVEAL_DURATION,
   WAREHOUSE_INTRO_DURATION,
   WORLD,
-} from './config.js?v=6';
-import { getArmTransferPhase } from './model.js?v=7';
+} from './config.js?v=novice-1';
+import { getArmTransferPhase } from './model.js?v=novice-1';
 import { getSceneCameraTarget, getViewportTransform } from './viewport.js?v=2';
 import { getChipShowcasePhase } from './showcase-chip.js?v=1';
 
@@ -389,7 +389,7 @@ function drawPoster(ctx, state, now) {
   ctx.restore();
 }
 
-function drawConveyor(ctx) {
+function drawConveyor(ctx, state) {
   ctx.fillStyle = '#111924';
   ctx.fillRect(15, 445, 390, 290);
   ctx.strokeStyle = '#334357';
@@ -397,13 +397,21 @@ function drawConveyor(ctx) {
   ctx.strokeRect(15, 445, 390, 290);
   ctx.fillStyle = '#8993a1';
   for (let y = 475; y < 720; y += 46) ctx.fillRect(32, y, 350, 5);
-  ctx.fillStyle = '#111924';
-  ctx.fillRect(660, 475, 180, 240);
-  ctx.strokeStyle = '#334357';
-  ctx.lineWidth = 8;
-  ctx.strokeRect(660, 475, 180, 240);
-  ctx.fillStyle = '#8993a1';
-  for (let y = 500; y < 705; y += 42) ctx.fillRect(674, y, 150, 4);
+  ctx.fillStyle = '#ffc857';
+  ctx.font = '700 19px ui-monospace, monospace';
+  ctx.fillText('ОБЩАЯ ОЧЕРЕДЬ · ТЕБЕ И РУКЕ', 25, 420);
+  ctx.fillStyle = '#30424b';
+  ctx.fillRect(PALLET.x - 65, PALLET.y - 48, WORLD.width - PALLET.x + 65, 138);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(PALLET.x - 65, PALLET.y - 48, WORLD.width - PALLET.x + 65, 138); ctx.clip();
+  ctx.fillStyle = '#70908b';
+  for (let x = PALLET.x - 100 + (state.elapsed * 110) % 44; x < WORLD.width + 44; x += 44) ctx.fillRect(x, PALLET.y - 36, 5, 112);
+  ctx.restore();
+  ctx.strokeStyle = '#64e9c0'; ctx.lineWidth = 8;
+  ctx.beginPath(); ctx.moveTo(PALLET.x - 65, PALLET.y - 48); ctx.lineTo(WORLD.width, PALLET.y - 48);
+  ctx.moveTo(PALLET.x - 65, PALLET.y + 90); ctx.lineTo(WORLD.width, PALLET.y + 90); ctx.stroke();
+  ctx.fillStyle = '#72ffac'; ctx.font = '800 21px ui-monospace, monospace';
+  ctx.fillText('ОТГРУЗКА → +$120', PALLET.x - 65, PALLET.y + 130);
 }
 
 function drawArm(ctx, state, now, { wakeProgress = 0 } = {}) {
@@ -427,6 +435,14 @@ function drawArm(ctx, state, now, { wakeProgress = 0 } = {}) {
   let crateX = null;
   let crateY = null;
   let failurePulse = 0;
+  const trying = !awake && state.scene === 'warehouse' && state.warehouse.introComplete;
+  if (trying) {
+    const phase = (state.elapsed % 4.5) / 4.5;
+    const reach = phase < .58 ? Math.sin(phase / .58 * Math.PI / 2) : Math.max(0, 1 - (phase - .68) / .32);
+    endX -= reach * 345;
+    endY += reach * 165;
+    if (phase > .58 && phase < .72) { endX += Math.sin(now / 22) * 14; endY += Math.cos(now / 31) * 8; }
+  }
   if (failure) {
     const red = state.warehouse.crates.find((crate) => crate.id === 'red-01');
     const p = Math.max(0, Math.min(1, failure.progress));
@@ -497,7 +513,7 @@ function drawArm(ctx, state, now, { wakeProgress = 0 } = {}) {
   }
   const baseX = MACHINE.x;
   const baseY = MACHINE.y + 220;
-  const moving = active || failure;
+  const moving = active || failure || trying;
   const elbowX = moving ? (baseX + endX) / 2 : MACHINE.x - 25 - gesture * 30;
   const elbowY = moving ? Math.min(baseY, endY) - 150 : MACHINE.y - 70 - gesture * 18;
   ctx.save();
@@ -555,6 +571,10 @@ function drawArm(ctx, state, now, { wakeProgress = 0 } = {}) {
     ctx.strokeRect(crateX - 18, crateY - 18, 36, 36);
   }
   ctx.restore();
+  if (trying && state.elapsed % 4.5 > 2.6 && state.elapsed % 4.5 < 3.35) {
+    ctx.save(); ctx.font = '800 18px ui-monospace, monospace'; ctx.fillStyle = '#ffb35c'; ctx.textAlign = 'center';
+    ctx.fillText('ПОЧТИ… НЕТ СИГНАЛА', endX, endY - 55); ctx.restore();
+  }
 }
 
 function drawFirstActionGuide(ctx, state, now, guide) {
@@ -827,40 +847,28 @@ function drawWarehouse(ctx, state, now, options = {}) {
   ctx.fillStyle = '#182131';
   for (let x = 30; x < WORLD.width; x += 180) ctx.fillRect(x, 40, 120, 105);
 
-  drawConveyor(ctx);
+  drawConveyor(ctx, state);
   drawTerminal(ctx, state, now);
-  ctx.fillStyle = '#4d3d25';
-  ctx.fillRect(PALLET.x - 20, PALLET.y - 20, PALLET.width, PALLET.height);
-  ctx.strokeStyle = '#ffc857';
-  ctx.lineWidth = 5;
-  ctx.strokeRect(PALLET.x - 20, PALLET.y - 20, PALLET.width, PALLET.height);
-  ctx.fillStyle = '#ffc857';
-  ctx.font = '700 23px ui-monospace, monospace';
-  ctx.fillText('PALLET', PALLET.x, PALLET.y + 150);
-
-  drawArm(ctx, state, now, options);
   drawWarehouseIntro(ctx, state);
   drawPythonChip(ctx, state, now);
   drawOtherMind(ctx, state, now, options);
-  if (!options.machineFocus) drawMachinePrompt(ctx, state);
 
   for (const crate of state.warehouse.crates) {
     if (options.manualShowcase && ['box-01', 'box-02', 'box-03'].includes(crate.id)) continue;
     if (['carried', 'hidden', 'arm'].includes(crate.status)) continue;
-    const stack = crate.status === 'pallet' ? state.warehouse.crates.filter((item) => item.status === 'pallet').findIndex((item) => item.id === crate.id) : 0;
-    drawCrate(ctx, crate, stack);
+    if (crate.status === 'pallet') {
+      const age = state.elapsed - (crate.deliveredAt ?? -100);
+      if (age < 0 || age > 3.4) continue;
+      drawCrate(ctx, { ...crate, status: 'floor', x: PALLET.x + age * 120, y: PALLET.y + 16 });
+    } else drawCrate(ctx, crate);
   }
-
+  drawArm(ctx, state, now, options);
   drawDropFeedback(ctx, state);
   if (options.manualShowcase) drawManualShowcase(ctx, now, options.reducedMotion);
   else drawWorker(ctx, state);
-  drawFirstActionGuide(ctx, state, now, options.firstActionGuide);
   drawPoster(ctx, state, now);
   drawWakeReveal(ctx, state);
 
-  ctx.fillStyle = '#8993a1';
-  ctx.font = '16px ui-monospace, monospace';
-  ctx.fillText(`СМЕНА 03:17     ПЕРЕНЕСЕНО ${state.warehouse.manualDelivered + state.warehouse.autoDelivered}     ₽ ${state.warehouse.wage}     СВОБОДНО ${state.warehouse.freeTime} МИН`, 470, 825);
   if (state.scene === 'red-crate') {
     ctx.fillStyle = '#ff4d5a';
     ctx.font = '900 28px ui-monospace, monospace';
@@ -1006,7 +1014,7 @@ function drawReward(ctx, state, now) {
   ctx.textAlign = 'center';
   ctx.fillText('Q-BOT // EMPTY SHELL', qBotX, qBotY + 180);
   ctx.fillStyle = '#ffc857';
-  ctx.fillText(`ЗАРАБОТАНО: ₽ ${state.warehouse.wage}`, qBotX, qBotY + 215);
+  ctx.fillText(`ЗАРАБОТАНО: $ ${state.warehouse.wage}`, qBotX, qBotY + 215);
 }
 
 function drawCollapse(ctx, state) {

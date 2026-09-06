@@ -18,7 +18,7 @@ import {
   WAKE_REVEAL_DURATION,
   WAREHOUSE_INTRO_DURATION,
   WORLD,
-} from './config.js?v=6';
+} from './config.js?v=novice-1';
 
 const DEFAULT_STATE = Object.freeze({
   scene: 'prologue',
@@ -55,6 +55,8 @@ const DEFAULT_STATE = Object.freeze({
     lastDropAt: -1,
     lastDroppedId: null,
     lastDropDelivered: false,
+    incomeAt: -100,
+    incomeSource: null,
   }),
   arm: Object.freeze({ awake: false, blocked: false, chip: 'missing', queue: [], active: null, failure: null, wakeRevealRemaining: 0 }),
   otherMind: Object.freeze({ phase: 'sleeping', line: '' }),
@@ -357,6 +359,8 @@ export function applyGameAction(state, action) {
           introComplete: manualDelivered === MANUAL_CRATES_REQUIRED ? false : state.warehouse.introComplete,
           bossEntrance: manualDelivered === MANUAL_CRATES_REQUIRED,
           wage: state.warehouse.wage + (delivered ? 120 : 0),
+          incomeAt: delivered ? state.elapsed : state.warehouse.incomeAt,
+          incomeSource: delivered ? 'manual' : state.warehouse.incomeSource,
           lastDropAt: state.elapsed,
           lastDroppedId: crateId,
           lastDropDelivered: delivered,
@@ -365,6 +369,7 @@ export function applyGameAction(state, action) {
             x: delivered ? PALLET.x : (action.x ?? state.player.x),
             y: delivered ? PALLET.y : (action.y ?? state.player.y),
             status: delivered ? 'pallet' : 'floor',
+            deliveredAt: delivered ? state.elapsed : null,
           })),
         },
       };
@@ -456,9 +461,11 @@ export function applyGameAction(state, action) {
           ...state.warehouse,
           autoDelivered,
           wage: state.warehouse.wage + 120,
+          incomeAt: state.elapsed,
+          incomeSource: 'robot',
           freeTime: state.warehouse.freeTime + 4,
           crates: state.warehouse.crates.map((crate) => {
-            if (crate.id === action.boxId) return { ...crate, status: 'pallet' };
+            if (crate.id === action.boxId) return { ...crate, status: 'pallet', x: PALLET.x, y: PALLET.y, deliveredAt: state.elapsed };
             if (finished && crate.id === 'red-01') return { ...crate, status: 'scan', x: 720, y: 575 };
             return crate;
           }),
@@ -527,9 +534,9 @@ export function getNearbyAction(state) {
   if (!state.warehouse.introComplete) return null;
   if (state.player.carrying) {
     if (distance(state.player, PALLET) <= INTERACTION_RADIUS + 35) {
-      return { type: 'drop-crate', target: PALLET.id, label: 'НА ПАЛЕТУ' };
+      return { type: 'drop-crate', target: PALLET.id, label: 'НА ЛЕНТУ · +$120' };
     }
-    return { type: 'drop-crate', target: 'floor', label: 'ПОСТАВИТЬ' };
+    return null;
   }
 
   const nearby = state.warehouse.crates

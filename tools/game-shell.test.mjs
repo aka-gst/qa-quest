@@ -36,7 +36,7 @@ test('первый Python-чип остаётся действием игрок�
   assert.match(html, /id=["']pythonChip["']/);
   assert.match(html, /ВСТАВИТЬ ЧИП PYTHON/);
   assert.match(readFileSync(new URL('../src/game/main.js', import.meta.url), 'utf8'), /query\.get\('showcase'\) === 'chip'/);
-  assert.match(readFileSync(new URL('../src/game/main.js', import.meta.url), 'utf8'), /state\.arm\.chip === 'installed'\) machineOpen = true/);
+  assert.match(readFileSync(new URL('../src/game/main.js', import.meta.url), 'utf8'), /state\.arm\.chip === 'installed'\) openMachinePanel\(\)/);
 });
 
 test('витрина чипа показывает шесть событий в заданном порядке и зацикливается', () => {
