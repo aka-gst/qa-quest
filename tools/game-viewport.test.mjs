@@ -53,3 +53,25 @@ test('после аварийной сцены камера снова след�
 
   assert.equal(target, player);
 });
+
+test('после третьего ящика телефон не теряет упавший чип у палеты', () => {
+  const viewport = { width: 375, height: 812 };
+  const player = { x: 1207, y: 580 };
+  const target = getSceneCameraTarget({
+    scene: 'chip',
+    player,
+    arm: { chip: 'fallen' },
+    warehouse: { bossEntrance: false },
+  });
+  const transform = getViewportTransform(viewport, target);
+  const left = screenToWorld({ x: 0, y: 0 }, transform).x;
+  const right = screenToWorld({ x: viewport.width, y: 0 }, transform).x;
+
+  assert.deepEqual(target, { x: 850, y: 580 });
+  assert.ok(left <= 780, `место падения чипа обрезано слева: ${left}`);
+  assert.ok(right >= 970, `бумажка с подсказкой обрезана справа: ${right}`);
+
+  const oldTransform = getViewportTransform(viewport, player);
+  const oldLeft = screenToWorld({ x: 0, y: 0 }, oldTransform).x;
+  assert.ok(oldLeft > 850, `отрицательный контроль: старая камера всё ещё показала бы чип (${oldLeft})`);
+});
