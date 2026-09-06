@@ -45,6 +45,7 @@ const DEFAULT_STATE = Object.freeze({
   }),
   warehouse: Object.freeze({
     introComplete: true,
+    bossEntrance: false,
     manualDelivered: 0,
     autoDelivered: 0,
     wage: 0,
@@ -106,7 +107,7 @@ export function createCheckpointState(checkpoint = 'start') {
     return createGameState({
       scene: 'warehouse', checkpoint, powers,
       player: { x: 520, y: 580 },
-      warehouse: { introComplete: false },
+      warehouse: { introComplete: true },
     });
   }
   if (checkpoint === 'chip') {
@@ -213,7 +214,8 @@ function enterWarehouse(state) {
     },
     warehouse: {
       ...state.warehouse,
-      introComplete: false,
+      introComplete: true,
+      bossEntrance: false,
     },
   };
 }
@@ -268,11 +270,15 @@ export function applyGameAction(state, action) {
       );
       return {
         ...state,
-        scene: manualDelivered === MANUAL_CRATES_REQUIRED ? 'chip' : state.scene,
+        scene: state.scene,
         sceneTime: manualDelivered === MANUAL_CRATES_REQUIRED ? 0 : state.sceneTime,
-        checkpoint: manualDelivered === MANUAL_CRATES_REQUIRED ? 'chip' : state.checkpoint,
-        arm: manualDelivered === MANUAL_CRATES_REQUIRED ? { ...state.arm, chip: 'fallen' } : state.arm,
-        warehouse: { ...state.warehouse, manualDelivered },
+        checkpoint: state.checkpoint,
+        warehouse: {
+          ...state.warehouse,
+          manualDelivered,
+          introComplete: manualDelivered === MANUAL_CRATES_REQUIRED ? false : state.warehouse.introComplete,
+          bossEntrance: manualDelivered === MANUAL_CRATES_REQUIRED,
+        },
       };
     }
     case 'dash': {
@@ -341,14 +347,15 @@ export function applyGameAction(state, action) {
       );
       return {
         ...state,
-        scene: manualDelivered === MANUAL_CRATES_REQUIRED ? 'chip' : state.scene,
+        scene: state.scene,
         sceneTime: manualDelivered === MANUAL_CRATES_REQUIRED ? 0 : state.sceneTime,
-        checkpoint: manualDelivered === MANUAL_CRATES_REQUIRED ? 'chip' : state.checkpoint,
+        checkpoint: state.checkpoint,
         player: { ...state.player, carrying: null },
-        arm: manualDelivered === MANUAL_CRATES_REQUIRED ? { ...state.arm, chip: 'fallen' } : state.arm,
         warehouse: {
           ...state.warehouse,
           manualDelivered,
+          introComplete: manualDelivered === MANUAL_CRATES_REQUIRED ? false : state.warehouse.introComplete,
+          bossEntrance: manualDelivered === MANUAL_CRATES_REQUIRED,
           wage: state.warehouse.wage + (delivered ? 120 : 0),
           lastDropAt: state.elapsed,
           lastDroppedId: crateId,
@@ -631,10 +638,14 @@ export function stepGame(state, input = {}, rawDt, options = {}) {
     return enterWarehouse(next);
   }
 
-  if (next.scene === 'warehouse' && !next.warehouse.introComplete && next.sceneTime >= WAREHOUSE_INTRO_DURATION) {
+  if (next.scene === 'warehouse' && next.warehouse.bossEntrance && !next.warehouse.introComplete && next.sceneTime >= WAREHOUSE_INTRO_DURATION) {
     next = {
       ...next,
-      warehouse: { ...next.warehouse, introComplete: true },
+      scene: 'chip',
+      sceneTime: 0,
+      checkpoint: 'chip',
+      arm: { ...next.arm, chip: 'fallen' },
+      warehouse: { ...next.warehouse, introComplete: true, bossEntrance: false },
     };
   }
 

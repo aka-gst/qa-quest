@@ -442,7 +442,8 @@ textarea:focus-visible {
   .power { width: 66px; height: 64px; padding: 7px; }
   .power__key { display: none; }
   .power b { margin-top: 22px; font-size: 10px; }
-  .action-button { left: max(12px, env(safe-area-inset-left)); bottom: calc(12px + var(--safe-bottom)); height: 64px; }
+  .action-button { left: max(12px, env(safe-area-inset-left)); bottom: calc(12px + var(--safe-bottom)); height: 64px; gap: 0; }
+  .action-button__key { display: none; }
   .python-chip { bottom: calc(84px + var(--safe-bottom)); min-width: 270px; }
   .game[data-first-action-guide="true"] .action-button {
     border-color: var(--sodium);

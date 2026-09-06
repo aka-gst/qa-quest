@@ -1,6 +1,9 @@
 import { MACHINE, WORLD } from './config.js';
 
 export function getSceneCameraTarget(state) {
+  if (state.scene === 'warehouse' && state.warehouse?.bossEntrance) {
+    return { x: 850, y: state.player.y };
+  }
   if (state.scene !== 'automation' || !state.arm?.failure) return state.player;
 
   const redCrate = state.warehouse?.crates?.find((crate) => crate.id === 'red-01');

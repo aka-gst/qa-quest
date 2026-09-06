@@ -13,8 +13,8 @@ import {
   getFirstActionGuide,
   getNearbyAction,
   stepGame,
-} from './model.js?v=6';
-import { renderGame } from './render.js?v=10';
+} from './model.js?v=7';
+import { renderGame } from './render.js?v=11';
 import { getWakeFailureGuidance } from './wake-help.js?v=2';
 import { createCheckpointPersistence, loadCheckpoint } from './save.js?v=2';
 import { createTelemetry } from './telemetry.js';
@@ -213,6 +213,7 @@ function updateHud(now = performance.now()) {
   powers.forEach((button) => { button.disabled = !state.powers[button.id.replace('power', '').toLowerCase()]; });
   hud.action.style.display = nearby && !machineOpen ? 'flex' : 'none';
   hud.chip.hidden = !(state.scene === 'chip' && state.arm.chip === 'fallen');
+  hud.action.querySelector('.action-button__key').hidden = narrowViewport.matches;
   if (nearby) hud.action.querySelector('b').textContent = nearby.label;
 
   if (state.scene === 'prologue') {
@@ -324,7 +325,7 @@ function frame(now) {
     if (audio.created()) audio.setAmbient(ambientForScene());
     telemetry.mark(`scene-${state.scene}`);
   }
-  if (state.scene === 'warehouse' && !state.warehouse.introComplete && state.sceneTime >= 3.65 && warehouseCueStage < 1) {
+  if (state.scene === 'warehouse' && state.warehouse.bossEntrance && !state.warehouse.introComplete && state.sceneTime >= 3.65 && warehouseCueStage < 1) {
     warehouseCueStage = 1;
     audio.play('door');
   }

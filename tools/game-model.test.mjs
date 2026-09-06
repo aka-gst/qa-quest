@@ -65,25 +65,38 @@ test('между боем и складом есть заметный двухс
   assert.deepEqual(warehouse.powers, { dash: false, pulse: false, shield: false });
 });
 
-test('склад сначала разыгрывает вступление и не отдаёт управление раньше времени', () => {
+test('склад сразу отдаёт человеку три ящика, а начальник приходит только после третьего', () => {
   const start = createCheckpointState('warehouse');
-  const frozen = advance(start, WAREHOUSE_INTRO_DURATION - 0.2, { moveX: 1 });
-  assert.equal(frozen.player.x, start.player.x);
-  assert.equal(getNearbyAction(frozen), null);
+  const moving = advance(start, .3, { moveX: 1 });
+  assert.ok(moving.player.x > start.player.x);
+  assert.equal(moving.warehouse.bossEntrance, false);
 
-  const awake = advance(frozen, 0.3, { moveX: 1 });
-  assert.equal(awake.warehouse.introComplete, true);
-  assert.ok(awake.player.x > start.player.x);
+  let afterThirdBox = createGameState({ scene: 'warehouse', warehouse: { introComplete: true, manualDelivered: 2 } });
+  afterThirdBox = applyGameAction(afterThirdBox, { type: 'manual-crate-delivered' });
+  assert.equal(afterThirdBox.scene, 'warehouse');
+  assert.equal(afterThirdBox.warehouse.bossEntrance, true);
+  assert.equal(getNearbyAction(afterThirdBox), null);
+
+  const beforeChip = advance(afterThirdBox, WAREHOUSE_INTRO_DURATION - .2);
+  assert.equal(beforeChip.scene, 'warehouse');
+  const chip = advance(beforeChip, .3);
+  assert.equal(chip.scene, 'chip');
+  assert.equal(chip.arm.chip, 'fallen');
 });
 
-test('три ручных ящика роняют чип, но ещё не запускают руку', () => {
+test('три ручных ящика запускают сцену начальника, а чип появляется после неё', () => {
   let state = createGameState({ scene: 'warehouse' });
   for (let index = 0; index < 3; index += 1) {
     state = applyGameAction(state, { type: 'manual-crate-delivered' });
   }
-  assert.equal(state.scene, 'chip');
+  assert.equal(state.scene, 'warehouse');
   assert.equal(state.warehouse.manualDelivered, 3);
+  assert.equal(state.warehouse.bossEntrance, true);
   assert.equal(state.arm.awake, false);
+  assert.equal(state.arm.chip, 'missing');
+
+  state = advance(state, WAREHOUSE_INTRO_DURATION + .05);
+  assert.equal(state.scene, 'chip');
   assert.equal(state.arm.chip, 'fallen');
 });
 

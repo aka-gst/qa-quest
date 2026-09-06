@@ -49,6 +49,11 @@ test('ручная витрина — отдельная сцена героя, 
   assert.match(render, /cubic-bezier\(0\.4, 0, 0\.2, 1\)/);
 });
 
+test('на телефоне кнопка действия не обещает клавишу Space', () => {
+  assert.match(css, /@media \(max-width: 760px\)[\s\S]*?\.action-button__key \{ display: none; \}/);
+  assert.match(readFileSync(new URL('../src/game/main.js', import.meta.url), 'utf8'), /action-button__key'\)\.hidden = narrowViewport\.matches/);
+});
+
 test('первый экран обещает игру, а не учебный курс', () => {
   assert.match(html, /Ты всё умел\. Теперь вспомни\./);
   assert.match(html, /WASD · МАНЕВРИРУЙ · ОРУДИЕ СТРЕЛЯЕТ САМО/);

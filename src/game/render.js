@@ -7,7 +7,7 @@ import {
   WAREHOUSE_INTRO_DURATION,
   WORLD,
 } from './config.js?v=6';
-import { getArmTransferPhase } from './model.js?v=6';
+import { getArmTransferPhase } from './model.js?v=7';
 import { getSceneCameraTarget, getViewportTransform } from './viewport.js?v=2';
 
 const prologueImage = new Image();
@@ -344,11 +344,14 @@ function drawTerminal(ctx, state, now) {
 }
 
 function drawPoster(ctx, state, now) {
-  const fallen = state.scene !== 'warehouse';
-  const progress = fallen ? Math.min(1, state.sceneTime / .9) : 0;
+  const bossExit = state.scene === 'warehouse' && state.warehouse.bossEntrance;
+  const fallen = state.scene !== 'warehouse' || bossExit;
+  const progress = bossExit
+    ? Math.min(1, Math.max(0, (state.sceneTime - 3.7) / .9))
+    : (fallen ? Math.min(1, state.sceneTime / .9) : 0);
   const warning = !fallen && state.warehouse.manualDelivered >= 2;
   const tremble = warning ? Math.sin(now / 42) * 3 : 0;
-  const x = 1180 - progress * 60 + tremble;
+  const x = (bossExit ? 900 + progress * 70 : 1180 - progress * 60) + tremble;
   const y = 215 + progress * 495;
   ctx.save();
   if (state.scene === 'automation') ctx.globalAlpha = state.arm.wakeRevealRemaining > 0 ? .18 : .06;
@@ -604,7 +607,7 @@ function drawDropFeedback(ctx, state) {
 }
 
 function drawWarehouseIntro(ctx, state) {
-  if (state.warehouse.introComplete) return;
+  if (state.warehouse.introComplete || !state.warehouse.bossEntrance) return;
   const time = Math.min(WAREHOUSE_INTRO_DURATION, state.sceneTime);
   const eye = Math.max(0, Math.min(1, time / .9));
   const bossProgress = Math.max(0, Math.min(1, (time - .65) / .75));
@@ -638,30 +641,19 @@ function drawWarehouseIntro(ctx, state) {
     ctx.textAlign = 'center';
     const width = ctx.measureText(label).width + 54;
     ctx.fillStyle = secondLine ? '#ffc857' : '#e9e3d5';
-    ctx.fillRect(620 - width / 2, 310, width, 68);
+    ctx.fillRect(800 - width / 2, 310, width, 68);
     ctx.fillStyle = '#080b11';
-    ctx.fillText(label, 620, 355);
+    ctx.fillText(label, 800, 355);
   }
 
-  if (time >= 3.7) {
-    const iconProgress = Math.min(1, (time - 3.7) / .7);
-    ctx.globalAlpha = iconProgress;
-    ctx.fillStyle = '#05080ddd';
-    ctx.fillRect(235, 285, 630, 150);
-    const labels = ['ВЗЯЛ', 'ДОНЁС', 'ПОСТАВИЛ'];
-    labels.forEach((label, index) => {
-      const x = 335 + index * 215;
-      ctx.fillStyle = index === 2 ? '#ffc857' : '#e9e3d5';
-      ctx.fillRect(x - 28, 315, 56, 56);
-      ctx.font = '800 18px ui-monospace, monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(label, x, 405);
-      if (index < 2) {
-        ctx.font = '900 34px ui-monospace, monospace';
-        ctx.fillStyle = '#64e9ff';
-        ctx.fillText('→', x + 108, 358);
-      }
-    });
+  if (time >= 3.65) {
+    const slam = Math.min(1, (time - 3.65) / .18);
+    ctx.globalAlpha = 1 - slam * .7;
+    ctx.fillStyle = '#ffc857';
+    ctx.font = '900 30px ui-monospace, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('ХЛОП.', 885, 290);
+    ctx.globalAlpha = 1;
   }
 
   const lidHeight = (1 - eye) * WORLD.height * .5;
@@ -672,14 +664,21 @@ function drawWarehouseIntro(ctx, state) {
 }
 
 function drawPythonChip(ctx, state, now) {
-  if (!['chip', 'machine', 'automation', 'red-crate', 'reward'].includes(state.scene)) return;
-  const chip = state.arm.chip;
+  const bossExit = state.scene === 'warehouse' && state.warehouse.bossEntrance;
+  if (!bossExit && !['chip', 'machine', 'automation', 'red-crate', 'reward'].includes(state.scene)) return;
+  const chip = bossExit ? 'falling' : state.arm.chip;
   if (chip === 'missing') return;
   const fallenX = 850;
   const fallenY = 535;
-  const progress = chip === 'inserting' ? Math.min(1, state.sceneTime / 1.05) : (chip === 'installed' ? 1 : 0);
-  const x = fallenX + (MACHINE.x - 35 - fallenX) * progress;
-  const y = fallenY + (MACHINE.y + 62 - fallenY) * progress - Math.sin(progress * Math.PI) * 105;
+  const progress = bossExit
+    ? Math.min(1, Math.max(0, (state.sceneTime - 3.7) / .9))
+    : (chip === 'inserting' ? Math.min(1, state.sceneTime / 1.05) : (chip === 'installed' ? 1 : 0));
+  const x = bossExit
+    ? 780 + (fallenX - 780) * progress
+    : fallenX + (MACHINE.x - 35 - fallenX) * progress;
+  const y = bossExit
+    ? 380 + (fallenY - 380) * progress + Math.sin(progress * Math.PI) * 65
+    : fallenY + (MACHINE.y + 62 - fallenY) * progress - Math.sin(progress * Math.PI) * 105;
   const pulse = .75 + Math.sin(now / 110) * .25;
   ctx.save();
   ctx.translate(x, y);
@@ -839,6 +838,7 @@ function drawWarehouse(ctx, state, now, options = {}) {
   ctx.fillText('PALLET', PALLET.x, PALLET.y + 150);
 
   drawArm(ctx, state, now, options);
+  drawWarehouseIntro(ctx, state);
   drawPythonChip(ctx, state, now);
   drawOtherMind(ctx, state, now, options);
   if (!options.machineFocus) drawMachinePrompt(ctx, state);
@@ -855,7 +855,6 @@ function drawWarehouse(ctx, state, now, options = {}) {
   else drawWorker(ctx, state);
   drawFirstActionGuide(ctx, state, now, options.firstActionGuide);
   drawPoster(ctx, state, now);
-  drawWarehouseIntro(ctx, state);
   drawWakeReveal(ctx, state);
 
   ctx.fillStyle = '#8993a1';
