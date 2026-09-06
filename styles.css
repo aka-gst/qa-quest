@@ -105,6 +105,15 @@ textarea:focus-visible {
 .game[data-manual-showcase="true"] .hud,
 .game[data-manual-showcase="true"] .system-readout,
 .game[data-manual-showcase="true"] .corner-tools { display: none; }
+.game[data-chip-showcase="true"] .game-brand,
+.game[data-chip-showcase="true"] .hud,
+.game[data-chip-showcase="true"] .system-readout,
+.game[data-chip-showcase="true"] .action-button,
+.game[data-chip-showcase="true"] .python-chip,
+.game[data-chip-showcase="true"] .machine,
+.game[data-chip-showcase="true"] .ending,
+.game[data-chip-showcase="true"] .skill-journal,
+.game[data-chip-showcase="true"] .corner-tools { display: none !important; }
 .game[data-wake-reveal="true"] .hud { opacity: 0; }
 .game[data-wake-reveal="true"] .skill-journal { opacity: 0; }
 

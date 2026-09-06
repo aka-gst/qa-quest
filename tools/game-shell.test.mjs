@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { CHIP_SHOWCASE_DURATION, CHIP_SHOWCASE_PHASES, getChipShowcasePhase } from '../src/game/showcase-chip.js';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
@@ -38,11 +39,24 @@ test('первый Python-чип остаётся действием игрок�
   assert.match(readFileSync(new URL('../src/game/main.js', import.meta.url), 'utf8'), /state\.arm\.chip === 'installed'\) machineOpen = true/);
 });
 
+test('витрина чипа показывает шесть событий в заданном порядке и зацикливается', () => {
+  assert.deepEqual(CHIP_SHOWCASE_PHASES.map(({ id }) => id), ['boxes', 'boss', 'scatter', 'insert', 'terminal', 'wake']);
+  assert.equal(CHIP_SHOWCASE_DURATION, 9000);
+  assert.equal(getChipShowcasePhase(0).id, 'boxes');
+  assert.equal(getChipShowcasePhase(3000).id, 'boss');
+  assert.equal(getChipShowcasePhase(4200).id, 'scatter');
+  assert.equal(getChipShowcasePhase(5200).id, 'insert');
+  assert.equal(getChipShowcasePhase(6300).id, 'terminal');
+  assert.equal(getChipShowcasePhase(7500).id, 'wake');
+  assert.equal(getChipShowcasePhase(CHIP_SHOWCASE_DURATION).id, 'boxes');
+});
+
 test('ручная витрина — отдельная сцена героя, а не запись движения курсора', () => {
   const main = readFileSync(new URL('../src/game/main.js', import.meta.url), 'utf8');
   const render = readFileSync(new URL('../src/game/render.js', import.meta.url), 'utf8');
   assert.match(main, /query\.get\('showcase'\) === 'manual'/);
   assert.match(main, /manualShowcase: showcaseManual/);
+  assert.match(main, /chipShowcase: showcaseChip/);
   assert.match(render, /ПЕРЕНЕСИ ТРИ ЯЩИКА/);
   assert.match(render, /const boxDuration = 1000/);
   assert.match(render, /ЧЕЛОВЕК ИДЁТ ОБРАТНО/);

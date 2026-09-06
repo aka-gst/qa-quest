@@ -54,6 +54,7 @@ const query = new URLSearchParams(location.search);
 const requestedCheckpoint = query.get('checkpoint');
 const showcaseChip = isLocal && query.get('showcase') === 'chip';
 const showcaseManual = isLocal && query.get('showcase') === 'manual';
+game.dataset.chipShowcase = showcaseChip ? 'true' : 'false';
 const checkpoint = isLocal && CHECKPOINTS.includes(requestedCheckpoint)
   ? { checkpoint: requestedCheckpoint }
   : (showcaseChip ? { checkpoint: 'chip' } : (showcaseManual ? { checkpoint: 'warehouse' } : loadCheckpoint()));
@@ -203,6 +204,7 @@ function updateControls() {
 function updateHud(now = performance.now()) {
   game.dataset.scene = state.scene;
   game.dataset.manualShowcase = showcaseManual ? 'true' : 'false';
+  game.dataset.chipShowcase = showcaseChip ? 'true' : 'false';
   game.dataset.intro = state.scene === 'warehouse' && !state.warehouse.introComplete ? 'warehouse' : '';
   game.dataset.wakeReveal = state.arm.wakeRevealRemaining > 0 ? 'true' : 'false';
   const nearby = getNearbyAction(state);
@@ -293,7 +295,7 @@ function updateHud(now = performance.now()) {
 
 function frame(now) {
   if (showcaseChip) {
-    const phase = (now - showcaseStartedAt) % 6200;
+    const phase = (now - showcaseStartedAt) % 9000;
     if (phase < 2300 && state.scene !== 'chip') {
       state = createCheckpointState('chip');
       machineOpen = false;
@@ -361,6 +363,8 @@ function frame(now) {
       wakeProgress,
       firstActionGuide: narrowViewport.matches ? getFirstActionGuide(state) : null,
       manualShowcase: showcaseManual,
+      chipShowcase: showcaseChip,
+      showcaseStartedAt,
     },
   );
   if (isLocal) {

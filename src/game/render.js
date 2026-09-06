@@ -9,6 +9,7 @@ import {
 } from './config.js?v=6';
 import { getArmTransferPhase } from './model.js?v=7';
 import { getSceneCameraTarget, getViewportTransform } from './viewport.js?v=2';
+import { getChipShowcasePhase } from './showcase-chip.js?v=1';
 
 const prologueImage = new Image();
 prologueImage.src = 'art/night2-hero.jpg';
@@ -867,6 +868,114 @@ function drawWarehouse(ctx, state, now, options = {}) {
   }
 }
 
+function showcaseText(ctx, text, x, y, size = 42, color = '#e9e3d5') {
+  ctx.fillStyle = color;
+  ctx.font = `900 ${size}px ui-monospace, monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText(text, x, y);
+}
+
+function drawShowcaseCrate(ctx, x, y, tilt = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(tilt);
+  ctx.fillStyle = '#c7893e';
+  ctx.fillRect(-82, -58, 164, 116);
+  ctx.strokeStyle = '#f4c56b';
+  ctx.lineWidth = 7;
+  ctx.strokeRect(-82, -58, 164, 116);
+  ctx.strokeStyle = '#7b4d28';
+  ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.moveTo(-70, -45); ctx.lineTo(70, 45); ctx.moveTo(70, -45); ctx.lineTo(-70, 45); ctx.stroke();
+  ctx.restore();
+}
+
+function drawShowcaseRobot(ctx, x, y, awake = false, pulse = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = '#182534';
+  ctx.strokeStyle = awake ? '#64e9ff' : '#8993a1';
+  ctx.lineWidth = 8;
+  ctx.fillRect(-125, -115, 250, 180);
+  ctx.strokeRect(-125, -115, 250, 180);
+  ctx.fillStyle = awake ? '#64e9ff' : '#ffc857';
+  ctx.shadowColor = ctx.fillStyle;
+  ctx.shadowBlur = awake ? 28 + pulse * 24 : 8;
+  ctx.fillRect(-58, -55, 30, 22); ctx.fillRect(28, -55, 30, 22);
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#ffc857';
+  ctx.beginPath(); ctx.moveTo(-70, 65); ctx.lineTo(-70, 190); ctx.lineTo(70, 190); ctx.lineTo(70, 65); ctx.stroke();
+  ctx.restore();
+}
+
+function drawChipShowcase(ctx, now, reducedMotion, startedAt) {
+  const phase = getChipShowcasePhase(reducedMotion ? 8800 : Math.max(0, now - startedAt));
+  const t = phase.progress;
+  const W = WORLD.width;
+  const H = WORLD.height;
+  const gradient = ctx.createLinearGradient(0, 0, 0, H);
+  gradient.addColorStop(0, '#111c2a'); gradient.addColorStop(1, '#05080d');
+  ctx.fillStyle = gradient; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = '#254153'; ctx.lineWidth = 3;
+  for (let y = 160; y < H; y += 110) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  showcaseText(ctx, `QUEQUEST · ${String(phase.index + 1).padStart(2, '0')} / 06`, W / 2, 66, 28, '#8993a1');
+  showcaseText(ctx, phase.label, W / 2, 135, 58, '#e9e3d5');
+  ctx.fillStyle = '#ffc857'; ctx.fillRect(330, 155, 940 * Math.min(1, t), 8);
+
+  if (phase.id === 'boxes') {
+    for (let i = 0; i < 3; i += 1) {
+      const local = Math.max(0, Math.min(1, (t * 3) - i));
+      const x = 320 + local * 900;
+      drawShowcaseCrate(ctx, x, 510 + i * 44, Math.sin(local * Math.PI) * .04);
+    }
+    showcaseText(ctx, 'ЧЕЛОВЕК ПЕРЕНОСИТ ТРИ ЯЩИКА', W / 2, 800, 34, '#ffc857');
+  }
+  if (phase.id === 'boss') {
+    ctx.fillStyle = '#303b49'; ctx.fillRect(1160, 260, 220, 430);
+    ctx.strokeStyle = '#8993a1'; ctx.lineWidth = 9; ctx.strokeRect(1160, 260, 220, 430);
+    const bossX = 420 + Math.min(1, t * 1.5) * 540;
+    ctx.fillStyle = '#8b3d48'; ctx.fillRect(bossX - 70, 350, 140, 220);
+    ctx.fillStyle = '#e9e3d5'; ctx.fillRect(bossX - 54, 302, 108, 68);
+    showcaseText(ctx, t > .72 ? 'ХЛОП!' : 'РАБОТАЙ БЫСТРЕЕ', 800, 760, 46, '#ff7d85');
+    if (t > .72) { ctx.strokeStyle = '#ffc857'; ctx.lineWidth = 12; ctx.beginPath(); ctx.moveTo(1200, 275); ctx.lineTo(1350, 675); ctx.stroke(); }
+  }
+  if (phase.id === 'scatter') {
+    drawShowcaseRobot(ctx, 800, 550);
+    const spread = 80 + t * 470;
+    ctx.fillStyle = '#64e9ff'; ctx.fillRect(800 - spread, 430 - t * 100, 110, 64);
+    const paperX = 800 + spread - 110;
+    const paperY = 560 + t * 95;
+    ctx.save();
+    ctx.fillStyle = '#e9e3d5'; ctx.fillRect(paperX, paperY, 260, 96);
+    ctx.beginPath(); ctx.rect(paperX + 12, paperY + 12, 236, 72); ctx.clip();
+    ctx.fillStyle = '#101722'; ctx.font = '700 28px ui-monospace, monospace'; ctx.textAlign = 'left';
+    ctx.fillText('print("wake")', paperX + 22, paperY + 59);
+    ctx.restore();
+    showcaseText(ctx, 'PY', 800 - spread + 55, 475 - t * 100, 34, '#071018');
+  }
+  if (phase.id === 'insert') {
+    const x = 300 + t * 500;
+    drawShowcaseRobot(ctx, 1000, 550);
+    ctx.fillStyle = '#64e9ff'; ctx.shadowColor = '#64e9ff'; ctx.shadowBlur = 30;
+    ctx.fillRect(x, 420, 120, 70); ctx.shadowBlur = 0;
+    showcaseText(ctx, 'ЧИП', x + 60, 465, 30, '#071018');
+    ctx.strokeStyle = '#64e9ff'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x + 120, 455); ctx.lineTo(875, 455); ctx.stroke();
+  }
+  if (phase.id === 'terminal') {
+    drawShowcaseRobot(ctx, 520, 570);
+    ctx.fillStyle = '#0b111a'; ctx.fillRect(820, 300, 560, 390); ctx.strokeStyle = '#64e9ff'; ctx.lineWidth = 8; ctx.strokeRect(820, 300, 560, 390);
+    showcaseText(ctx, 'ТЕРМИНАЛ УЗЛА 07', 1100, 390, 38, '#64e9ff');
+    ctx.textAlign = 'left'; ctx.fillStyle = '#e9e3d5'; ctx.font = '700 42px ui-monospace, monospace'; ctx.fillText('> print("wake")', 875, 520); ctx.fillStyle = '#ffc857'; ctx.fillText('> _', 875, 590);
+  }
+  if (phase.id === 'wake') {
+    const pulse = Math.sin(t * Math.PI * 5) * .5 + .5;
+    drawShowcaseRobot(ctx, 800, 545, true, pulse);
+    ctx.strokeStyle = '#64e9ff'; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(800, 740); ctx.lineTo(800, 815); ctx.stroke();
+    showcaseText(ctx, 'РУКА 07 · ОНЛАЙН', 800, 790, 48, '#64e9ff');
+    showcaseText(ctx, 'РУКА ЗАРАБОТАЛА', 800, 850, 32, '#ffc857');
+  }
+}
+
 function drawReward(ctx, state, now) {
   ctx.fillStyle = '#04070b';
   ctx.fillRect(0, 0, WORLD.width, WORLD.height);
@@ -937,10 +1046,17 @@ function drawCollapse(ctx, state) {
 export function renderGame(ctx, state, viewport, now, options = {}) {
   ctx.save();
   ctx.clearRect(0, 0, viewport.width, viewport.height);
-  viewportTransform(ctx, viewport, state);
-  if (state.scene === 'prologue') drawPrologue(ctx, state, now);
-  else if (state.scene === 'collapse') drawCollapse(ctx, state);
-  else if (state.scene === 'reward') drawReward(ctx, state, now);
-  else drawWarehouse(ctx, state, now, options);
+  if (options.chipShowcase) {
+    const scale = Math.max(viewport.width / WORLD.width, viewport.height / WORLD.height);
+    ctx.translate((viewport.width - WORLD.width * scale) / 2, (viewport.height - WORLD.height * scale) / 2);
+    ctx.scale(scale, scale);
+    drawChipShowcase(ctx, now, options.reducedMotion, options.showcaseStartedAt ?? now);
+  } else {
+    viewportTransform(ctx, viewport, state);
+    if (state.scene === 'prologue') drawPrologue(ctx, state, now);
+    else if (state.scene === 'collapse') drawCollapse(ctx, state);
+    else if (state.scene === 'reward') drawReward(ctx, state, now);
+    else drawWarehouse(ctx, state, now, options);
+  }
   ctx.restore();
 }
