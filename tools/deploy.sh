@@ -81,6 +81,7 @@ rsync --archive --delete --delete-excluded \
   --include 'src/' --include 'src/**' \
   --include 'art/' --include 'art/future-shop.jpg' \
   --include 'art/future-vika.jpg' --include 'art/future-battle.jpg' \
+  --include 'art/night2-hero.jpg' --include 'art/garage-milestone-1.jpg' \
   --exclude '*' \
   "$HERE/" "$SITE/"
 
