@@ -8,7 +8,7 @@ const trash = join(root, 'trash');
 mkdirSync(trash, { recursive: true });
 const framesDir = mkdtempSync(join(trash, 'showcase-frames-'));
 const showcaseDir = join(root, 'showcase');
-const output = join(showcaseDir, 'quequest-manual-to-ai-10s.mp4');
+const output = join(showcaseDir, 'quequest-manual-human-loop-6s.mp4');
 mkdirSync(showcaseDir, { recursive: true });
 
 const cdpPort = process.env.QUEQUEST_CDP_PORT || '9223';
@@ -114,8 +114,7 @@ await cdp('Emulation.setDeviceMetricsOverride', {
   deviceScaleFactor: 1,
   mobile: false,
 });
-await evaluate(`localStorage.setItem('quequest.game.v1', JSON.stringify({version:1, checkpoint:'warehouse'}))`);
-await cdp('Page.navigate', { url: 'http://127.0.0.1:8765/?quiet&showcase=1' });
+await cdp('Page.navigate', { url: 'http://127.0.0.1:8765/?quiet&showcase=manual' });
 await waitFor(`document.readyState === 'complete' && window.__QUEQUEST_DEBUG__?.snapshot().scene === 'warehouse'`);
 await pause(500);
 
@@ -131,34 +130,8 @@ const recordingTask = (async () => {
   }
 })();
 
-for (const crateX of [265, 205, 325]) {
-  await moveX(crateX);
-  await tap('Space', ' ');
-  const carrying = await snapshot();
-  if (!carrying.player.carrying) throw new Error(`Ящик у x=${crateX} не поднят`);
-  await moveX(1300);
-  await tap('Space', ' ');
-}
-
-await waitFor(`window.__QUEQUEST_DEBUG__.snapshot().scene === 'machine'`);
-await pause(500);
-await click('#runCode');
-await waitFor(`window.__QUEQUEST_DEBUG__.snapshot().scene === 'automation'`, 30_000);
-await waitFor(`!document.querySelector('#runCode').disabled`);
-await evaluate(`document.querySelector('#codeInput').value = 'for box in boxes:\\n    arm.move(box, pallet)'`);
-await pause(500);
-await click('#runCode');
-await waitFor(`window.__QUEQUEST_DEBUG__.snapshot().arm.active || window.__QUEQUEST_DEBUG__.snapshot().arm.queue.length > 0`);
-
-await key('keyDown', 'KeyW', 'w');
-await pause(1_500);
-await key('keyUp', 'KeyW', 'w');
-await key('keyDown', 'KeyA', 'a');
-await pause(1_100);
-await key('keyUp', 'KeyA', 'a');
-
-await waitFor(`window.__QUEQUEST_DEBUG__.snapshot().scene === 'red-crate'`, 15_000);
-await pause(800);
+// Полная шестисекундная петля: три рейса героя вправо и три честных возврата.
+await pause(6_200);
 recordingActive = false;
 await recordingTask;
 
@@ -168,7 +141,7 @@ socket.close();
 
 const encode = spawnSync('ffmpeg', [
   '-y', '-v', 'error',
-  '-framerate', String(frame / 10),
+  '-framerate', String(frame / (durationMs / 1000)),
   '-i', join(framesDir, 'frame-%05d.jpg'),
   '-vf', 'fps=30,format=yuv420p',
   '-c:v', 'libx264', '-preset', 'slow', '-crf', '24',

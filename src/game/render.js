@@ -127,6 +127,79 @@ function drawWorker(ctx, state) {
   ctx.restore();
 }
 
+function drawCrate(ctx, crate, stack = 0) {
+  const x = crate.status === 'pallet' ? PALLET.x + 8 + (stack % 3) * 52 : crate.x;
+  const y = crate.status === 'pallet' ? PALLET.y + 52 - Math.floor(stack / 3) * 54 : crate.y;
+  ctx.fillStyle = crate.kind === 'red' ? '#ff4d5a' : '#bb8440';
+  ctx.fillRect(x - 23, y - 23, 46, 46);
+  ctx.strokeStyle = '#e9e3d5';
+  ctx.globalAlpha = .45;
+  ctx.strokeRect(x - 18, y - 18, 36, 36);
+  ctx.globalAlpha = 1;
+}
+
+// "Спокойный" из Аниматеки: cubic-bezier(0.4, 0, 0.2, 1).
+// Он помечен там как кривая для перемещений в обе стороны, поэтому обратный
+// путь героя — та же траектория, а не телепортация или новая анимация.
+function calmMotion(progress) {
+  const t = Math.max(0, Math.min(1, progress));
+  let low = 0;
+  let high = 1;
+  for (let index = 0; index < 14; index += 1) {
+    const u = (low + high) / 2;
+    const x = 3 * (1 - u) * (1 - u) * u * .4 + 3 * (1 - u) * u * u * .2 + u * u * u;
+    if (x < t) low = u;
+    else high = u;
+  }
+  const u = (low + high) / 2;
+  return 3 * (1 - u) * u * u + u * u * u;
+}
+
+function drawManualShowcase(ctx, now, reducedMotion) {
+  const crates = [
+    { id: 'box-01', kind: 'normal', x: 265, y: 560 },
+    { id: 'box-02', kind: 'normal', x: 205, y: 630 },
+    { id: 'box-03', kind: 'normal', x: 325, y: 650 },
+  ];
+  const boxDuration = 1000;
+  const loopDuration = crates.length * boxDuration * 2;
+  const elapsed = reducedMotion ? loopDuration - 1 : now % loopDuration;
+  const leg = Math.floor(elapsed / boxDuration);
+  const crateIndex = Math.floor(leg / 2);
+  const movingToPallet = leg % 2 === 0;
+  const current = crates[crateIndex];
+  const next = crates[(crateIndex + 1) % crates.length];
+  const progress = calmMotion((elapsed % boxDuration) / boxDuration);
+
+  crates.forEach((crate, index) => {
+    if (index === crateIndex && movingToPallet) return;
+    if (index < crateIndex || (index === crateIndex && !movingToPallet)) {
+      drawCrate(ctx, { ...crate, status: 'pallet' }, index);
+    } else {
+      drawCrate(ctx, { ...crate, status: 'source' });
+    }
+  });
+
+  const from = movingToPallet ? current : { x: PALLET.x, y: PALLET.y };
+  const to = movingToPallet ? { x: PALLET.x, y: PALLET.y } : next;
+  const player = {
+    x: from.x + (to.x - from.x) * progress,
+    y: from.y + (to.y - from.y) * progress,
+    carrying: movingToPallet,
+  };
+  drawWorker(ctx, { player });
+
+  ctx.save();
+  ctx.fillStyle = '#e9e3d5';
+  ctx.font = '900 46px "Arial Narrow", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('ПЕРЕНЕСИ ТРИ ЯЩИКА', WORLD.width / 2, 92);
+  ctx.fillStyle = '#ffc857';
+  ctx.font = '700 17px ui-monospace, monospace';
+  ctx.fillText(movingToPallet ? 'ЧЕЛОВЕК НЕСЁТ ЯЩИК · 1 СЕКУНДА' : 'ЧЕЛОВЕК ИДЁТ ОБРАТНО · ТА ЖЕ ТРАЕКТОРИЯ', WORLD.width / 2, 124);
+  ctx.restore();
+}
+
 function enemyNumber(enemy) {
   return Number(enemy.id.slice(-2)) || 1;
 }
@@ -771,20 +844,15 @@ function drawWarehouse(ctx, state, now, options = {}) {
   if (!options.machineFocus) drawMachinePrompt(ctx, state);
 
   for (const crate of state.warehouse.crates) {
+    if (options.manualShowcase && ['box-01', 'box-02', 'box-03'].includes(crate.id)) continue;
     if (['carried', 'hidden', 'arm'].includes(crate.status)) continue;
     const stack = crate.status === 'pallet' ? state.warehouse.crates.filter((item) => item.status === 'pallet').findIndex((item) => item.id === crate.id) : 0;
-    const x = crate.status === 'pallet' ? PALLET.x + 8 + (stack % 3) * 52 : crate.x;
-    const y = crate.status === 'pallet' ? PALLET.y + 52 - Math.floor(stack / 3) * 54 : crate.y;
-    ctx.fillStyle = crate.kind === 'red' ? '#ff4d5a' : '#bb8440';
-    ctx.fillRect(x - 23, y - 23, 46, 46);
-    ctx.strokeStyle = '#e9e3d5';
-    ctx.globalAlpha = .45;
-    ctx.strokeRect(x - 18, y - 18, 36, 36);
-    ctx.globalAlpha = 1;
+    drawCrate(ctx, crate, stack);
   }
 
   drawDropFeedback(ctx, state);
-  drawWorker(ctx, state);
+  if (options.manualShowcase) drawManualShowcase(ctx, now, options.reducedMotion);
+  else drawWorker(ctx, state);
   drawFirstActionGuide(ctx, state, now, options.firstActionGuide);
   drawPoster(ctx, state, now);
   drawWarehouseIntro(ctx, state);

@@ -53,13 +53,15 @@ const isLocal = ['127.0.0.1', 'localhost'].includes(location.hostname);
 const query = new URLSearchParams(location.search);
 const requestedCheckpoint = query.get('checkpoint');
 const showcaseChip = isLocal && query.get('showcase') === 'chip';
+const showcaseManual = isLocal && query.get('showcase') === 'manual';
 const checkpoint = isLocal && CHECKPOINTS.includes(requestedCheckpoint)
   ? { checkpoint: requestedCheckpoint }
-  : (showcaseChip ? { checkpoint: 'chip' } : loadCheckpoint());
+  : (showcaseChip ? { checkpoint: 'chip' } : (showcaseManual ? { checkpoint: 'warehouse' } : loadCheckpoint()));
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const narrowViewport = window.matchMedia('(max-width: 760px)');
 const telemetry = createTelemetry({ enabled: isLocal });
 let state = createCheckpointState(checkpoint.checkpoint);
+if (showcaseManual) state = { ...state, warehouse: { ...state.warehouse, introComplete: true } };
 let fakeGateway;
 let otherMindRuntime;
 let otherMindWakingAt = null;
@@ -200,6 +202,7 @@ function updateControls() {
 
 function updateHud(now = performance.now()) {
   game.dataset.scene = state.scene;
+  game.dataset.manualShowcase = showcaseManual ? 'true' : 'false';
   game.dataset.intro = state.scene === 'warehouse' && !state.warehouse.introComplete ? 'warehouse' : '';
   game.dataset.wakeReveal = state.arm.wakeRevealRemaining > 0 ? 'true' : 'false';
   const nearby = getNearbyAction(state);
@@ -356,6 +359,7 @@ function frame(now) {
       machineFocus: machineOpen,
       wakeProgress,
       firstActionGuide: narrowViewport.matches ? getFirstActionGuide(state) : null,
+      manualShowcase: showcaseManual,
     },
   );
   if (isLocal) {
@@ -482,7 +486,7 @@ if (isLocal) {
       manualDelivered: state.warehouse.manualDelivered,
       autoDelivered: state.warehouse.autoDelivered,
       arm: state.arm,
-      showcase: showcaseChip,
+      showcase: showcaseChip ? 'chip' : (showcaseManual ? 'manual' : false),
       crates: state.warehouse.crates,
       machineOpen,
       machineDraft: hud.code.value,

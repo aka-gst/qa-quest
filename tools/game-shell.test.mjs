@@ -38,6 +38,17 @@ test('первый Python-чип остаётся действием игрок�
   assert.match(readFileSync(new URL('../src/game/main.js', import.meta.url), 'utf8'), /state\.arm\.chip === 'installed'\) machineOpen = true/);
 });
 
+test('ручная витрина — отдельная сцена героя, а не запись движения курсора', () => {
+  const main = readFileSync(new URL('../src/game/main.js', import.meta.url), 'utf8');
+  const render = readFileSync(new URL('../src/game/render.js', import.meta.url), 'utf8');
+  assert.match(main, /query\.get\('showcase'\) === 'manual'/);
+  assert.match(main, /manualShowcase: showcaseManual/);
+  assert.match(render, /ПЕРЕНЕСИ ТРИ ЯЩИКА/);
+  assert.match(render, /const boxDuration = 1000/);
+  assert.match(render, /ЧЕЛОВЕК ИДЁТ ОБРАТНО/);
+  assert.match(render, /cubic-bezier\(0\.4, 0, 0\.2, 1\)/);
+});
+
 test('первый экран обещает игру, а не учебный курс', () => {
   assert.match(html, /Ты всё умел\. Теперь вспомни\./);
   assert.match(html, /WASD · МАНЕВРИРУЙ · ОРУДИЕ СТРЕЛЯЕТ САМО/);

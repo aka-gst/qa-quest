@@ -101,6 +101,10 @@ textarea:focus-visible {
 .game[data-intro="warehouse"] .hud,
 .game[data-intro="warehouse"] .system-readout,
 .game[data-intro="warehouse"] .action-button { opacity: 0; }
+.game[data-manual-showcase="true"] .game-brand,
+.game[data-manual-showcase="true"] .hud,
+.game[data-manual-showcase="true"] .system-readout,
+.game[data-manual-showcase="true"] .corner-tools { display: none; }
 .game[data-wake-reveal="true"] .hud { opacity: 0; }
 .game[data-wake-reveal="true"] .skill-journal { opacity: 0; }
 
