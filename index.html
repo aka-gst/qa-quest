@@ -137,6 +137,14 @@
 
     <div class="screen-noise" aria-hidden="true"></div>
     <div class="screen-vignette" aria-hidden="true"></div>
+    <section id="exitDialog" class="exit-dialog" role="dialog" aria-modal="true" aria-labelledby="exitTitle" hidden>
+      <div class="exit-dialog__card">
+        <h2 id="exitTitle">Выйти из игры?</h2>
+        <p>Прогресс может не сохраниться. Останешься в игре?</p>
+        <button id="stayInGame" class="run-code" type="button">ОСТАТЬСЯ В ИГРЕ</button>
+        <a id="confirmExit" class="run-code" href="https://aka-gst.ru/">ВЫЙТИ НА САЙТ</a>
+      </div>
+    </section>
   </main>
 
   <script type="module" src="src/game/main.js?v=novice-1"></script>

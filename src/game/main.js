@@ -97,6 +97,7 @@ let storyActive = false;
 let storyCallback = null;
 let friendVisited = false;
 let journalOpen = false;
+let exitOpen = false;
 const startPanel = document.querySelector('#startPanel');
 const wallet = document.querySelector('#wallet');
 const incomeToast = document.querySelector('#incomeToast');
@@ -132,8 +133,28 @@ document.querySelector('#startGame').addEventListener('click', () => {
 
 document.querySelector('#homeLink').addEventListener('click', event => {
   event.preventDefault();
-  if (started && !window.confirm('Выйти на сайт? Прогресс может не сохраниться.')) return;
-  window.location.assign(event.currentTarget.href);
+  if (!started) { window.location.assign(event.currentTarget.href); return; }
+  exitOpen = true;
+  const dialog = document.querySelector('#exitDialog');
+  dialog.hidden = false;
+  for (const child of game.children) if (child !== dialog) child.inert = true;
+  document.querySelector('#stayInGame').focus();
+});
+function closeExitDialog() {
+  exitOpen = false;
+  document.querySelector('#exitDialog').hidden = true;
+  for (const child of game.children) child.inert = false;
+  document.querySelector('#homeLink').focus();
+}
+document.querySelector('#stayInGame').addEventListener('click', closeExitDialog);
+document.querySelector('#exitDialog').addEventListener('keydown', event => {
+  event.stopPropagation();
+  if (event.key === 'Escape') { event.preventDefault(); closeExitDialog(); }
+  if (event.key === 'Tab') {
+    event.preventDefault();
+    const stay = document.querySelector('#stayInGame');
+    (document.activeElement === stay ? document.querySelector('#confirmExit') : stay).focus();
+  }
 });
 document.querySelector('#journalToggle').addEventListener('click', () => {
   journalOpen = !journalOpen;
@@ -231,6 +252,7 @@ function resizeCanvas() {
 }
 
 function useAction() {
+  if (exitOpen) return;
   const action = getNearbyAction(state);
   if (!action) return;
   recordFirstAction();
@@ -420,7 +442,7 @@ function frame(now) {
   updateControls();
   let movement = input.state;
   if (Math.abs(input.state.moveX) + Math.abs(input.state.moveY) > 0) walkingTarget = null;
-  if (walkingTarget && !machineOpen && !storyActive) {
+  if (walkingTarget && !machineOpen && !storyActive && !exitOpen) {
     const target = getInteractionTarget(state);
     movement = navigateToTarget(state.player, target);
     if (movement.arrived || !target) {
@@ -428,7 +450,7 @@ function frame(now) {
       if (target) useAction();
     }
   }
-  state = stepGame(state, movement, (now - lastTime) / 1000, { paused: !started || machineOpen || storyActive || !document.querySelector('#friendSandbox').hidden || !document.querySelector('#futureComic').hidden });
+  state = stepGame(state, movement, (now - lastTime) / 1000, { paused: !started || machineOpen || storyActive || exitOpen || !document.querySelector('#friendSandbox').hidden || !document.querySelector('#futureComic').hidden });
   lastTime = now;
   if (state.scene !== lastScene) {
     if (!showcaseChip && ['warehouse', 'chip', 'machine', 'red-crate', 'reward'].includes(state.checkpoint)) persistence.save(state);
