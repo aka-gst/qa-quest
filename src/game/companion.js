@@ -1,5 +1,8 @@
 export function stepCompanion(previous, target, home, size, dt) {
-  const p = previous ?? { ...home, biting: false };
+  const old = previous ?? home;
+  // Resize can put the previous position outside the new viewport, not just the target.
+  const p = { x: Math.max(36, Math.min(size.width - 36, old.x)),
+    y: Math.max(76, Math.min(size.height - 36, old.y)) };
   const aim = target ?? home;
   const x = Math.max(36, Math.min(size.width - 36, aim.x));
   const y = Math.max(76, Math.min(size.height - 36, aim.y));

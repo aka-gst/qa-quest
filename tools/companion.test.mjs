@@ -23,3 +23,9 @@ test('pointer leave returns home, long frame cannot teleport, edge stays visible
   for(let i=0;i<240;i++) edge=stepCompanion(edge,{x:-200,y:1000},home,size,.016);
   assert.ok(edge.x>=36 && edge.y<=808);
 });
+
+test('rotation keeps a companion from the old wide viewport inside the new viewport immediately', () => {
+  const p = stepCompanion({x:800,y:200}, null, {x:195,y:422}, {width:390,height:844}, .016);
+  assert.ok(p.x>=36 && p.x<=354);
+  assert.ok(p.y>=76 && p.y<=808);
+});
