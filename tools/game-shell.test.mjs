@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { CHIP_SHOWCASE_DURATION, CHIP_SHOWCASE_PHASES, getChipShowcasePhase } from '../src/game/showcase-chip.js';
+import { PROLOGUE_TIMEOUT, COLLAPSE_DURATION } from '../src/game/config.js';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
@@ -75,6 +76,14 @@ test('первый экран обещает игру, а не учебный к
   assert.match(main, /state = createCheckpointState\('warehouse'\)/);
   assert.match(main, /createGameState\(\{ scene: 'warehouse', checkpoint: 'start' \}\)/);
   assert.doesNotMatch(html, /коротк|подробн|урок|обучени/i);
+});
+
+test('вирусный взгляд короткий, подписан и сам передаёт игру складу', () => {
+  const main = readFileSync(new URL('../src/game/main.js', import.meta.url), 'utf8');
+  assert.ok(PROLOGUE_TIMEOUT + COLLAPSE_DURATION < 90, 'взгляд не должен быть длиннее полутора минут');
+  assert.match(main, /ВЗГЛЯД В БУДУЩЕЕ/);
+  assert.match(main, /ВОТ КАКИМ ТЫ СТАНЕШЬ/);
+  assert.match(readFileSync(new URL('../src/game/model.js', import.meta.url), 'utf8'), /next\.sceneTime >= COLLAPSE_DURATION/);
 });
 
 test('терминал не выдаёт первую команду до находки плаката', () => {

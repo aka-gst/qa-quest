@@ -359,9 +359,9 @@ function updateHud(now = performance.now()) {
   incomeToast.hidden = now >= incomeNoticeUntil;
 
   if (state.scene === 'prologue') {
-    hud.chapter.textContent = 'ПРОЛОГ · ВНУТРИ АНТИВИРУСА';
-    hud.mission.textContent = firstMovementSeen ? 'Вычисти заражение' : 'Уничтожай вирусы';
-    hud.message.textContent = 'WASD · МАНЕВРИРУЙ · ОРУДИЕ СТРЕЛЯЕТ САМО';
+    hud.chapter.textContent = 'ВЗГЛЯД В БУДУЩЕЕ';
+    hud.mission.textContent = 'ВОТ КАКИМ ТЫ СТАНЕШЬ';
+    hud.message.textContent = 'КОРОТКАЯ ВСПЫШКА · ДАЛЬШЕ — ЯЩИКИ И РУКА';
     hud.progress.style.width = `${(state.prologue.threats / 24) * 100}%`;
     hud.system.textContent = 'ЗАЩИТА';
     hud.sector.textContent = 'ТВОЙ ПК';
