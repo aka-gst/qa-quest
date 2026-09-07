@@ -56,8 +56,8 @@ const hud = {
 const isLocal = ['127.0.0.1', 'localhost'].includes(location.hostname);
 const query = new URLSearchParams(location.search);
 const requestedCheckpoint = query.get('checkpoint');
-const showcaseChip = isLocal && query.get('showcase') === 'chip';
-const showcaseManual = isLocal && query.get('showcase') === 'manual';
+const showcaseChip = query.get('showcase') === 'chip';
+const showcaseManual = query.get('showcase') === 'manual';
 game.dataset.chipShowcase = showcaseChip ? 'true' : 'false';
 const checkpoint = (isLocal && CHECKPOINTS.includes(requestedCheckpoint)) || requestedCheckpoint === 'start'
   ? { checkpoint: requestedCheckpoint }
