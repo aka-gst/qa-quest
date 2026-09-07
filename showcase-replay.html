@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'; media-src blob:; object-src 'none'">
+<title>QueQuest — воспроизводимая съёмка</title>
+<link rel="stylesheet" href="src/game/showcase-replay.css">
+<main>
+  <header><h1>QueQuest / кадры настоящей игры</h1><p>Бой с заражением → ручная смена. Монтаж двух фрагментов, не обычное начало игры. Без звука и аналитики.</p></header>
+  <canvas width="1280" height="720" aria-label="Бой и переносы ящиков"></canvas>
+  <nav aria-label="Управление съёмкой">
+    <button id="first">Начало</button><button id="warehouse">Склад</button><button id="last">Финал</button>
+    <button id="play">Воспроизвести</button><button id="pause">Пауза</button>
+    <label>Кадр <input id="frame" type="number" min="0" value="0"></label>
+    <button id="verify">Проверить повтор</button>
+  </nav>
+  <output id="status" aria-live="polite">Готовлю кадры…</output>
+  <p id="receipt"></p>
+</main>
+<script type="module" src="src/game/showcase-replay-page.js"></script>
+</html>
