@@ -73,6 +73,7 @@ test('первый экран обещает игру, а не учебный к
   assert.match(html, /Таскать тяжело/);
   const main = readFileSync(new URL('../src/game/main.js', import.meta.url), 'utf8');
   assert.match(main, /state = createCheckpointState\('warehouse'\)/);
+  assert.match(main, /createGameState\(\{ scene: 'warehouse', checkpoint: 'start' \}\)/);
   assert.doesNotMatch(html, /коротк|подробн|урок|обучени/i);
 });
 

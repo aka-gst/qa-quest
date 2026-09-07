@@ -65,7 +65,9 @@ const checkpoint = (isLocal && CHECKPOINTS.includes(requestedCheckpoint)) || req
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const narrowViewport = window.matchMedia('(max-width: 760px)');
 const telemetry = createTelemetry({ enabled: isLocal });
-let state = createCheckpointState(checkpoint.checkpoint);
+let state = checkpoint.checkpoint === 'start'
+  ? createGameState({ scene: 'warehouse', checkpoint: 'start' })
+  : createCheckpointState(checkpoint.checkpoint);
 if (showcaseManual) state = { ...state, warehouse: { ...state.warehouse, introComplete: true } };
 let fakeGateway;
 let otherMindRuntime;
@@ -557,7 +559,7 @@ document.querySelector('#restartGame').addEventListener('click', () => {
   persistence.reset();
   gameGeneration += 1;
   machineRunning = false;
-  state = createGameState();
+  state = createGameState({ scene: 'warehouse', checkpoint: 'start' });
   started = false;
   walkingTarget = null;
   storyActive = false;
