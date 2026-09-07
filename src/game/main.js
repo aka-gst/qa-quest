@@ -126,6 +126,13 @@ document.querySelector('#storyNext').addEventListener('click', () => {
 });
 
 document.querySelector('#startGame').addEventListener('click', () => {
+  if (state.scene === 'prologue') {
+    state = createCheckpointState('warehouse');
+    lastScene = state.scene;
+    lastThreats = 0;
+    firstMovementSeen = false;
+    audio.setAmbient('warehouse');
+  }
   started = true;
   lastTime = performance.now();
   unlockAudioForScene();

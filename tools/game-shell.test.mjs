@@ -69,8 +69,10 @@ test('на телефоне кнопка действия не обещает к
 });
 
 test('первый экран обещает игру, а не учебный курс', () => {
-  assert.match(html, /Ты всё умел\. Теперь вспомни\./);
-  assert.match(html, /WASD · МАНЕВРИРУЙ · ОРУДИЕ СТРЕЛЯЕТ САМО/);
+  assert.match(html, /Сначала — три ящика\.<br>Потом машина научится\./);
+  assert.match(html, /Таскать тяжело/);
+  const main = readFileSync(new URL('../src/game/main.js', import.meta.url), 'utf8');
+  assert.match(main, /state = createCheckpointState\('warehouse'\)/);
   assert.doesNotMatch(html, /коротк|подробн|урок|обучени/i);
 });
 
