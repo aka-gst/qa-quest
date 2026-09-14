@@ -62,6 +62,8 @@ QueQuest — сюжетная игра, где обучение программ
 
 ## Exact design decisions preserved
 
-Vika's future appearance is the blue floating half-human/female computer face without a body; the line «А вот и ты» is attributed to Sergey. The virus/finale visual remains a later story beat. The friends-defense episode is about distinct friends, attacks, defenses and teaching after victory, not generic PvP. The first bot should arrive early when a problem makes it necessary. Beginner UX must show the goal before teaching syntax. Save/account facts remain local-first and unproven for shared progress. Mobile acceptance needs ordinary touch at 390×844 and a wider phone path.
+Vika's future appearance is the blue floating half-human/female computer face without a body; the line «А вот и ты» belongs to Vika. The virus/finale visual remains a later story beat. The friends-defense episode is about distinct friends, attacks, defenses and teaching after victory, not generic PvP. The first bot should arrive early when a problem makes it necessary. Beginner UX must show the goal before teaching syntax. Save/account facts remain local-first and unproven for shared progress. Mobile acceptance needs ordinary touch at 390×844 and a wider phone path.
 
 Already shipped: the current game-first browser route and local checkpoint behavior. Future: chip/first slice acceptance, Vika/virus/finale, friends defense, learn-by-need, early bot, account contract and mobile retest. Do not replace the first episode, invent a live backend, publish, or call planned design implemented.
+
+Appendix boundary: direct QueQuest rows drive the plan. System/report, AudioSurf, Pokémon and other cross-project matches are provenance only and create no QueQuest task.
