@@ -1135,6 +1135,17 @@ textarea:focus-visible {
 .first-shift__dialogue small{color:#ffc857;font:900 10px ui-monospace,monospace;letter-spacing:.12em}
 .first-shift__dialogue p{margin:8px 0 16px;color:#f1ece2;font-size:18px;line-height:1.5}
 .first-shift__dialogue button{width:100%;min-height:48px;border:1px solid #d7a64e;background:#d8a84e;color:#15110a;font-weight:900;letter-spacing:.08em}
+.first-shift__choices{display:flex;gap:10px}
+.first-shift__choices[hidden]{display:none!important}
+.first-shift__choices button{flex:1 1 0;min-height:48px}
+.first-shift__choices #firstShiftBossFight{border-color:#e0555f;background:#e0555f;color:#180405}
+.first-shift__fight{position:absolute;z-index:5;left:50%;bottom:9%;width:min(560px,calc(100% - 44px));transform:translateX(-50%);padding:16px 20px;border:1px solid #ffc85773;border-radius:9px;background:#0b0d10f2;box-shadow:0 24px 80px #000c;text-align:center}
+.first-shift__fight[hidden]{display:none!important}
+.first-shift__fight small{color:#ffc857;font:900 10px ui-monospace,monospace;letter-spacing:.1em}
+.first-shift__fight-track{margin-top:12px;height:22px;border:1px solid #ffffff2e;border-radius:11px;background:linear-gradient(90deg,#e0555f33,transparent 48%,transparent 52%,#4fae7433);overflow:hidden}
+.first-shift__fight-track i{display:block;height:100%;width:50%;background:linear-gradient(90deg,#e0555f,#ffc857,#4fae74);transition:width .12s ease-out;border-radius:11px}
+.first-shift__fight[data-hot="true"] small{color:#4fae74}
+.first-shift__fight[data-hot="true"] .first-shift__fight-track{box-shadow:0 0 0 2px #4fae74}
 .first-shift__control{position:absolute;z-index:3;left:50%;bottom:2.4%;transform:translateX(-50%);margin:0;color:#7f898f;font:9px ui-monospace,monospace;text-align:center;pointer-events:none;white-space:nowrap}
 @media(max-width:760px){.first-shift__hud{left:18px;right:18px}.first-shift__hud h2{font-size:30px}.first-shift__hud>strong{font-size:23px}.first-shift__dialogue p{font-size:15px}.first-shift__control{display:none}.first-shift__prompt{bottom:4%;max-width:calc(100% - 24px);white-space:normal}}
 
