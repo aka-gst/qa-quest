@@ -67,3 +67,14 @@ Vika's future appearance is the blue floating half-human/female computer face wi
 Already shipped: the current game-first browser route and local checkpoint behavior. Future: chip/first slice acceptance, Vika/virus/finale, friends defense, learn-by-need, early bot, account contract and mobile retest. Do not replace the first episode, invent a live backend, publish, or call planned design implemented.
 
 Appendix boundary: direct QueQuest rows drive the plan. System/report, AudioSurf, Pokémon and other cross-project matches are provenance only and create no QueQuest task.
+
+## Queue note, 21.09.2026
+
+Сергей: сделал самостоятельно черновик FPS-механики через бесплатный ChatGPT
+(«получилась хуеверть») — сохранён отдельным проектом
+`~/dev/_games/tiny96fps-web-rebuild` (не путать с не связанным
+`tiny96fps`, старым demoscene-раскейстером). Он хочет вернуться к этой
+механике и довести её как часть QueQuest, но **не сейчас**: явный порядок —
+сначала Pixel Reactor (текущий финиш), затем демка Technomagic для Евгения,
+и только потом эта FPS-ветка. До того момента — не начинать и не оценивать
+объём.
