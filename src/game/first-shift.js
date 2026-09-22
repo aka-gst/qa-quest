@@ -232,6 +232,17 @@ export function createFirstShift(root,{onComplete=()=>{},onSound=()=>{}}={}){
     if(bossVisiblePhases.includes(state.phase))add('boss',bossSpot);if(state.phase==='choice'&&state.chipVisible)add('chip',chip);
     objects.sort((a,b)=>b.p.forward-a.p.forward);for(const item of objects){if(item.kind==='crate')drawBox(ctx,item.p,false,`ЯЩИК ${item.obj.id.toUpperCase()}`);else if(item.kind==='pallet')drawPallet(ctx,item.p);else if(item.kind==='boss')drawBoss(ctx,item.p);else if(item.kind==='arm')drawArm(ctx,item.p,false);else drawChip(ctx,item.p);}
     if(state.carrying){ctx.save();ctx.globalAlpha=.97;const p={x:width/2,baseY:height+20,scale:1.3};drawBox(ctx,p,false,'');ctx.restore();}
+    // 22.09: Сергей — первый уровень должен ощущаться как Doom от первого
+    // лица, не как плоская картонная коробка. Тот же контент (ящики,
+    // начальник, рука), только с виньеткой и мягким пятном света вокруг
+    // взгляда игрока — дешёвый, но настоящий приём атмосферного FPS,
+    // без изменения геометрии или логики уровня.
+    const vign=ctx.createRadialGradient(width/2,height*.52,height*.22,width/2,height*.52,width*.66);
+    vign.addColorStop(0,'rgba(0,0,0,0)');vign.addColorStop(.62,'rgba(0,0,0,0)');vign.addColorStop(1,'rgba(0,0,0,.72)');
+    ctx.fillStyle=vign;ctx.fillRect(0,0,width,height);
+    const glow=ctx.createRadialGradient(width/2,height*.5,0,width/2,height*.5,height*.34);
+    glow.addColorStop(0,'rgba(255,214,150,.05)');glow.addColorStop(1,'rgba(255,214,150,0)');
+    ctx.fillStyle=glow;ctx.fillRect(0,0,width,height);
   }
   function update(now){
     if(!active)return;const dt=Math.min(.05,(now-last)/1000);last=now;
