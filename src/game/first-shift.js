@@ -86,6 +86,49 @@ export function firstShiftBossLine(phase='briefing', fightWon=null){
   ];
 }
 
+// 22.09: Сергей, after rejecting a vignette as cosmetic — "полноценный
+// думовский движок, как в Думе сделай". The room used to be a painted
+// gradient with a door glued to a fixed SCREEN position (not a world
+// object at all, so it never moved as you walked). This is a real
+// raycaster: actual wall geometry in world space, one ray per screen
+// column, perspective-correct by construction because it reuses the exact
+// camera basis (sin/cos of yaw) that project() already uses for sprites —
+// walls and props can't disagree about where the camera is looking.
+const ROOM = {minX:-7.6, maxX:7.6, minZ:-7.6, maxZ:7.6, doorZ0:-5.4, doorZ1:-3.2, doorDepth:2.6};
+const WALL_H = 3.4;
+function roomWalls(room){
+  const {minX,maxX,minZ,maxZ,doorZ0,doorZ1,doorDepth}=room;
+  return [
+    {x0:minX,z0:minZ,x1:maxX,z1:minZ,side:'n'},
+    {x0:minX,z0:maxZ,x1:maxX,z1:maxZ,side:'s'},
+    {x0:minX,z0:minZ,x1:minX,z1:maxZ,side:'w'},
+    {x0:maxX,z0:minZ,x1:maxX,z1:doorZ0,side:'e'},
+    {x0:maxX,z0:doorZ1,x1:maxX,z1:maxZ,side:'e'},
+    {x0:maxX,z0:doorZ0,x1:maxX+doorDepth,z1:doorZ0,side:'door-jamb'},
+    {x0:maxX,z0:doorZ1,x1:maxX+doorDepth,z1:doorZ1,side:'door-jamb'},
+    {x0:maxX+doorDepth,z0:doorZ0,x1:maxX+doorDepth,z1:doorZ1,side:'door-back'},
+  ];
+}
+function rayVsSegment(px,pz,dx,dz,ax,az,bx,bz){
+  const ex=bx-ax,ez=bz-az;
+  const denom=dx*ez-dz*ex;
+  if(Math.abs(denom)<1e-9)return null;
+  const t=((ax-px)*ez-(az-pz)*ex)/denom;
+  const s=(dx*(az-pz)-dz*(ax-px))/(-denom);
+  if(t>0.02&&s>=0&&s<=1)return t;
+  return null;
+}
+function castWall(player,walls,forwardOffset){
+  const sin=Math.sin(player.yaw),cos=Math.cos(player.yaw);
+  const dx=sin+forwardOffset*cos, dz=-cos+forwardOffset*sin;
+  let best=null,bestSide=null;
+  for(const w of walls){
+    const t=rayVsSegment(player.x,player.z,dx,dz,w.x0,w.z0,w.x1,w.z1);
+    if(t!==null&&(best===null||t<best)){best=t;bestSide=w.side;}
+  }
+  return best===null?null:{forward:best,side:bestSide};
+}
+
 function project(player, object, width, height){
   const dx=object.x-player.x;const dz=object.z-player.z;
   const sin=Math.sin(player.yaw);const cos=Math.cos(player.yaw);
@@ -216,14 +259,34 @@ export function createFirstShift(root,{onComplete=()=>{},onSound=()=>{}}={}){
     if(!ctx||!canvas)return;const width=canvas.clientWidth;const height=canvas.clientHeight;ctx.clearRect(0,0,width,height);
     const horizon=height*.43;const ceiling=ctx.createLinearGradient(0,0,0,horizon);ceiling.addColorStop(0,'#050607');ceiling.addColorStop(1,'#171b1e');ctx.fillStyle=ceiling;ctx.fillRect(0,0,width,horizon);
     const floor=ctx.createLinearGradient(0,horizon,0,height);floor.addColorStop(0,'#202429');floor.addColorStop(1,'#090b0d');ctx.fillStyle=floor;ctx.fillRect(0,horizon,width,height-horizon);
-    ctx.strokeStyle='#454b4f';ctx.globalAlpha=.34;for(let i=-7;i<=7;i++){const x=width/2+i*width*.09;ctx.beginPath();ctx.moveTo(width/2,horizon);ctx.lineTo(x,height);ctx.stroke();}for(let i=1;i<=10;i++){const t=i/10;const y=horizon+(height-horizon)*(t*t);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(width,y);ctx.stroke();}ctx.globalAlpha=1;
-    ctx.fillStyle='#111518';ctx.fillRect(0,horizon-42,width,42);ctx.fillStyle='#30363b';for(let i=0;i<10;i++)ctx.fillRect(i*width/9-6,horizon-42,12,42);
-    // Loading-bay door gives the boss an actual exit and makes the post-briefing
-    // slam legible without another explanatory panel.
-    const doorW=Math.min(190,width*.15),doorH=Math.min(300,height*.38),doorX=width-doorW-70,doorY=horizon-doorH*.25;
-    ctx.fillStyle=state.phase==='choice'?'#0b0d0f':'#10161b';ctx.strokeStyle='#59636a';ctx.lineWidth=5;ctx.fillRect(doorX,doorY,doorW,doorH);ctx.strokeRect(doorX,doorY,doorW,doorH);
-    ctx.fillStyle='#d6a33e';ctx.font='900 12px ui-monospace,monospace';ctx.textAlign='center';ctx.fillText('ПОГРУЗКА',doorX+doorW/2,doorY+24);
-    if(state.phase==='choice'){ctx.strokeStyle='#d6a33e';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(doorX+18,doorY+46);ctx.lineTo(doorX+doorW-18,doorY+46);ctx.stroke();}
+    // Real raycast walls: one ray per screen column against actual room
+    // geometry (ROOM/roomWalls), not a painted gradient. Shares the exact
+    // camera basis project() uses for sprites, so a wall and a crate next
+    // to it can never disagree about distance or where "straight ahead" is.
+    const walls=roomWalls(ROOM);
+    const focal=width/(2*Math.tan(Math.PI*70/180/2));
+    const worldToPx=focal*.74;
+    const step=Math.max(1,Math.floor(width/480));
+    for(let sx=0;sx<width;sx+=step){
+      const k=(sx+step/2-width/2)/focal;
+      const hit=castWall(state.player,walls,k);
+      if(!hit)continue;
+      const t=Math.max(.12,hit.forward);
+      const floorY=horizon+(1.42/t)*worldToPx;
+      const topY=floorY-(WALL_H/t)*worldToPx;
+      const fog=Math.max(0,1-t/16);
+      const isDoor=hit.side==='door-jamb'||hit.side==='door-back';
+      const baseTone=hit.side==='n'||hit.side==='s'?[0x28,0x2e,0x35]:hit.side==='w'?[0x20,0x25,0x2b]:isDoor?[0x14,0x1a,0x20]:[0x30,0x36,0x3e];
+      const [r,g,b]=baseTone;
+      const shade=.22+.78*fog;
+      ctx.fillStyle=`rgb(${Math.round(r*shade)},${Math.round(g*shade)},${Math.round(b*shade)})`;
+      ctx.fillRect(sx,Math.max(0,topY),step+1,Math.min(height,floorY)-Math.max(0,topY));
+    }
+    const doorLabelPt=project(state.player,{x:ROOM.maxX+ROOM.doorDepth,z:(ROOM.doorZ0+ROOM.doorZ1)/2},width,height);
+    if(doorLabelPt&&doorLabelPt.x>20&&doorLabelPt.x<width-20){
+      ctx.fillStyle='#d6a33e';ctx.font=`900 ${Math.max(9,Math.round(12*doorLabelPt.scale))}px ui-monospace,monospace`;ctx.textAlign='center';
+      ctx.fillText('ПОГРУЗКА',doorLabelPt.x,doorLabelPt.baseY-WALL_H*worldToPx/Math.max(.12,doorLabelPt.forward)*.72);
+    }
     const objects=[];
     const add=(kind,obj)=>{const p=project(state.player,obj,width,height);if(p&&p.x>-240&&p.x<width+240)objects.push({kind,obj,p});};
     for(const crate of state.crates.filter(c=>!c.delivered&&c.id!==state.carrying))add('crate',crate);add('pallet',pallet);add('arm',arm);
